@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package smartcity;
+
+// =====================================================================
+// ENUMS
+// =====================================================================
+
+// Enumeração para os tipos de dispositivos
+enum DeviceType {
+  UNKNOWN_DEVICE = 0;           // Tipo de dispositivo desconhecido
+  CAMERA = 1;                   // Câmera
+  POST = 2;                     // Poste de luz
+  TRAFFIC_LIGHT = 3;            // Semáforo
+  AIR_QUALITY_SENSOR = 4;       // Sensor de qualidade do ar
+  TEMPERATURE_SENSOR = 5;       // Sensor de temperatura
+}
+
+// Enumeração para o status dos dispositivos
+enum DeviceStatus {
+  UNKNOWN_STATUS = 0;           // Status desconhecido
+  ON = 1;                       // Ligado
+  OFF = 2;                      // Desligado
+  IDLE = 3;                     // Ocioso
+  ACTIVE = 4;                   // Ativo
+  ERROR = 5;                    // Em erro
+  RED = 6;                      // Sinal vermelho (para Semáforo)
+  GREEN = 7;                    // Sinal verde (para Semáforo)
+}
+
+// =====================================================================
+// MENSAGENS PARA DESCOBERTA DE DISPOSITIVOS (Multicast UDP)
+// =====================================================================
+
+// Mensagem enviada pelo Gateway para descobrir dispositivos 
+message DiscoveryRequest {
+  string gateway_ip = 1;        // Endereço IP do Gateway
+  int32 gateway_tcp_port = 2;   // Porta TCP do Gateway (para comunicação de controle)
+  int32 gateway_udp_port = 3;   // Porta UDP do Gateway (para recebimento de dados sensoriados)
+}
+
+// Mensagem enviada pelo Dispositivo em resposta a uma DiscoveryRequest 
+message DeviceInfo {
+  string device_id = 1;       // ID único para o dispositivo (e.g., "camera_001")
+  DeviceType type = 2;        // Tipo do dispositivo (e.g., CAMERA, POST) 
+  string ip_address = 3;      // Endereço IP do dispositivo 
+  int32 port = 4;             // Porta TCP do dispositivo para controle 
+  DeviceStatus initial_state = 5; // Estado inicial do dispositivo (e.g., ON, OFF) 
+  bool is_actuator = 6;       // Verdadeiro se o dispositivo pode receber comandos para modificar seu estado 
+  bool is_sensor = 7;         // Verdadeiro se o dispositivo é um sensor que envia dados 
+}
+
+// =====================================================================
+// MENSAGENS PARA COMUNICAÇÃO DISPOSITIVO-GATEWAY (TCP para comandos, UDP para dados sensoriados)
+// =====================================================================
+
+// Mensagem para atualizações de estado do dispositivo ou leituras de sensor periódicas 
+message DeviceUpdate {
+  string device_id = 1;               // ID do dispositivo
+  DeviceType type = 2;                // Tipo do dispositivo
+  DeviceStatus current_status = 3;    // Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+  // Opcional: Leituras de sensor específicas (apenas para sensores)
+  double temperature_value = 4;       // Para TEMPERATURE_SENSOR 
+  double air_quality_index = 5;       // Para AIR_QUALITY_SENSOR
+  // Adicionar outros dados de sensor específicos conforme necessário (e.g., camera_resolution, traffic_light_timer)
+  string custom_config_status = 6;    // Para reportar a configuração atual (e.g., "HD" para câmera, "10s" para semáforo) 
+}
+
+// Mensagem para comandos enviados do Gateway para o Dispositivo (via TCP) 
+message DeviceCommand {
+  string device_id = 1;             // ID do dispositivo alvo
+  DeviceType type = 2;              // Tipo do dispositivo alvo
+  // Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+  string command_type = 3;
+  // Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+  string command_value = 4;
+}
+
+// =====================================================================
+// MENSAGENS PARA COMUNICAÇÃO CLIENTE-GATEWAY (TCP)
+// =====================================================================
+
+// Requisições do Cliente para o Gateway 
+message ClientRequest {
+  enum RequestType {
+    UNKNOWN_REQUEST = 0;              // Tipo de requisição desconhecido
+    LIST_DEVICES = 1;                 // Cliente requisita uma lista de dispositivos conectados 
+    GET_DEVICE_STATUS = 2;            // Cliente requisita o status de um dispositivo específico 
+    SEND_DEVICE_COMMAND = 3;          // Cliente envia um comando para um dispositivo específico 
+  }
+  RequestType type = 1;
+  string target_device_id = 2;        // Necessário para GET_DEVICE_STATUS e SEND_DEVICE_COMMAND
+  DeviceCommand command = 3;          // Necessário para SEND_DEVICE_COMMAND
+}
+
+// Respostas do Gateway para o Cliente 
+message GatewayResponse {
+  enum ResponseType {
+    UNKNOWN_RESPONSE = 0;             // Tipo de resposta desconhecido
+    DEVICE_LIST = 1;                  // Resposta a LIST_DEVICES
+    DEVICE_STATUS_UPDATE = 2;         // Resposta a GET_DEVICE_STATUS
+    COMMAND_ACK = 3;                  // Confirmação para SEND_DEVICE_COMMAND
+    ERROR = 4;                        // Resposta de erro geral
+  }
+  ResponseType type = 1;
+  string message = 2;                 // Mensagem geral (e.g., descrição de erro, confirmação de sucesso)
+  repeated DeviceInfo devices = 3;    // Para DEVICE_LIST. Contém informações básicas dos dispositivos.
+  DeviceUpdate device_status = 4;     // Para DEVICE_STATUS_UPDATE. Contém status detalhado.
+  string command_status = 5;          // Para COMMAND_ACK (e.g., "SUCCESS", "FAILED")
+}
