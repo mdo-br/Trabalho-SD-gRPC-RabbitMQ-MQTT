@@ -1,2 +1,27 @@
+# Ignorar diretório de build do Maven
 /target/
+
+# Ignorar arquivos e diretórios gerados pelo VS Code
 /.vscode/
+.vscode/        # Configurações do workspace do VS Code
+.DS_Store       # Arquivos de metadados do macOS (se usar macOS em algum momento)
+*~              # Arquivos de backup comuns
+
+# Ignorar arquivos gerados pelo Protocol Buffers para Python
+/src/gateway/src/
+/src/gateway/smart_city_pb2.py
+/src/gateway/smart_city_pb2.pyi # Ignorar stubs de tipo, se gerados
+
+# Ignorar ambiente virtual Python
+/venv/
+
+# Ignorar arquivos de cache de Python e compilação
+__pycache__/    # Diretórios de cache de bytecode Python
+*.pyc           # Arquivos de bytecode Python
+*.pyd           # Módulos Python em Windows
+*.so            # Módulos Python em sistemas Unix/Linux
+
+# Ignorar logs e outros arquivos temporários
+*.log           # Arquivos de log
+*.tmp           # Arquivos temporários
+*.bak           # Arquivos de backup
