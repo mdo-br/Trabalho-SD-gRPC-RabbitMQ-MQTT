@@ -1,11 +1,16 @@
-package com.smartcity.sensors;
+// src/devices/sensors/TemperatureHumiditySensor.java
+package com.smartcity.sensors; // Pacote ajustado à sua estrutura de diretórios
 
 import smartcity.SmartCity; // Importa as classes geradas do Protocol Buffers
+import com.google.protobuf.ByteString; // NOVO: Importar ByteString para desserialização
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.*;
+import java.net.*; // Contém DatagramSocket, ServerSocket, Socket, InetAddress, UnknownHostException
+import java.net.Inet4Address; // NOVO: Para identificar endereços IPv4
+import java.net.NetworkInterface; // NOVO: Para iterar sobre interfaces de rede
+import java.util.Enumeration; // Para iterar sobre NetworkInterface e InetAddress
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -20,9 +25,9 @@ public class TemperatureHumiditySensor {
 
     // --- Configurações de Comunicação ---
     private static final String MULTICAST_GROUP = "224.1.1.1";
-    private static final int MULTICAST_PORT = 5007; // Porta para descoberta multicast UDP
+    private static final int MULTICAST_PORT = 5007; // Porta para descoberta multicast UDP 
     private static final int SENSOR_TCP_PORT = 6001; // Porta TCP específica para este sensor para receber comandos
-    private static final long SENSOR_REPORT_INTERVAL_SECONDS = 15; // Intervalo de envio de dados sensoriados (UDP)
+    private static final long SENSOR_REPORT_INTERVAL_SECONDS = 15; // Intervalo de envio de dados sensoriados (UDP) 
 
     private String deviceId;
     private SmartCity.DeviceStatus currentStatus;
@@ -30,14 +35,14 @@ public class TemperatureHumiditySensor {
     private int gatewayUdpPort;     // Porta UDP do Gateway para envio de dados sensoriados
     private int gatewayTcpPort;     // Porta TCP do Gateway para envio de DeviceInfo e possivelmente outros controles
 
-    private DatagramSocket udpSocket; // Socket para envio de dados sensoriados via UDP
-    private ServerSocket tcpServerSocket; // ServerSocket para receber comandos TCP do Gateway
+    private DatagramSocket udpSocket; // Socket para envio de dados sensoriados via UDP 
+    private ServerSocket tcpServerSocket; // ServerSocket para receber comandos TCP do Gateway 
     private ScheduledExecutorService scheduler; // Para agendar o envio periódico de dados
     private Random random = new Random(); // Para simular leituras de sensor
 
     public TemperatureHumiditySensor(String id) {
         this.deviceId = id;
-        this.currentStatus = SmartCity.DeviceStatus.ACTIVE; // Estado inicial do sensor 
+        this.currentStatus = SmartCity.DeviceStatus.ACTIVE; // Estado inicial do sensor
         LOGGER.info("Sensor " + deviceId + " inicializado com estado: " + currentStatus);
     }
 
@@ -48,12 +53,12 @@ public class TemperatureHumiditySensor {
             tcpServerSocket = new ServerSocket(SENSOR_TCP_PORT); // ServerSocket para receber comandos TCP
 
             // Inicia threads para lidar com diferentes tipos de comunicação
-            // Escuta requisições de descoberta multicast do Gateway
+            // Escuta requisições de descoberta multicast do Gateway 
             new Thread(this::listenForDiscoveryRequests, "DiscoveryListener-" + deviceId).start();
-            // Escuta comandos TCP do Gateway
+            // Escuta comandos TCP do Gateway 
             new Thread(this::listenForTcpCommands, "CommandListener-" + deviceId).start();
 
-            // Agenda o envio periódico de dados sensoriados se o sensor estiver ativo
+            // Agenda o envio periódico de dados sensoriados se o sensor estiver ativo 
             startSensorDataScheduler();
 
         } catch (IOException e) {
@@ -66,11 +71,10 @@ public class TemperatureHumiditySensor {
             scheduler.shutdownNow(); // Garante que qualquer scheduler anterior seja parado
         }
         scheduler = Executors.newSingleThreadScheduledExecutor();
-        // Agenda o envio periódico de dados sensoriados, começando imediatamente 
+        // Agenda o envio periódico de dados sensoriados, começando imediatamente
         scheduler.scheduleAtFixedRate(this::sendSensorData, 0, SENSOR_REPORT_INTERVAL_SECONDS, TimeUnit.SECONDS);
         LOGGER.info("Envio periódico de dados do sensor " + deviceId + " agendado a cada " + SENSOR_REPORT_INTERVAL_SECONDS + " segundos.");
     }
-
 
     private void listenForDiscoveryRequests() {
         try (MulticastSocket multicastSocket = new MulticastSocket(MULTICAST_PORT)) {
@@ -84,8 +88,10 @@ public class TemperatureHumiditySensor {
             while (true) {
                 multicastSocket.receive(packet); // Recebe uma mensagem multicast 
 
-                // Desserializa a mensagem para DiscoveryRequest usando Protocol Buffers
-                SmartCity.DiscoveryRequest discoveryRequest = SmartCity.DiscoveryRequest.parseFrom(packet.getData(), 0, packet.getLength());
+                // CORREÇÃO AQUI: Usando ByteString.copyFrom para desserialização
+                SmartCity.DiscoveryRequest discoveryRequest = SmartCity.DiscoveryRequest.parseFrom(
+                    ByteString.copyFrom(packet.getData(), 0, packet.getLength())
+                );
                 LOGGER.info("Sensor " + deviceId + " recebeu requisição de descoberta do Gateway em " + discoveryRequest.getGatewayIp() + ":" + discoveryRequest.getGatewayTcpPort());
 
                 // Armazena as informações do Gateway para comunicação futura
@@ -108,10 +114,10 @@ public class TemperatureHumiditySensor {
             // Constrói a mensagem DeviceInfo com os dados do sensor 
             SmartCity.DeviceInfo deviceInfo = SmartCity.DeviceInfo.newBuilder()
                     .setDeviceId(deviceId)
-                    .setType(SmartCity.DeviceType.TEMPERATURE_SENSOR) // Tipo do sensor 
-                    .setIpAddress(getLocalIpAddress()) // IP local do sensor 
-                    .setPort(SENSOR_TCP_PORT) // Porta TCP do sensor para comandos 
-                    .setInitialState(currentStatus) // Estado inicial do sensor 
+                    .setType(SmartCity.DeviceType.TEMPERATURE_SENSOR) // Tipo do sensor
+                    .setIpAddress(getLocalIpAddress()) // IP local do sensor
+                    .setPort(SENSOR_TCP_PORT) // Porta TCP do sensor para comandos
+                    .setInitialState(currentStatus) // Estado inicial do sensor
                     .setIsActuator(false) // Este é um sensor, não um atuador primário 
                     .setIsSensor(true)    // Este é um sensor 
                     .build();
@@ -148,12 +154,12 @@ public class TemperatureHumiditySensor {
 
     private void handleTcpCommand(Socket clientSocket) {
         try (InputStream input = clientSocket.getInputStream()) {
-            // Desserializa o comando recebido do Gateway 
+            // Desserializa o comando recebido do Gateway
             SmartCity.DeviceCommand command = SmartCity.DeviceCommand.parseDelimitedFrom(input);
             if (command != null) {
                 LOGGER.info("Sensor " + deviceId + " recebeu comando TCP: " + command.getCommandType() + " com valor " + command.getCommandValue());
 
-                // Lógica para processar comandos:
+                // Lógica para processar comandos: 
                 if (command.getCommandType().equals("TURN_OFF")) {
                     currentStatus = SmartCity.DeviceStatus.OFF;
                     LOGGER.info("Sensor " + deviceId + " DESLIGADO por comando.");
@@ -168,10 +174,6 @@ public class TemperatureHumiditySensor {
                 } else {
                     LOGGER.warning("Comando desconhecido recebido para o sensor " + deviceId + ": " + command.getCommandType());
                 }
-                // Atuadores teriam mais lógica aqui (e.g., mudar resolução da câmera, tempo do semáforo) 
-
-                // Opcional: Enviar um ACK de volta para o Gateway se a lógica do protocolo permitir.
-                // Atualmente, o .proto não tem uma mensagem de ACK específica para comandos de dispositivo.
             }
 
         } catch (IOException e) {
@@ -188,7 +190,7 @@ public class TemperatureHumiditySensor {
     }
 
     private void sendSensorData() {
-        // Só envia dados se o Gateway foi descoberto e o sensor estiver ativo
+        // Só envia dados se o Gateway foi descoberto e o sensor estiver ativo 
         if (gatewayIp == null || currentStatus == SmartCity.DeviceStatus.OFF) {
             if (gatewayIp == null) {
                 LOGGER.fine("Sensor " + deviceId + ": Gateway ainda não descoberto, não enviando dados.");
@@ -198,7 +200,7 @@ public class TemperatureHumiditySensor {
             return;
         }
 
-        // Simula leituras de temperatura e umidade com alguma variação
+        // Simula leituras de temperatura e umidade com alguma variação 
         double temperature = 20.0 + random.nextGaussian() * 5.0; // Ex: 20°C +/- 5°C
         double humidity = 50.0 + random.nextGaussian() * 10.0; // Ex: 50% +/- 10%
 
@@ -221,26 +223,33 @@ public class TemperatureHumiditySensor {
         }
     }
 
+    // CORREÇÃO AQUI: Método getLocalIpAddress refatorado para usar laço while
     private String getLocalIpAddress() {
         try {
-            // Tenta obter o IP não-loopback.
-            // Isso é importante para ambientes de rede reais onde 127.0.0.1 não funcionaria para comunicação externa.
-            for (java.net.NetworkInterface ni : java.net.NetworkInterface.getNetworkInterfaces()) {
-                ni.getInterfaceAddresses().stream()
-                        .map(java.net.InterfaceAddress::getAddress)
-                        .filter(addr -> addr instanceof java.net.Inet4Address && !addr.isLoopbackAddress())
-                        .findFirst()
-                        .map(java.net.InetAddress::getHostAddress)
-                        .ifPresent(ip -> {
-                            // Retornar o IP diretamente não funciona bem em um stream.
-                            // Para um método simples, esta é uma abordagem mais robusta para pegar o IP.
-                            // No entanto, para simplicidade e compatibilidade com o retorno de string:
-                        });
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                NetworkInterface ni = networkInterfaces.nextElement();
+                // Ignora interfaces de loopback (como 127.0.0.1) e as que não estão ativas
+                if (ni.isLoopback() || !ni.isUp()) {
+                    continue;
+                }
+
+                // Obtém todos os endereços IP para esta interface
+                Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    // Verifica se é um IPv4 e não é um endereço de loopback
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                        return addr.getHostAddress(); // Retorna o primeiro IP válido encontrado
+                    }
+                }
             }
-            return InetAddress.getLocalHost().getHostAddress(); // Fallback se o loop acima for complicado
+            // Fallback se nenhum IP não-loopback IPv4 for encontrado, retorna o IP do localhost
+            LOGGER.log(Level.WARNING, "Não foi possível encontrar um IP de rede não-loopback IPv4. Usando IP do localhost.");
+            return InetAddress.getLocalHost().getHostAddress();
         } catch (SocketException | UnknownHostException e) {
-            LOGGER.log(Level.WARNING, "Não foi possível obter o IP local: " + e.getMessage(), e);
-            return "127.0.0.1"; // Retorna localhost como fallback
+            LOGGER.log(Level.WARNING, "Erro ao tentar obter o IP local: " + e.getMessage(), e);
+            return "127.0.0.1"; // Retorna localhost como fallback em caso de erro
         }
     }
 

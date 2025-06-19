@@ -5,13 +5,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.smartcity</groupId>
-    <artifactId>smart-city-java-components</artifactId> <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging> <properties>
-        <maven.compiler.source>21</maven.compiler.source> <maven.compiler.target>21</maven.compiler.target> <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <protobuf.version>3.25.1</protobuf.version> <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+    <artifactId>smart-city-java-components</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <protobuf.version>3.25.1</protobuf.version>
+        <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <maven-assembly-plugin.version>3.3.0</maven-assembly-plugin.version>
-        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version> </properties>
+        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -19,9 +26,11 @@
             <artifactId>protobuf-java</artifactId>
             <version>${protobuf.version}</version>
         </dependency>
-        </dependencies>
+    </dependencies>
 
     <build>
+        <sourceDirectory>${project.basedir}/src/devices</sourceDirectory>
+
         <extensions>
             <extension>
                 <groupId>kr.motd.maven</groupId>
@@ -37,11 +46,12 @@
                 <configuration>
                     <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
                     <protoSourceRoot>${project.basedir}/src/proto</protoSourceRoot>
-                    </configuration>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
-                            <goal>compile</goal> </goals>
+                            <goal>compile</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -79,8 +89,7 @@
                             <classifier>temperature-humidity-sensor</classifier>
                         </configuration>
                     </execution>
-
-                    </executions>
+                </executions>
             </plugin>
         </plugins>
     </build>
