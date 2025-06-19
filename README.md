@@ -3,7 +3,7 @@ A simple network sensor simulator with Java, Python, and Protocol Buffers, using
 
 # Projeto Cidade Inteligente
 
-[cite_start]Este projeto simula uma sistema de cidade inteligente  [cite_start]composto por um Gateway central, dispositivos inteligentes (sensores e atuadores) e um Cliente para controle e observação dos dispositivos. [cite_start]A comunicação entre os componentes utiliza sockets TCP e UDP, além de Protocol Buffers para serialização de mensagens. [cite_start]A descoberta de dispositivos é realizada via multicast UDP.
+Este projeto simula um sistema de cidade inteligente composto por um Gateway central, dispositivos inteligentes (sensores e atuadores) e um Cliente para controle e observação dos dispositivos. A comunicação entre os componentes utiliza sockets TCP e UDP, além de Protocol Buffers para serialização de mensagens. A descoberta de dispositivos é realizada via multicast UDP.
 
 ## Estrutura do Projeto
 
@@ -16,7 +16,7 @@ A estrutura de diretórios do projeto é organizada da seguinte forma:
 │   │   ├── atuadores       # Atuadores (Java)
 │   │   └── sensors         # Sensores (Java)
 │   │       └── TemperatureHumiditySensor.java
-│   ├── front-end           # Cliente (ainda a ser definido)
+│   ├── front-end           # Cliente 
 │   ├── gateway             # Gateway (Python)
 │   │   ├── src             # Código gerado pelo Protobuf para Python
 │   │   │   └── proto
@@ -40,42 +40,28 @@ Para executar os componentes atuais do projeto, você precisará ter instalado:
 
 ## Configuração do Ambiente
 
-### 1. Configurar Variáveis de Ambiente Java (Windows)
+### 1. Instalação e Configuração do JDK
 
-1.  **JDK 21.0.7 (Eclipse Adoptium):**
-    * Abra as "Variáveis de Ambiente do Sistema".
-    * Na seção "Variáveis do sistema", clique em "Novo...".
-    * **Nome da variável:** `JAVA_HOME`
-    * **Valor da variável:** `C:\Program Files\Eclipse Adoptium\jdk-21.0.7.6-hotspot` (ou o caminho exato da sua instalação).
-    * Clique em "OK".
-    * Na seção "Variáveis do sistema", encontre `Path`, selecione-o e clique em "Editar...".
-    * Clique em "Novo" e adicione `%JAVA_HOME%\bin`.
-    * Mova esta entrada para a **primeira posição** na lista usando os botões "Mover para Cima".
-    * Clique em "OK" em todas as janelas.
+1.  Baixe e instale o **JDK 21 LTS** a partir do site oficial da sua distribuição preferida (ex: Eclipse Adoptium, Oracle OpenJDK).
+2.  Configure a variável de ambiente `JAVA_HOME` para apontar para o diretório de instalação do seu JDK.
+3.  Adicione `%JAVA_HOME%/bin` (Windows) ou `$JAVA_HOME/bin` (Linux/macOS) ao seu `PATH` do sistema, garantindo que ele tenha prioridade para a execução do `java` e `javac`.
 
-### 2. Configurar Variáveis de Ambiente Maven (Windows)
+### 2. Instalação e Configuração do Apache Maven
 
-1.  **Baixar Apache Maven:**
-    * Acesse [https://maven.apache.org/download.cgi](https://maven.apache.org/download.cgi) e baixe a versão binária (`.zip`) do Apache Maven (e.g., `apache-maven-3.9.10-bin.zip`).
-    * Descompacte o arquivo em um diretório como `C:\Program Files\Apache\apache-maven-3.9.10`.
-2.  **Configurar Variáveis de Ambiente:**
-    * Volte às "Variáveis de Ambiente do Sistema".
-    * Na seção "Variáveis do sistema", clique em "Novo...".
-    * **Nome da variável:** `M2_HOME`
-    * **Valor da variável:** `C:\Program Files\Apache\apache-maven-3.9.10` (ou o caminho exato da sua instalação).
-    * Clique em "OK".
-    * Na seção "Variáveis do sistema", encontre `Path`, selecione-o e clique em "Editar...".
-    * Clique em "Novo" e adicione `%M2_HOME%\bin`.
-    * Clique em "OK" em todas as janelas.
+1.  Baixe e descompacte a distribuição binária do **Apache Maven 3.9.10** (ou versão compatível) do site oficial [https://maven.apache.org/download.cgi](https://maven.apache.org/download.cgi).
+2.  Descompacte-o em um diretório de sua escolha (ex: `/opt/maven`, `C:\Program Files\Apache\apache-maven-3.9.10`).
+3.  Configure a variável de ambiente `M2_HOME` para apontar para o diretório raiz da instalação do Maven.
+4.  Adicione `%M2_HOME%/bin` (Windows) ou `$M2_HOME/bin` (Linux/macOS) ao seu `PATH` do sistema.
 
 ### 3. Verificar Instalação
 
-* Abra um **NOVO** Prompt de Comando (ou PowerShell).
+* Abra um **NOVO** terminal (Prompt de Comando, PowerShell, Bash, Zsh, etc.).
 * Verifique o Java:
     ```bash
     java -version
     javac -version
-    echo %JAVA_HOME%
+    echo $JAVA_HOME  # Para Linux/macOS
+    echo %JAVA_HOME% # Para Windows
     ```
     Você deve ver as informações do JDK 21.0.7.
 * Verifique o Maven:
@@ -88,16 +74,16 @@ Para executar os componentes atuais do projeto, você precisará ter instalado:
 
 ### 1. Configurar o Projeto Localmente
 
-É **altamente recomendado** mover o projeto de diretórios de sincronização de nuvem (como Google Drive) para um diretório local padrão (ex: `C:\Projetos\Trabalho-SD`) para evitar problemas de sincronização e performance durante o desenvolvimento.
+É **altamente recomendado** mover o projeto de diretórios de sincronização de nuvem para um diretório de trabalho local padrão (ex: `~/projects/Trabalho-SD` no Linux/macOS ou `C:\Projetos\Trabalho-SD` no Windows) para evitar problemas de sincronização e performance durante o desenvolvimento.
 
-1.  Feche o VS Code e quaisquer terminais abertos no projeto.
-2.  Mova a pasta `Trabalho-SD` (contendo todo o projeto) do Google Drive para o novo local (ex: `C:\Projetos\`).
-3.  Abra o VS Code e o projeto a partir do **novo local** (`File > Open Folder...`).
+1.  Certifique-se de que o VS Code e quaisquer terminais abertos no projeto estejam fechados.
+2.  Copie (ou mova) a pasta raiz do projeto para o novo local.
+3.  Abra o VS Code e o projeto a partir do **novo local** (usando a opção "Abrir Pasta" ou equivalente).
 
 ### 2. Preparação dos Componentes Java (Sensores/Atuadores)
 
 1.  **Certifique-se de que o arquivo `.gitignore` está configurado corretamente** na raiz do projeto para ignorar pastas geradas e arquivos de IDE, incluindo `.vscode/`, `/target/`, `/venv/`, `/src/gateway/src/`.
-2.  Na raiz do seu projeto (onde o `pom.xml` está), abra um terminal (VS Code Terminal ou Prompt de Comando).
+2.  Na raiz do seu projeto (onde o `pom.xml` está), abra um terminal.
 3.  Execute o Maven para gerar as classes Protocol Buffers para Java, compilar o código Java e empacotar o sensor:
     ```bash
     mvn clean install -U
@@ -115,9 +101,8 @@ Para executar os componentes atuais do projeto, você precisará ter instalado:
         python -m venv venv
         ```
     * Ative o ambiente virtual:
-        ```bash
-        .\venv\Scripts\activate
-        ```
+        * Windows (CMD/PowerShell): `.\venv\Scripts\activate`
+        * Linux/macOS (Bash/Zsh): `source venv/bin/activate`
 2.  **Crie o arquivo `requirements.txt`** na raiz do seu projeto com o seguinte conteúdo:
     ```
     protobuf==6.31.1
@@ -142,9 +127,8 @@ Após a preparação de ambos os lados, você pode executar o Gateway e o Sensor
 2.  **No PRIMEIRO Terminal (Para o Gateway Python):**
     * Navegue até a raiz do seu projeto.
     * Ative o ambiente virtual:
-        ```bash
-        .\venv\Scripts\activate
-        ```
+        * Windows (CMD/PowerShell): `.\venv\Scripts\activate`
+        * Linux/macOS (Bash/Zsh): `source venv/bin/activate`
     * Execute o Gateway:
         ```bash
         python src/gateway/smart_city_gateway.py
