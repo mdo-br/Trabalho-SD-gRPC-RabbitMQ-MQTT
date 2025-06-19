@@ -8,7 +8,7 @@ A simple network sensor simulator with Java, Python, and Protocol Buffers, using
 ## Estrutura do Projeto
 
 A estrutura de diretórios do projeto é organizada da seguinte forma:
-
+```
 .
 ├── src
 │   ├── api                 # Abstrações de comunicação (se houver)
@@ -27,6 +27,7 @@ A estrutura de diretórios do projeto é organizada da seguinte forma:
 ├── pom.xml                 # Configuração do Maven para componentes Java
 ├── requirements.txt        # Dependências Python
 └── .gitignore              # Arquivos e diretórios a serem ignorados pelo Git
+```
 
 ## Requisitos
 
