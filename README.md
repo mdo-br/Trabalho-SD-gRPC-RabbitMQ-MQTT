@@ -1,7 +1,4 @@
 # Trabalho-SD
-A simple network sensor simulator with java, C, python and JS, in TCP, UDP and additional with protocol buffer.
-
-# Trabalho-SD
 A simple network sensor simulator with Java, Python, and Protocol Buffers, using TCP, UDP, and multicast communication.
 
 # Projeto Cidade Inteligente
