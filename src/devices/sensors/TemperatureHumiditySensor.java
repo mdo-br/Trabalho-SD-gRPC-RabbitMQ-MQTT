@@ -8,9 +8,9 @@ import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+// NOVO: Para identificar endereços IPv4
+// NOVO: Para iterar sobre interfaces de rede
 import java.net.*; // Contém DatagramSocket, ServerSocket, Socket, InetAddress, UnknownHostException
-import java.net.Inet4Address; // NOVO: Para identificar endereços IPv4
-import java.net.NetworkInterface; // NOVO: Para iterar sobre interfaces de rede
 import java.util.Enumeration; // Para iterar sobre NetworkInterface e InetAddress
 import java.util.Random;
 import java.util.UUID;
@@ -28,7 +28,7 @@ public class TemperatureHumiditySensor {
     private static final String MULTICAST_GROUP = "224.1.1.1";
     private static final int MULTICAST_PORT = 5007; // Porta para descoberta multicast UDP 
     private static final int SENSOR_TCP_PORT = 6001; // Porta TCP específica para este sensor para receber comandos
-    private static final long SENSOR_REPORT_INTERVAL_SECONDS = 15; // Intervalo de envio de dados sensoriados (UDP) 
+    private int captureIntervalSeconds = 15; // variável de instância
 
     private String deviceId;
     private SmartCity.DeviceStatus currentStatus;
@@ -73,8 +73,8 @@ public class TemperatureHumiditySensor {
         }
         scheduler = Executors.newSingleThreadScheduledExecutor();
         // Agenda o envio periódico de dados sensoriados, começando imediatamente
-        scheduler.scheduleAtFixedRate(this::sendSensorData, 0, SENSOR_REPORT_INTERVAL_SECONDS, TimeUnit.SECONDS);
-        LOGGER.info("Envio periódico de dados do sensor " + deviceId + " agendado a cada " + SENSOR_REPORT_INTERVAL_SECONDS + " segundos.");
+        scheduler.scheduleAtFixedRate(this::sendSensorData, 0, captureIntervalSeconds, TimeUnit.SECONDS);
+        LOGGER.info("Envio periódico de dados do sensor " + deviceId + " agendado a cada " + captureIntervalSeconds + " segundos.");
     }
 
     private void listenForDiscoveryRequests() {
@@ -172,6 +172,28 @@ public class TemperatureHumiditySensor {
                     currentStatus = SmartCity.DeviceStatus.ACTIVE;
                     LOGGER.info("Sensor " + deviceId + " LIGADO por comando.");
                     startSensorDataScheduler(); // Reinicia o envio de dados
+
+                } else if (command.getCommandType().equals("SET_DEVICE_ID")) {
+                    String oldId = this.deviceId;
+                    this.deviceId = command.getCommandValue();
+                    LOGGER.info("Sensor alterou ID de " + oldId + " para " + this.deviceId);
+                    sendDeviceInfo(gatewayIp, gatewayTcpPort); // Envia novamente o DeviceInfo com o novo ID
+                
+                } else if (command.getCommandType().equals("SET_SAMPLING_RATE")) {
+                    try {
+                        // Tenta converter o valor do comando de String para int
+
+                        System.out.println(command.getCommandValue());
+                        int newInterval = Integer.parseInt(command.getCommandValue());
+
+                        // long newInterval = Long.parseLong(command.getCommandValue());
+                        captureIntervalSeconds = newInterval;
+                        LOGGER.info("Sensor " + deviceId + " alterou intervalo de captura para " + newInterval + " segundos.");
+                        startSensorDataScheduler(); // Reinicia o agendamento com o novo intervalo
+                    } catch (NumberFormatException e) {
+                        LOGGER.warning("Valor inválido para SET_SAMPLING_RATE: " + command.getCommandValue());
+                    }
+
                 } else {
                     LOGGER.warning("Comando desconhecido recebido para o sensor " + deviceId + ": " + command.getCommandType());
                 }

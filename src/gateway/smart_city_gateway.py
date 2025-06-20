@@ -8,7 +8,6 @@ import io
 import google.protobuf.message
 import uvicorn
 from src.gateway.state import connected_devices, device_lock
-from src.api.src.api_server import app
 
 # Importar as classes geradas do Protocol Buffers
 from src.proto import smart_city_pb2
@@ -221,8 +220,41 @@ def listen_udp_sensored_data():
         except Exception as e:
             logger.error(f"Erro ao processar dados sensoriados UDP de {addr}: {e}", exc_info=True)
 
+def encode_varint(value: int) -> bytes:
+    """Codifica um inteiro no formato varint (compatível com Protobuf)."""
+    result = b""
+    while True:
+        bits = value & 0x7F
+        value >>= 7
+        if value:
+            result += struct.pack("B", bits | 0x80)
+        else:
+            result += struct.pack("B", bits)
+            break
+    return result
+
+
+def send_tcp_command(device_ip: str, device_port: int, command_type: str, command_value: str) -> bool:
+    try:
+        with socket.create_connection((device_ip, device_port), timeout=5) as sock:
+            cmd = smart_city_pb2.DeviceCommand(
+                command_type=command_type,
+                command_value=command_value
+            )
+            data = cmd.SerializeToString()
+            varint = encode_varint(len(data))
+            sock.sendall(varint + data)
+
+            logger.info(f"Comando {command_type} enviado para {device_ip}:{device_port} com valor {command_value}")
+            return True
+    except Exception as e:
+        logger.error(f"Erro ao enviar comando TCP para {device_ip}:{device_port} -> {e}")
+        return False
+
 
 def main():
+    from src.api.src.api_server import app
+
     logger.info("Iniciando Gateway da Cidade Inteligente - Versão de Teste...")
 
     threading.Thread(target=discover_devices, daemon=True).start()
