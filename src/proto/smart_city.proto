@@ -3,6 +3,8 @@ syntax = "proto3";
 // Pacote Protocol Buffers para organizar as mensagens
 package smartcity.devices;
 
+option go_package = "./smartcitypb";
+
 // =====================================================================
 // ENUMS
 // =====================================================================
