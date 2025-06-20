@@ -11,10 +11,10 @@ import google.protobuf.message
 from src.proto import smart_city_pb2
 
 # --- Configurações ---
-MULTICAST_GROUP = '224.1.1.1'  # Grupo multicast para descoberta
-MULTICAST_PORT = 5007          # Porta multicast para descoberta
-GATEWAY_TCP_PORT = 12345       # Porta TCP do Gateway para registro de dispositivos e cliente
-GATEWAY_UDP_PORT = 12346       # Porta UDP do Gateway para receber dados sensoriados
+MULTICAST_GROUP = '224.1.1.1'
+MULTICAST_PORT = 5007
+GATEWAY_TCP_PORT = 12345
+GATEWAY_UDP_PORT = 12346
 
 # Configuração de Logging
 logging.basicConfig(
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # --- Dados Globais do Gateway ---
 connected_devices = {}
-device_lock = threading.Lock() # Para proteger o acesso a connected_devices
+device_lock = threading.Lock()
 
 # --- Funções Auxiliares ---
 def get_local_ip():
@@ -43,7 +43,6 @@ def get_local_ip():
         s.close()
     return IP
 
-# Função auxiliar para ler um varint de um stream (compatível com writeDelimitedTo do Java)
 def _read_varint(stream):
     """Lê um varint (tamanho da mensagem) de um stream."""
     shift = 0
@@ -57,7 +56,7 @@ def _read_varint(stream):
         if not (b & 0x80):
             return result
         shift += 7
-        if shift >= 64: # Proteção contra varints muito longos (provável corrupção)
+        if shift >= 64:
             raise ValueError("Varint muito longo (provável corrupção de dados).")
 
 
@@ -127,28 +126,21 @@ def handle_device_registration_tcp(conn, addr):
     O sensor Java usa .writeDelimitedTo(), então o Python deve ler o prefixo varint.
     """
     logger.info(f"Conexão TCP para registro recebida de {addr}")
-    reader = None # Inicializa reader para uso no finally
+    reader = None
     try:
-        # Cria um "arquivo" binário a partir do socket
         reader = conn.makefile('rb')
         device_info = smart_city_pb2.DeviceInfo()
 
-        # Lê o varint (tamanho da mensagem)
         message_length = _read_varint(reader)
         
-        # O tamanho máximo do buffer do socket é 4096. Se a mensagem for maior que isso,
-        # significa um erro de varint ou mensagem muito grande para este buffer.
-        # Definimos um limite de 8KB como uma proteção razoável.
-        if message_length > 8192: 
+        if message_length > 8192:
             raise ValueError(f"Mensagem Protobuf muito grande ({message_length} bytes) de {addr}. Limite de buffer excedido.")
 
-        # Lê os bytes da mensagem
         message_bytes = reader.read(message_length)
         
         if len(message_bytes) != message_length:
             raise EOFError("Stream fechado inesperadamente ou dados insuficientes ao ler a mensagem Protobuf.")
 
-        # Desserializa a mensagem
         device_info.ParseFromString(message_bytes)
 
         logger.info(f"Recebida DeviceInfo de {addr}: ID={device_info.device_id}, Tipo={smart_city_pb2.DeviceType.Name(device_info.type)}")
@@ -214,8 +206,6 @@ def listen_udp_sensored_data():
                     dev_info['status'] = device_update.current_status
                     dev_info['last_seen'] = time.time()
                     if dev_info['is_sensor']:
-                        # ABORDAGEM SIMPLIFICADA: Atribui os valores diretamente.
-                        # Se o campo não foi definido na mensagem, terá seu valor padrão (0.0 para double, "" para string).
                         dev_info['sensor_data']['temperature_value'] = device_update.temperature_value
                         dev_info['sensor_data']['air_quality_index'] = device_update.air_quality_index
                         dev_info['sensor_data']['custom_config_status'] = device_update.custom_config_status

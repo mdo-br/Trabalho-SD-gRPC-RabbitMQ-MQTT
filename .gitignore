@@ -7,10 +7,9 @@
 .DS_Store       # Arquivos de metadados do macOS (se usar macOS em algum momento)
 *~              # Arquivos de backup comuns
 
-# Ignorar arquivos gerados pelo Protocol Buffers para Python
-/src/gateway/src/
-/src/gateway/smart_city_pb2.py
-/src/gateway/smart_city_pb2.pyi # Ignorar stubs de tipo, se gerados
+# Ignorar diretório de código Protobuf Python gerado
+# Este é o novo local para smart_city_pb2.py e smart_city_pb2.pyi
+/src/protobuf_gen_py/
 
 # Ignorar ambiente virtual Python
 /venv/
