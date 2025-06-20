@@ -1,8 +1,9 @@
 // src/devices/sensors/TemperatureHumiditySensor.java
-package com.smartcity.sensors; // Pacote ajustado à sua estrutura de diretórios
+package com.smartcity.sensors;
 
-import smartcity.SmartCity; // Importa as classes geradas do Protocol Buffers
-import com.google.protobuf.ByteString; // NOVO: Importar ByteString para desserialização
+// Importar smartcity.devices.SmartCity
+import smartcity.devices.SmartCity;
+import com.google.protobuf.ByteString;
 
 import java.io.IOException;
 import java.io.InputStream;

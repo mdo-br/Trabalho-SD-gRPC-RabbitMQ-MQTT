@@ -12,6 +12,7 @@ target
 /src/protobuf_gen_py/
 
 # Ignorar ambiente virtual Python
+/venv
 .venv
 
 # Ignorar arquivos de cache de Python e compilação
