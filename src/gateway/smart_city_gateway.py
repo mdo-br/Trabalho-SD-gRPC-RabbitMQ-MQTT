@@ -6,6 +6,9 @@ import logging
 import sys
 import io
 import google.protobuf.message
+import uvicorn
+from src.gateway.state import connected_devices, device_lock
+from src.api.src.api_server import app
 
 # Importar as classes geradas do Protocol Buffers
 from src.proto import smart_city_pb2
@@ -27,8 +30,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- Dados Globais do Gateway ---
-connected_devices = {}
-device_lock = threading.Lock() # Para proteger o acesso a connected_devices
+# connected_devices = {}
+# device_lock = threading.Lock() # Para proteger o acesso a connected_devices
 
 # --- Funções Auxiliares ---
 def get_local_ip():
@@ -154,6 +157,7 @@ def handle_device_registration_tcp(conn, addr):
         logger.info(f"Recebida DeviceInfo de {addr}: ID={device_info.device_id}, Tipo={smart_city_pb2.DeviceType.Name(device_info.type)}")
 
         with device_lock:
+            previous = connected_devices.get(device_info.device_id, {})
             connected_devices[device_info.device_id] = {
                 'ip': device_info.ip_address,
                 'port': device_info.port,
@@ -162,7 +166,7 @@ def handle_device_registration_tcp(conn, addr):
                 'is_actuator': device_info.is_actuator,
                 'is_sensor': device_info.is_sensor,
                 'last_seen': time.time(),
-                'sensor_data': {} if device_info.is_sensor else 'N/A'
+                'sensor_data': previous.get('sensor_data', {}) if device_info.is_sensor else 'N/A'
             }
             logger.info(f"Dispositivo {device_info.device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado via TCP.")
 
@@ -233,6 +237,9 @@ def main():
     threading.Thread(target=listen_tcp_connections, daemon=True).start()
     threading.Thread(target=listen_udp_sensored_data, daemon=True).start()
     threading.Thread(target=log_device_info_periodic, daemon=True).start()
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+    logger.info("API do Gateway iniciada na porta 8000.")
 
     try:
         while True:

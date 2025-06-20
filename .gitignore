@@ -1,5 +1,5 @@
 # Ignorar diretório de build do Maven
-/target/
+target
 
 # Ignorar arquivos e diretórios gerados pelo VS Code
 /.vscode/
@@ -13,10 +13,12 @@
 /src/gateway/smart_city_pb2.pyi # Ignorar stubs de tipo, se gerados
 
 # Ignorar ambiente virtual Python
-/venv/
+.venv
 
 # Ignorar arquivos de cache de Python e compilação
 __pycache__/    # Diretórios de cache de bytecode Python
+**/__pycache__/
+proto/__pycache__/
 *.pyc           # Arquivos de bytecode Python
 *.pyd           # Módulos Python em Windows
 *.so            # Módulos Python em sistemas Unix/Linux
