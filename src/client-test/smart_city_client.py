@@ -6,8 +6,12 @@ import google.protobuf.message
 # Importar as classes geradas do Protocol Buffers
 # A importação assume que o diretório que contém smart_city_pb2.py
 # (src/protobuf_gen_py/smartcity/devices/) foi adicionado ao PYTHONPATH no terminal antes da execução.
+# --- Configuração de Logging ---
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
+
 try:
-    from smartcity.devices import smart_city_pb2
+    from src.proto import smart_city_pb2
 except ImportError as e:
     # Mensagem de erro aprimorada para ajudar o usuário a depurar a importação
     logger.error(f"Erro ao importar smart_city_pb2: {e}. Verifique:")
