@@ -200,6 +200,33 @@ def handle_client_request(client_request, conn, addr):
         print(f"[DEBUG] GatewayResponse COMMAND_ACK: {response}")
         write_delimited_message(conn, response)
         logger.info("Resposta COMMAND_ACK enviada ao cliente.")
+    elif client_request.type == smart_city_pb2.ClientRequest.RequestType.GET_DEVICE_STATUS:
+        logger.info("Processando GET_DEVICE_STATUS para o cliente.")
+        response = smart_city_pb2.GatewayResponse()
+        response.type = smart_city_pb2.GatewayResponse.ResponseType.DEVICE_STATUS_UPDATE
+
+        device_id = client_request.target_device_id
+        with device_lock:
+            dev_info = connected_devices.get(device_id)
+        if dev_info:
+            # Monta um DeviceUpdate com o status atual do dispositivo
+            device_update = smart_city_pb2.DeviceUpdate(
+                device_id=device_id,
+                type=dev_info['type'],
+                current_status=dev_info['status'],
+            )
+            # Só preenche campos de sensor se for sensor
+            if dev_info['is_sensor'] and isinstance(dev_info.get('sensor_data'), dict):
+                device_update.temperature_value = dev_info['sensor_data'].get('temperature_value', 0.0)
+                device_update.air_quality_index = dev_info['sensor_data'].get('air_quality_index', 0.0)
+                device_update.custom_config_status = dev_info['sensor_data'].get('custom_config_status', "")
+            response.device_status.CopyFrom(device_update)
+            response.message = "Status do dispositivo retornado com sucesso."
+        else:
+            response.message = f"Dispositivo '{device_id}' não encontrado no gateway."
+        print(f"[DEBUG] GatewayResponse DEVICE_STATUS_UPDATE: {response}")
+        write_delimited_message(conn, response)
+        logger.info("Resposta DEVICE_STATUS_UPDATE enviada ao cliente.")
     else:
         logger.warning(f"Tipo de ClientRequest não suportado: {client_request.type}")
 
