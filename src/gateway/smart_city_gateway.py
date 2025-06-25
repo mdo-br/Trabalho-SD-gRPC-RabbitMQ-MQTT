@@ -174,6 +174,32 @@ def handle_client_request(client_request, conn, addr):
         print(f"[DEBUG] GatewayResponse montada: {response}")
         write_delimited_message(conn, response)
         logger.info("Resposta LIST_DEVICES enviada ao cliente.")
+    elif client_request.type == smart_city_pb2.ClientRequest.RequestType.SEND_DEVICE_COMMAND:
+        logger.info("Processando SEND_DEVICE_COMMAND para o cliente.")
+        response = smart_city_pb2.GatewayResponse()
+        response.type = smart_city_pb2.GatewayResponse.ResponseType.COMMAND_ACK
+
+        device_id = client_request.target_device_id
+        with device_lock:
+            dev_info = connected_devices.get(device_id)
+        if dev_info:
+            try:
+                # Abre conexão TCP com o atuador
+                with socket.create_connection((dev_info['ip'], dev_info['port']), timeout=5) as sock:
+                    # Envia o comando usando o mesmo protocolo (varint + payload)
+                    write_delimited_message(sock, client_request.command)
+                response.command_status = "SUCCESS"
+                response.message = "Comando enviado ao dispositivo com sucesso."
+            except Exception as e:
+                response.command_status = "FAILED"
+                response.message = f"Erro ao enviar comando ao dispositivo: {e}"
+        else:
+            response.command_status = "FAILED"
+            response.message = f"Dispositivo '{device_id}' não encontrado no gateway."
+
+        print(f"[DEBUG] GatewayResponse COMMAND_ACK: {response}")
+        write_delimited_message(conn, response)
+        logger.info("Resposta COMMAND_ACK enviada ao cliente.")
     else:
         logger.warning(f"Tipo de ClientRequest não suportado: {client_request.type}")
 
