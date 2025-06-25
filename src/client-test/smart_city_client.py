@@ -30,6 +30,49 @@ logger = logging.getLogger(__name__)
 GATEWAY_IP = '127.0.0.1' # Mude para o IP do seu Gateway se não for localhost
 GATEWAY_TCP_PORT = 12345
 
+def _read_varint(sock):
+    shift = 0
+    result = 0
+    while True:
+        b = sock.recv(1)
+        if not b:
+            raise EOFError("Socket fechado inesperadamente ao ler varint.")
+        b = b[0]
+        result |= (b & 0x7f) << shift
+        if not (b & 0x80):
+            return result
+        shift += 7
+        if shift >= 64:
+            raise ValueError("Varint muito longo (provável corrupção de dados).")
+
+def _encode_varint(value):
+    result = b""
+    while True:
+        bits = value & 0x7F
+        value >>= 7
+        if value:
+            result += bytes([bits | 0x80])
+        else:
+            result += bytes([bits])
+            break
+    return result
+
+def write_delimited_message(sock, message):
+    data = message.SerializeToString()
+    sock.sendall(_encode_varint(len(data)) + data)
+
+def read_delimited_message(sock, message_type):
+    length = _read_varint(sock)
+    data = b''
+    while len(data) < length:
+        chunk = sock.recv(length - len(data))
+        if not chunk:
+            raise EOFError("Socket fechado inesperadamente ao ler mensagem.")
+        data += chunk
+    msg = message_type()
+    msg.ParseFromString(data)
+    return msg
+
 class SmartCityClient:
     def __init__(self, gateway_ip, gateway_port):
         self.gateway_ip = gateway_ip
@@ -41,23 +84,11 @@ class SmartCityClient:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.connect((self.gateway_ip, self.gateway_port))
-                
-                # Serializa e envia a requisição
-                request_bytes = request_proto.SerializeToString()
-                sock.sendall(request_bytes)
+                write_delimited_message(sock, request_proto)
                 logger.debug(f"Requisição enviada: {request_proto.DESCRIPTOR.full_name}")
-
-                # Recebe a resposta
-                response_data = sock.recv(4096)
-                if not response_data:
-                    logger.warning("Nenhuma resposta recebida do Gateway.")
-                    return None
-                
-                response_proto = smart_city_pb2.GatewayResponse()
-                response_proto.ParseFromString(response_data)
+                response_proto = read_delimited_message(sock, smart_city_pb2.GatewayResponse)
                 logger.debug(f"Resposta recebida: {response_proto.DESCRIPTOR.full_name}")
                 return response_proto
-
         except socket.error as e:
             logger.error(f"Erro de socket ao comunicar com o Gateway: {e}")
             return None

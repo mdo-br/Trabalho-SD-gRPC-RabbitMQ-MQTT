@@ -124,58 +124,94 @@ def discover_devices():
             logger.error(f"Erro ao processar mensagem na porta multicast: {e}")
 
 
-def handle_device_registration_tcp(conn, addr):
-    """
-    Lida com conexões TCP de dispositivos para o registro inicial (DeviceInfo).
-    O sensor Java usa .writeDelimitedTo(), então o Python deve ler o prefixo varint.
-    """
-    logger.info(f"Conexão TCP para registro recebida de {addr}")
+def handle_device_registration(device_info, addr):
+    logger.info(f"Recebida DeviceInfo de {addr}: ID={device_info.device_id}, Tipo={smart_city_pb2.DeviceType.Name(device_info.type)}")
+    with device_lock:
+        previous = connected_devices.get(device_info.device_id, {})
+        connected_devices[device_info.device_id] = {
+            'ip': device_info.ip_address,
+            'port': device_info.port,
+            'type': device_info.type,
+            'status': device_info.initial_state,
+            'is_actuator': device_info.is_actuator,
+            'is_sensor': device_info.is_sensor,
+            'last_seen': time.time(),
+            'sensor_data': previous.get('sensor_data', {}) if device_info.is_sensor else 'N/A'
+        }
+        logger.info(f"Dispositivo {device_info.device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado via TCP.")
+
+
+def write_delimited_message(conn, message):
+    data = message.SerializeToString()
+    conn.sendall(encode_varint(len(data)) + data)
+
+def read_delimited_message_bytes(reader):
+    length = _read_varint(reader)
+    data = reader.read(length)
+    if len(data) != length:
+        raise EOFError("Stream fechado inesperadamente ou dados insuficientes ao ler mensagem.")
+    return data
+
+def handle_client_request(client_request, conn, addr):
+    logger.info(f"Recebida ClientRequest de {addr}: tipo={client_request.type}")
+    print(f"[DEBUG] ClientRequest recebida: {client_request}")
+    if client_request.type == smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES:
+        logger.info("Processando LIST_DEVICES para o cliente.")
+        response = smart_city_pb2.GatewayResponse()
+        response.type = smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST
+        with device_lock:
+            for dev_id, dev_info in connected_devices.items():
+                device = smart_city_pb2.DeviceInfo(
+                    device_id=dev_id,
+                    type=dev_info['type'],
+                    ip_address=dev_info['ip'],
+                    port=dev_info['port'],
+                    initial_state=dev_info['status'],
+                    is_actuator=dev_info['is_actuator'],
+                    is_sensor=dev_info['is_sensor']
+                )
+                response.devices.append(device)
+        print(f"[DEBUG] GatewayResponse montada: {response}")
+        write_delimited_message(conn, response)
+        logger.info("Resposta LIST_DEVICES enviada ao cliente.")
+    else:
+        logger.warning(f"Tipo de ClientRequest não suportado: {client_request.type}")
+
+
+def handle_tcp_connection(conn, addr):
+    logger.info(f"Conexão TCP recebida de {addr}")
     reader = None
     try:
         reader = conn.makefile('rb')
-        device_info = smart_city_pb2.DeviceInfo()
-
-        message_length = _read_varint(reader)
-        
-        if message_length > 8192:
-            raise ValueError(f"Mensagem Protobuf muito grande ({message_length} bytes) de {addr}. Limite de buffer excedido.")
-
-        message_bytes = reader.read(message_length)
-        
-        if len(message_bytes) != message_length:
-            raise EOFError("Stream fechado inesperadamente ou dados insuficientes ao ler a mensagem Protobuf.")
-
-        device_info.ParseFromString(message_bytes)
-
-        logger.info(f"Recebida DeviceInfo de {addr}: ID={device_info.device_id}, Tipo={smart_city_pb2.DeviceType.Name(device_info.type)}")
-
-        with device_lock:
-            previous = connected_devices.get(device_info.device_id, {})
-            connected_devices[device_info.device_id] = {
-                'ip': device_info.ip_address,
-                'port': device_info.port,
-                'type': device_info.type,
-                'status': device_info.initial_state,
-                'is_actuator': device_info.is_actuator,
-                'is_sensor': device_info.is_sensor,
-                'last_seen': time.time(),
-                'sensor_data': previous.get('sensor_data', {}) if device_info.is_sensor else 'N/A'
-            }
-            logger.info(f"Dispositivo {device_info.device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado via TCP.")
-
-    except google.protobuf.message.DecodeError as e:
-        logger.error(f"Erro de decodificação Protobuf (DecodeError) ao ler DeviceInfo de {addr}: {e}")
-    except EOFError as e:
-        logger.error(f"Conexão fechada inesperadamente (EOFError) ao ler DeviceInfo de {addr}: {e}")
-    except ValueError as e:
-        logger.error(f"Erro de valor (ValueError) ao processar DeviceInfo de {addr}: {e}")
+        print(f"[DEBUG] Aguardando mensagem do cliente/dispositivo...")
+        # Lê os bytes da mensagem delimitada uma única vez
+        message_bytes = read_delimited_message_bytes(reader)
+        # Tenta decodificar como DeviceInfo
+        try:
+            device_info = smart_city_pb2.DeviceInfo()
+            device_info.ParseFromString(message_bytes)
+            if device_info.device_id:
+                handle_device_registration(device_info, addr)
+                return
+        except Exception as e:
+            print(f"[DEBUG] Não é DeviceInfo: {e}")
+        # Tenta decodificar como ClientRequest
+        try:
+            client_request = smart_city_pb2.ClientRequest()
+            client_request.ParseFromString(message_bytes)
+            handle_client_request(client_request, conn, addr)
+            return
+        except Exception as e:
+            print(f"[DEBUG] Não é ClientRequest: {e}")
+        logger.warning("Mensagem recebida não é DeviceInfo nem ClientRequest válida.")
     except Exception as e:
-        logger.error(f"Erro genérico ao processar registro TCP de dispositivo {addr}: {e}", exc_info=True)
+        print(f"[DEBUG] Exceção em handle_tcp_connection: {e}")
+        logger.error(f"Erro genérico ao processar conexão TCP de {addr}: {e}", exc_info=True)
     finally:
         if reader:
             reader.close()
         conn.close()
-        logger.info(f"Conexão TCP de registro de {addr} fechada.")
+        logger.info(f"Conexão TCP de {addr} fechada.")
 
 
 def listen_tcp_connections():
@@ -188,7 +224,7 @@ def listen_tcp_connections():
 
     while True:
         conn, addr = server_socket.accept()
-        threading.Thread(target=handle_device_registration_tcp, args=(conn, addr)).start()
+        threading.Thread(target=handle_tcp_connection, args=(conn, addr)).start()
 
 
 def listen_udp_sensored_data():
