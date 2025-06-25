@@ -79,6 +79,8 @@
                             <goal>single</goal>
                         </goals>
                         <configuration>
+                            <finalName>temperature-humidity-sensor</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
                             <archive>
                                 <manifest>
                                     <mainClass>com.smartcity.sensors.TemperatureHumiditySensor</mainClass>
@@ -87,7 +89,6 @@
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
-                            <classifier>temperature-humidity-sensor</classifier>
                         </configuration>
                     </execution>
 
@@ -98,6 +99,8 @@
                             <goal>single</goal>
                         </goals>
                         <configuration>
+                            <finalName>alarm-actuator</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
                             <archive>
                                 <manifest>
                                     <mainClass>com.smartcity.actuators.AlarmActuator</mainClass>
@@ -106,7 +109,6 @@
                             <descriptorRefs>
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
-                            <classifier>alarm-actuator</classifier>
                         </configuration>
                     </execution>
                 </executions>
