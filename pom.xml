@@ -113,6 +113,56 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Plugin para gerar JARs separados para cada componente -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <!-- JAR para TemperatureHumiditySensor -->
+                    <execution>
+                        <id>temperature-humidity-sensor-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>temperature-humidity-sensor</classifier>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.smartcity.sensors.TemperatureHumiditySensor</mainClass>
+                                </manifest>
+                            </archive>
+                            <includes>
+                                <include>com/smartcity/sensors/TemperatureHumiditySensor.class</include>
+                                <include>smartcity/devices/SmartCity*.class</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+
+                    <!-- JAR para AlarmActuator -->
+                    <execution>
+                        <id>alarm-actuator-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>alarm-actuator</classifier>
+                            <archive>
+                                <manifest>
+                                    <mainClass>com.smartcity.actuators.AlarmActuator</mainClass>
+                                </manifest>
+                            </archive>
+                            <includes>
+                                <include>com/smartcity/actuators/AlarmActuator.class</include>
+                                <include>smartcity/devices/SmartCity*.class</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

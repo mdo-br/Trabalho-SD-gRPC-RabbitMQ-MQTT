@@ -27,3 +27,14 @@ proto/__pycache__/
 *.log           # Arquivos de log
 *.tmp           # Arquivos temporários
 *.bak           # Arquivos de backup
+
+# node_modules (dependências do Node.js)
+node_modules/
+
+# arquivos de build do React (criadas após build)
+build/
+
+# logs do npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
