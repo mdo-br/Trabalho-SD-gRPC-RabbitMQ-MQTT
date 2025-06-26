@@ -77,7 +77,7 @@ Para garantir a interoperabilidade e a eficiência da comunicação, o sistema a
 
 ## Protocolo de Comunicação (`.proto`)
 
-O arquivo [`src/proto/smart_city.proto`](src/proto/smart_city.proto) define o **protocolo de comunicação** do sistema, especificando a sintaxe (estrutura e tipos das mensagens) e parte da semântica (significado dos campos e mensagens) trocadas entre os componentes, utilizando Protocol Buffers. Esse protocolo garante que clientes, gateway e dispositivos falem a mesma "linguagem", independentemente da linguagem de programação utilizada.
+O arquivo [`src/proto/smart_city.proto`](src/proto/smart_city.proto) define o **protocolo de comunicação** do sistema, especificando a sintaxe (estrutura e tipos das mensagens) e parte da semântica (significado dos campos e mensagens) das mensagens trocadas entre os componentes, utilizando Protocol Buffers. Esse protocolo garante que clientes, gateway e dispositivos falem a mesma "lingua", independentemente da linguagem de programação utilizada.
 
 O protocolo de comunicação do sistema é composto por:
 - **Sintaxe:** Definida pelo arquivo `.proto`, que descreve os campos, tipos e formatos das mensagens.
