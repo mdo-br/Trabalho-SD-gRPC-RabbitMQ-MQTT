@@ -18,6 +18,8 @@ enum DeviceType {
   AIR_QUALITY_SENSOR = 4;       // Sensor de qualidade do ar
   TEMPERATURE_SENSOR = 5;       // Sensor de temperatura
   ALARM = 6;                    // Tipo para o atuador de alarme
+  CURRENT_SENSOR = 7;           // Novo: Sensor de Corrente
+  AC_IR_CONTROLLER = 8;         // Novo: Controlador de Ar-condicionado IR
 }
 
 // Enumeração para o status dos dispositivos
@@ -52,6 +54,7 @@ message DeviceInfo {
   DeviceStatus initial_state = 5; // Estado inicial do dispositivo (e.g., ON, OFF)
   bool is_actuator = 6;       // Verdadeiro se o dispositivo pode receber comandos para modificar seu estado
   bool is_sensor = 7;         // Verdadeiro se o dispositivo é um sensor que envia dados
+  map<string, string> capabilities = 8; // Ex: "max_current":"30A", "brand":"LG"
 }
 
 // =====================================================================
@@ -63,11 +66,45 @@ message DeviceUpdate {
   string device_id = 1;               // ID do dispositivo
   DeviceType type = 2;                // Tipo do dispositivo
   DeviceStatus current_status = 3;    // Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
-  // Opcional: Leituras de sensor específicas (apenas para sensores)
-  double temperature_value = 4;       // Para TEMPERATURE_SENSOR
-  double air_quality_index = 5;       // Para AIR_QUALITY_SENSOR (usado para umidade)
-  // Adicionar outros dados de sensor específicos conforme necessário (e.g., camera_resolution, traffic_light_timer)
-  string custom_config_status = 6;    // Para reportar a configuração atual (e.g., "HD" para câmera, "10s" para semáforo)
+
+  oneof data {
+    TemperatureHumidityData temperature_humidity = 4;
+    AirQualityData air_quality = 5;
+    CurrentSensorData current_sensor = 6;
+    CameraData camera = 7;
+    ACIRStatus ac_ir_status = 8;
+    // Adicione outros tipos aqui
+  }
+
+  string custom_config_status = 20;    // Para reportar a configuração atual (e.g., "HD" para câmera, "10s" para semáforo)
+}
+
+message TemperatureHumidityData {
+  double temperature = 1;
+  double humidity = 2;
+}
+
+message AirQualityData {
+  double air_quality_index = 1;
+}
+
+message CurrentSensorData {
+  double current = 1; // Corrente em amperes
+  double voltage = 2; // Tensão em volts (opcional)
+  double power = 3;   // Potência em watts (opcional)
+}
+
+message CameraData {
+  string resolution = 1;
+  int32 frame_rate = 2;
+}
+
+message ACIRStatus {
+  string brand = 1;         // Marca do ar-condicionado
+  string mode = 2;          // Ex: "cool", "heat", "fan"
+  int32 temperature = 3;    // Temperatura configurada
+  bool power = 4;           // Ligado/desligado
+  string fan_speed = 5;     // Ex: "low", "medium", "high"
 }
 
 // Mensagem para comandos enviados do Gateway para o Dispositivo (via TCP)

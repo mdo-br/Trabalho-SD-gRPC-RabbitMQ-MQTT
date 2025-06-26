@@ -2,6 +2,10 @@ import socket
 import sys
 import logging
 import google.protobuf.message
+import os
+
+# Adicionar o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 # Importar as classes geradas do Protocol Buffers
 # A importação assume que o diretório que contém smart_city_pb2.py
@@ -162,8 +166,13 @@ class SmartCityClient:
             logger.info(f"--- Status de '{dev_status.device_id}' ---")
             logger.info(f"  Tipo: {device_type_name}")
             logger.info(f"  Status Atual: {device_status_name}")
-            logger.info(f"  Temperatura: {dev_status.temperature_value}°C")
-            logger.info(f"  Umidade: {dev_status.air_quality_index}%")
+            if dev_status.HasField("temperature_humidity"):
+                logger.info(f"  Temperatura: {dev_status.temperature_humidity.temperature}°C")
+                logger.info(f"  Umidade: {dev_status.temperature_humidity.humidity}%")
+            if dev_status.HasField("current_sensor"):
+                logger.info(f"  Corrente: {dev_status.current_sensor.current}A")
+                logger.info(f"  Tensão: {dev_status.current_sensor.voltage}V")
+                logger.info(f"  Potência: {dev_status.current_sensor.power}W")
             logger.info(f"  Configuração: {dev_status.custom_config_status}")
             logger.info("--------------------------------")
         elif response:

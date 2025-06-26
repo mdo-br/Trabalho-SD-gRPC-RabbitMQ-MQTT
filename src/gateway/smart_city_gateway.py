@@ -7,6 +7,11 @@ import sys
 import io
 import google.protobuf.message
 import uvicorn
+import os
+
+# Adicionar o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
 from src.gateway.state import connected_devices, device_lock
 
 # Importar as classes geradas do Protocol Buffers
@@ -217,8 +222,14 @@ def handle_client_request(client_request, conn, addr):
             )
             # Só preenche campos de sensor se for sensor
             if dev_info['is_sensor'] and isinstance(dev_info.get('sensor_data'), dict):
-                device_update.temperature_value = dev_info['sensor_data'].get('temperature_value', 0.0)
-                device_update.air_quality_index = dev_info['sensor_data'].get('air_quality_index', 0.0)
+                if dev_info['type'] == smart_city_pb2.DeviceType.TEMPERATURE_SENSOR:
+                    device_update.temperature_humidity.temperature = dev_info['sensor_data'].get('temperature', 0.0)
+                    device_update.temperature_humidity.humidity = dev_info['sensor_data'].get('humidity', 0.0)
+                elif dev_info['type'] == smart_city_pb2.DeviceType.CURRENT_SENSOR:
+                    device_update.current_sensor.current = dev_info['sensor_data'].get('current', 0.0)
+                    device_update.current_sensor.voltage = dev_info['sensor_data'].get('voltage', 0.0)
+                    device_update.current_sensor.power = dev_info['sensor_data'].get('power', 0.0)
+                # Adicione outros tipos conforme necessário
                 device_update.custom_config_status = dev_info['sensor_data'].get('custom_config_status', "")
             response.device_status.CopyFrom(device_update)
             response.message = "Status do dispositivo retornado com sucesso."
@@ -300,8 +311,15 @@ def listen_udp_sensored_data():
                     dev_info['status'] = device_update.current_status
                     dev_info['last_seen'] = time.time()
                     if dev_info['is_sensor']:
-                        dev_info['sensor_data']['temperature_value'] = device_update.temperature_value
-                        dev_info['sensor_data']['air_quality_index'] = device_update.air_quality_index
+                        # Atualiza dados sensoriados conforme o tipo
+                        if device_update.HasField("temperature_humidity"):
+                            dev_info['sensor_data']['temperature'] = device_update.temperature_humidity.temperature
+                            dev_info['sensor_data']['humidity'] = device_update.temperature_humidity.humidity
+                        if device_update.HasField("current_sensor"):
+                            dev_info['sensor_data']['current'] = device_update.current_sensor.current
+                            dev_info['sensor_data']['voltage'] = device_update.current_sensor.voltage
+                            dev_info['sensor_data']['power'] = device_update.current_sensor.power
+                        # Adicione outros tipos conforme necessário
                         dev_info['sensor_data']['custom_config_status'] = device_update.custom_config_status
                     logger.info(f"Dados sensoriados de {device_update.device_id} atualizados: {dev_info['sensor_data']}")
                 else:

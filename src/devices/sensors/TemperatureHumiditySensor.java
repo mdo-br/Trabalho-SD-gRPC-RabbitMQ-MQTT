@@ -232,8 +232,12 @@ public class TemperatureHumiditySensor {
                 .setDeviceId(deviceId)
                 .setType(SmartCity.DeviceType.TEMPERATURE_SENSOR)
                 .setCurrentStatus(currentStatus)
-                .setTemperatureValue(temperature)
-                .setAirQualityIndex(humidity) // Usando air_quality_index para umidade, como discutido
+                .setTemperatureHumidity(
+                    SmartCity.TemperatureHumidityData.newBuilder()
+                        .setTemperature(temperature)
+                        .setHumidity(humidity)
+                        .build()
+                )
                 .build();
 
         try {
@@ -278,8 +282,8 @@ public class TemperatureHumiditySensor {
 
     public static void main(String[] args) {
         String sensorId = args.length > 0 ? args[0] : UUID.randomUUID().toString();
-        // Cria uma instância do sensor com um ID único (usando os 4 primeiros caracteres do UUID para simplicidade)
-        TemperatureHumiditySensor sensor = new TemperatureHumiditySensor("temp_hum_sensor_" + sensorId.substring(0, 4));
+        // Cria uma instância do sensor com o ID exatamente igual ao argumento
+        TemperatureHumiditySensor sensor = new TemperatureHumiditySensor(sensorId);
         sensor.start();
 
         // Mantém o thread principal vivo para que os threads de comunicação continuem executando

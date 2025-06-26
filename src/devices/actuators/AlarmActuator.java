@@ -168,6 +168,7 @@ public class AlarmActuator {
                     .setDeviceId(deviceId)
                     .setType(SmartCity.DeviceType.ALARM)
                     .setCurrentStatus(currentStatus)
+                    // Não há dados sensoriados para o alarme, mas se no futuro houver, adicione aqui
                     .build();
 
             statusUpdate.writeDelimitedTo(output);
@@ -205,7 +206,7 @@ public class AlarmActuator {
 
     public static void main(String[] args) {
         String actuatorId = args.length > 0 ? args[0] : UUID.randomUUID().toString();
-        AlarmActuator actuator = new AlarmActuator("alarm_" + actuatorId.substring(0, 4));
+        AlarmActuator actuator = new AlarmActuator(actuatorId);
         actuator.start();
 
         try {
