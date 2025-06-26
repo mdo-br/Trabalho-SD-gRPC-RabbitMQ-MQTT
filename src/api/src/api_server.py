@@ -1,171 +1,137 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Dict, Any
-import time
+import socket
+import struct
 from src.proto import smart_city_pb2
-import logging
-from src.gateway.smart_city_gateway import send_tcp_command
 
-logger = logging.getLogger("api_server")
-logging.basicConfig(level=logging.INFO)
+app = FastAPI()
 
-# Importa o estado dos dispositivos do gateway
-from src.gateway.state import connected_devices, device_lock
+GATEWAY_HOST = "localhost"
+GATEWAY_API_PORT = 12347
 
-app = FastAPI(title="Smart City Gateway API")
-
-# Modelos de resposta
-class DeviceInfo(BaseModel):
-    id: str
-    ip: str
-    port: int
-    type: str
-    status: str
-    is_sensor: bool
-    is_actuator: bool
-    sensor_data: Dict[str, Any]
-    last_seen_seconds: float
-
-class ChangeIdRequest(BaseModel):
-    new_id: str
+def encode_varint(value: int) -> bytes:
+    result = b""
+    while True:
+        bits = value & 0x7F
+        value >>= 7
+        if value:
+            result += struct.pack("B", bits | 0x80)
+        else:
+            result += struct.pack("B", bits)
+            break
+    return result
 
 
-class ChangeStatusRequest(BaseModel):
-    new_status: str  # Deve ser 'ACTIVE' ou 'OFF'
+def read_varint(stream):
+    shift = 0
+    result = 0
+    while True:
+        b = stream.read(1)
+        if not b:
+            raise EOFError("Stream fechado inesperadamente ao ler varint.")
+        b = ord(b)
+        result |= (b & 0x7f) << shift
+        if not (b & 0x80):
+            return result
+        shift += 7
+        if shift >= 64:
+            raise ValueError("Varint muito longo.")
 
 
-class ChangeCaptureSpeedRequest(BaseModel):
-    interval_seconds: float  # Novo intervalo em segundos
+def write_delimited_message(sock, message):
+    data = message.SerializeToString()
+    sock.sendall(encode_varint(len(data)) + data)
 
 
+def read_delimited_message(sock):
+    reader = sock.makefile('rb')
+    size = read_varint(reader)
+    return reader.read(size)
 
-@app.get("/devices/info", response_model=Dict[str, DeviceInfo])
+
+def send_protobuf_request(request_msg: smart_city_pb2.ClientRequest) -> smart_city_pb2.GatewayResponse:
+    try:
+        with socket.create_connection((GATEWAY_HOST, GATEWAY_API_PORT), timeout=5) as sock:
+            write_delimited_message(sock, request_msg)
+            data = read_delimited_message(sock)
+            response = smart_city_pb2.GatewayResponse()
+            response.ParseFromString(data)
+            return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro na comunicação com o gateway: {e}")
+
+
+@app.get("/devices")
 def list_devices():
-    """Retorna todos os dispositivos conectados."""
-    with device_lock:
-        result = {}
-        current_time = time.time()
-        for dev_id, dev in connected_devices.items():
-            result[dev_id] = DeviceInfo(
-                id=dev_id,
-                ip=dev['ip'],
-                port=dev['port'],
-                type=smart_city_pb2.DeviceType.Name(dev['type']),
-                status=smart_city_pb2.DeviceStatus.Name(dev['status']),
-                is_sensor=dev['is_sensor'],
-                is_actuator=dev['is_actuator'],
-                sensor_data=dev.get('sensor_data', {}), 
-                last_seen_seconds=current_time - dev['last_seen']
+    req = smart_city_pb2.ClientRequest(type=smart_city_pb2.ClientRequest.LIST_DEVICES)
+    res = send_protobuf_request(req)
+    return [
+        {
+            "id": d.device_id,
+            "type": smart_city_pb2.DeviceType.Name(d.type),
+            "ip": d.ip_address,
+            "port": d.port,
+            "status": smart_city_pb2.DeviceStatus.Name(d.initial_state),
+            "is_sensor": d.is_sensor,
+            "is_actuator": d.is_actuator
+        }
+        for d in res.devices
+    ]
+
+
+@app.get("/device/data")
+def get_device_status(device_id: str):
+    req = smart_city_pb2.ClientRequest(
+        type=smart_city_pb2.ClientRequest.GET_DEVICE_STATUS,
+        target_device_id=device_id
+    )
+    res = send_protobuf_request(req)
+    if res.type == smart_city_pb2.GatewayResponse.DEVICE_STATUS_UPDATE:
+        d = res.device_status
+        base_response = {
+            "id": d.device_id,
+            "status": smart_city_pb2.DeviceStatus.Name(d.current_status),
+            "temperature_value": d.temperature_value,
+            "air_quality_index": d.air_quality_index,
+            "custom_config_status": d.custom_config_status
+        }
+
+        # Se for ALARM e estiver ON, incluir "sound"
+        if d.type == smart_city_pb2.DeviceType.ALARM and d.current_status == smart_city_pb2.DeviceStatus.ON:
+            base_response["sound"] = "BEEP, BEEP, BEEP..."
+
+        return base_response
+
+    raise HTTPException(status_code=404, detail=res.message or "Dispositivo não encontrado")
+
+
+@app.put("/devices/config")
+def update_device_config(device_id: str, new_interval: int = None, new_status: str = None):
+    commands = []
+
+    if new_interval is not None:
+        commands.append(("SET_SAMPLING_RATE", str(new_interval)))  # INT
+    if new_status:
+        commands.append(("TURN_ON" if new_status == "ON" else "TURN_OFF", "")) # ON/OFF
+
+    responses = []
+
+    for command_type, value in commands:
+        req = smart_city_pb2.ClientRequest(
+            type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
+            target_device_id=device_id,
+            command=smart_city_pb2.DeviceCommand(
+                device_id=device_id,
+                command_type=command_type,
+                command_value=value
             )
-        return result
-
-
-@app.get("/device/info", response_model=DeviceInfo)
-def get_device(device_id: str):
-    """Obtém informações de um dispositivo específico."""
-    with device_lock:
-        if device_id not in connected_devices:
-            raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
-
-        dev = connected_devices[device_id]
-        return DeviceInfo(
-            id=device_id,
-            ip=dev['ip'],
-            port=dev['port'],
-            type=smart_city_pb2.DeviceType.Name(dev['type']),
-            status=smart_city_pb2.DeviceStatus.Name(dev['status']),
-            is_sensor=dev['is_sensor'],
-            is_actuator=dev['is_actuator'],
-            sensor_data=dev.get('sensor_data', {}),
-            last_seen_seconds=time.time() - dev['last_seen']
         )
+        res = send_protobuf_request(req)
+        responses.append({
+            "command": command_type,
+            "status": res.command_status,
+            "message": res.message
+        })
 
-@app.post("/device/set-id")
-def change_device_id(device_id: str, request: ChangeIdRequest):
-    with device_lock:
-        if device_id not in connected_devices:
-            raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
-        
-        if request.new_id in connected_devices:
-            raise HTTPException(status_code=400, detail="Novo ID já está em uso")
-
-        dev = connected_devices[device_id]
-        success = send_tcp_command(
-            dev['ip'],
-            dev['port'],
-            "SET_DEVICE_ID",
-            request.new_id
-        )
-
-        if not success:
-            raise HTTPException(status_code=500, detail="Falha ao enviar comando para alterar ID")
-
-        # Atualiza localmente
-        connected_devices[request.new_id] = dev.copy()
-        connected_devices[request.new_id]['device_id'] = request.new_id
-        del connected_devices[device_id]
-
-        return {"message": f"ID alterado de {device_id} para {request.new_id}"}
+    return {"results": responses}
 
 
-    
-@app.post("/device/change-status")
-def change_device_status(device_id: str, request: ChangeStatusRequest):
-    with device_lock:
-        if device_id not in connected_devices:
-            raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
-        
-        status_map = {
-            "ACTIVE": smart_city_pb2.DeviceStatus.ACTIVE,
-            "OFF": smart_city_pb2.DeviceStatus.OFF,
-        }
-
-        command_map = {
-            "ACTIVE": "TURN_ON",
-            "OFF": "TURN_OFF",
-        }
-
-        if request.new_status not in status_map:
-            raise HTTPException(status_code=400, detail="Status inválido. Use 'ACTIVE' ou 'OFF'.")
-
-        dev = connected_devices[device_id]
-        success = send_tcp_command(
-            dev['ip'],
-            dev['port'],
-            command_map[request.new_status],
-            request.new_status
-        )
-
-        if not success:
-            raise HTTPException(status_code=500, detail="Falha ao enviar comando TCP para o dispositivo")
-
-        dev['status'] = status_map[request.new_status]
-        return {"message": f"Status do dispositivo {device_id} alterado para {request.new_status}"}
-
-    
-@app.post("/device/change-capture-speed")
-def change_capture_speed(device_id: str, request: ChangeCaptureSpeedRequest):
-    with device_lock:
-        if device_id not in connected_devices:
-            raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
-
-        device = connected_devices[device_id]
-
-        if not device['is_sensor']:
-            raise HTTPException(status_code=400, detail="Dispositivo não é um sensor.")
-
-        # Envia comando TCP para o sensor alterar o intervalo
-        success = send_tcp_command(
-            device_ip=device['ip'],
-            device_port=device['port'],
-            command_type="SET_SAMPLING_RATE",
-            command_value=str(int(request.interval_seconds))
-        )
-
-        if not success:
-            raise HTTPException(status_code=500, detail="Falha ao enviar comando para o dispositivo.")
-
-        # Atualiza também no banco local da API (opcional)
-        device['sensor_data']['capture_interval'] = request.interval_seconds
-
-        return {"message": f"Velocidade de captura do sensor {device_id} alterada para {request.interval_seconds} segundos"}

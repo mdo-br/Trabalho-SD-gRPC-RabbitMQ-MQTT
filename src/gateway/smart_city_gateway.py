@@ -4,9 +4,6 @@ import time
 import struct
 import logging
 import sys
-import io
-import google.protobuf.message
-import uvicorn
 from src.gateway.state import connected_devices, device_lock
 
 # Importar as classes geradas do Protocol Buffers
@@ -17,6 +14,8 @@ MULTICAST_GROUP = '224.1.1.1'
 MULTICAST_PORT = 5007
 GATEWAY_TCP_PORT = 12345
 GATEWAY_UDP_PORT = 12346
+API_TCP_PORT = 12347
+
 
 # Configuração de Logging
 logging.basicConfig(
@@ -174,6 +173,7 @@ def handle_client_request(client_request, conn, addr):
         print(f"[DEBUG] GatewayResponse montada: {response}")
         write_delimited_message(conn, response)
         logger.info("Resposta LIST_DEVICES enviada ao cliente.")
+
     elif client_request.type == smart_city_pb2.ClientRequest.RequestType.SEND_DEVICE_COMMAND:
         logger.info("Processando SEND_DEVICE_COMMAND para o cliente.")
         response = smart_city_pb2.GatewayResponse()
@@ -339,20 +339,23 @@ def send_tcp_command(device_ip: str, device_port: int, command_type: str, comman
     except Exception as e:
         logger.error(f"Erro ao enviar comando TCP para {device_ip}:{device_port} -> {e}")
         return False
-
+    
+def listen_api():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(('', API_TCP_PORT))
+    s.listen(5)
+    logger.info(f"Gateway escutando por conexões da API TCP na porta {API_TCP_PORT}...")
+    while True:
+        conn, addr = s.accept()
+        threading.Thread(target=handle_tcp_connection, args=(conn, addr)).start()
 
 def main():
-    from src.api.src.api_server import app
-
-    logger.info("Iniciando Gateway da Cidade Inteligente - Versão de Teste...")
-
     threading.Thread(target=discover_devices, daemon=True).start()
     threading.Thread(target=listen_tcp_connections, daemon=True).start()
     threading.Thread(target=listen_udp_sensored_data, daemon=True).start()
     threading.Thread(target=log_device_info_periodic, daemon=True).start()
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-    logger.info("API do Gateway iniciada na porta 8000.")
+    threading.Thread(target=listen_api, daemon=True).start() 
 
     try:
         while True:

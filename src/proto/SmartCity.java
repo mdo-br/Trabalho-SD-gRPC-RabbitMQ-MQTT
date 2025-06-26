@@ -2,7 +2,7 @@
 // source: smart_city.proto
 
 // Protobuf Java Version: 3.25.1
-package smartcity;
+package smartcity.devices;
 
 public final class SmartCity {
   private SmartCity() {}
@@ -20,7 +20,7 @@ public final class SmartCity {
    * Enumeração para os tipos de dispositivos
    * </pre>
    *
-   * Protobuf enum {@code smartcity.DeviceType}
+   * Protobuf enum {@code smartcity.devices.DeviceType}
    */
   public enum DeviceType
       implements com.google.protobuf.ProtocolMessageEnum {
@@ -72,6 +72,14 @@ public final class SmartCity {
      * <code>TEMPERATURE_SENSOR = 5;</code>
      */
     TEMPERATURE_SENSOR(5),
+    /**
+     * <pre>
+     * Tipo para o atuador de alarme
+     * </pre>
+     *
+     * <code>ALARM = 6;</code>
+     */
+    ALARM(6),
     UNRECOGNIZED(-1),
     ;
 
@@ -123,6 +131,14 @@ public final class SmartCity {
      * <code>TEMPERATURE_SENSOR = 5;</code>
      */
     public static final int TEMPERATURE_SENSOR_VALUE = 5;
+    /**
+     * <pre>
+     * Tipo para o atuador de alarme
+     * </pre>
+     *
+     * <code>ALARM = 6;</code>
+     */
+    public static final int ALARM_VALUE = 6;
 
 
     public final int getNumber() {
@@ -155,6 +171,7 @@ public final class SmartCity {
         case 3: return TRAFFIC_LIGHT;
         case 4: return AIR_QUALITY_SENSOR;
         case 5: return TEMPERATURE_SENSOR;
+        case 6: return ALARM;
         default: return null;
       }
     }
@@ -185,7 +202,7 @@ public final class SmartCity {
     }
     public static final com.google.protobuf.Descriptors.EnumDescriptor
         getDescriptor() {
-      return smartcity.SmartCity.getDescriptor().getEnumTypes().get(0);
+      return smartcity.devices.SmartCity.getDescriptor().getEnumTypes().get(0);
     }
 
     private static final DeviceType[] VALUES = values();
@@ -208,7 +225,7 @@ public final class SmartCity {
       this.value = value;
     }
 
-    // @@protoc_insertion_point(enum_scope:smartcity.DeviceType)
+    // @@protoc_insertion_point(enum_scope:smartcity.devices.DeviceType)
   }
 
   /**
@@ -216,7 +233,7 @@ public final class SmartCity {
    * Enumeração para o status dos dispositivos
    * </pre>
    *
-   * Protobuf enum {@code smartcity.DeviceStatus}
+   * Protobuf enum {@code smartcity.devices.DeviceStatus}
    */
   public enum DeviceStatus
       implements com.google.protobuf.ProtocolMessageEnum {
@@ -415,7 +432,7 @@ public final class SmartCity {
     }
     public static final com.google.protobuf.Descriptors.EnumDescriptor
         getDescriptor() {
-      return smartcity.SmartCity.getDescriptor().getEnumTypes().get(1);
+      return smartcity.devices.SmartCity.getDescriptor().getEnumTypes().get(1);
     }
 
     private static final DeviceStatus[] VALUES = values();
@@ -438,11 +455,11 @@ public final class SmartCity {
       this.value = value;
     }
 
-    // @@protoc_insertion_point(enum_scope:smartcity.DeviceStatus)
+    // @@protoc_insertion_point(enum_scope:smartcity.devices.DeviceStatus)
   }
 
   public interface DiscoveryRequestOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:smartcity.DiscoveryRequest)
+      // @@protoc_insertion_point(interface_extends:smartcity.devices.DiscoveryRequest)
       com.google.protobuf.MessageOrBuilder {
 
     /**
@@ -487,14 +504,14 @@ public final class SmartCity {
   }
   /**
    * <pre>
-   * Mensagem enviada pelo Gateway para descobrir dispositivos 
+   * Mensagem enviada pelo Gateway para descobrir dispositivos
    * </pre>
    *
-   * Protobuf type {@code smartcity.DiscoveryRequest}
+   * Protobuf type {@code smartcity.devices.DiscoveryRequest}
    */
   public static final class DiscoveryRequest extends
       com.google.protobuf.GeneratedMessageV3 implements
-      // @@protoc_insertion_point(message_implements:smartcity.DiscoveryRequest)
+      // @@protoc_insertion_point(message_implements:smartcity.devices.DiscoveryRequest)
       DiscoveryRequestOrBuilder {
   private static final long serialVersionUID = 0L;
     // Use DiscoveryRequest.newBuilder() to construct.
@@ -514,15 +531,15 @@ public final class SmartCity {
 
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return smartcity.SmartCity.internal_static_smartcity_DiscoveryRequest_descriptor;
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DiscoveryRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return smartcity.SmartCity.internal_static_smartcity_DiscoveryRequest_fieldAccessorTable
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DiscoveryRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              smartcity.SmartCity.DiscoveryRequest.class, smartcity.SmartCity.DiscoveryRequest.Builder.class);
+              smartcity.devices.SmartCity.DiscoveryRequest.class, smartcity.devices.SmartCity.DiscoveryRequest.Builder.class);
     }
 
     public static final int GATEWAY_IP_FIELD_NUMBER = 1;
@@ -655,10 +672,10 @@ public final class SmartCity {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof smartcity.SmartCity.DiscoveryRequest)) {
+      if (!(obj instanceof smartcity.devices.SmartCity.DiscoveryRequest)) {
         return super.equals(obj);
       }
-      smartcity.SmartCity.DiscoveryRequest other = (smartcity.SmartCity.DiscoveryRequest) obj;
+      smartcity.devices.SmartCity.DiscoveryRequest other = (smartcity.devices.SmartCity.DiscoveryRequest) obj;
 
       if (!getGatewayIp()
           .equals(other.getGatewayIp())) return false;
@@ -688,44 +705,44 @@ public final class SmartCity {
       return hash;
     }
 
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         java.nio.ByteBuffer data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(byte[] data)
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -733,26 +750,26 @@ public final class SmartCity {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
-    public static smartcity.SmartCity.DiscoveryRequest parseDelimitedFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input);
     }
 
-    public static smartcity.SmartCity.DiscoveryRequest parseDelimitedFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DiscoveryRequest parseFrom(
+    public static smartcity.devices.SmartCity.DiscoveryRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -765,7 +782,7 @@ public final class SmartCity {
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(smartcity.SmartCity.DiscoveryRequest prototype) {
+    public static Builder newBuilder(smartcity.devices.SmartCity.DiscoveryRequest prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
     @java.lang.Override
@@ -782,29 +799,29 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Mensagem enviada pelo Gateway para descobrir dispositivos 
+     * Mensagem enviada pelo Gateway para descobrir dispositivos
      * </pre>
      *
-     * Protobuf type {@code smartcity.DiscoveryRequest}
+     * Protobuf type {@code smartcity.devices.DiscoveryRequest}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:smartcity.DiscoveryRequest)
-        smartcity.SmartCity.DiscoveryRequestOrBuilder {
+        // @@protoc_insertion_point(builder_implements:smartcity.devices.DiscoveryRequest)
+        smartcity.devices.SmartCity.DiscoveryRequestOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return smartcity.SmartCity.internal_static_smartcity_DiscoveryRequest_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DiscoveryRequest_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return smartcity.SmartCity.internal_static_smartcity_DiscoveryRequest_fieldAccessorTable
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DiscoveryRequest_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                smartcity.SmartCity.DiscoveryRequest.class, smartcity.SmartCity.DiscoveryRequest.Builder.class);
+                smartcity.devices.SmartCity.DiscoveryRequest.class, smartcity.devices.SmartCity.DiscoveryRequest.Builder.class);
       }
 
-      // Construct using smartcity.SmartCity.DiscoveryRequest.newBuilder()
+      // Construct using smartcity.devices.SmartCity.DiscoveryRequest.newBuilder()
       private Builder() {
 
       }
@@ -827,17 +844,17 @@ public final class SmartCity {
       @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return smartcity.SmartCity.internal_static_smartcity_DiscoveryRequest_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DiscoveryRequest_descriptor;
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DiscoveryRequest getDefaultInstanceForType() {
-        return smartcity.SmartCity.DiscoveryRequest.getDefaultInstance();
+      public smartcity.devices.SmartCity.DiscoveryRequest getDefaultInstanceForType() {
+        return smartcity.devices.SmartCity.DiscoveryRequest.getDefaultInstance();
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DiscoveryRequest build() {
-        smartcity.SmartCity.DiscoveryRequest result = buildPartial();
+      public smartcity.devices.SmartCity.DiscoveryRequest build() {
+        smartcity.devices.SmartCity.DiscoveryRequest result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
@@ -845,14 +862,14 @@ public final class SmartCity {
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DiscoveryRequest buildPartial() {
-        smartcity.SmartCity.DiscoveryRequest result = new smartcity.SmartCity.DiscoveryRequest(this);
+      public smartcity.devices.SmartCity.DiscoveryRequest buildPartial() {
+        smartcity.devices.SmartCity.DiscoveryRequest result = new smartcity.devices.SmartCity.DiscoveryRequest(this);
         if (bitField0_ != 0) { buildPartial0(result); }
         onBuilt();
         return result;
       }
 
-      private void buildPartial0(smartcity.SmartCity.DiscoveryRequest result) {
+      private void buildPartial0(smartcity.devices.SmartCity.DiscoveryRequest result) {
         int from_bitField0_ = bitField0_;
         if (((from_bitField0_ & 0x00000001) != 0)) {
           result.gatewayIp_ = gatewayIp_;
@@ -899,16 +916,16 @@ public final class SmartCity {
       }
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof smartcity.SmartCity.DiscoveryRequest) {
-          return mergeFrom((smartcity.SmartCity.DiscoveryRequest)other);
+        if (other instanceof smartcity.devices.SmartCity.DiscoveryRequest) {
+          return mergeFrom((smartcity.devices.SmartCity.DiscoveryRequest)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(smartcity.SmartCity.DiscoveryRequest other) {
-        if (other == smartcity.SmartCity.DiscoveryRequest.getDefaultInstance()) return this;
+      public Builder mergeFrom(smartcity.devices.SmartCity.DiscoveryRequest other) {
+        if (other == smartcity.devices.SmartCity.DiscoveryRequest.getDefaultInstance()) return this;
         if (!other.getGatewayIp().isEmpty()) {
           gatewayIp_ = other.gatewayIp_;
           bitField0_ |= 0x00000001;
@@ -1170,16 +1187,16 @@ public final class SmartCity {
       }
 
 
-      // @@protoc_insertion_point(builder_scope:smartcity.DiscoveryRequest)
+      // @@protoc_insertion_point(builder_scope:smartcity.devices.DiscoveryRequest)
     }
 
-    // @@protoc_insertion_point(class_scope:smartcity.DiscoveryRequest)
-    private static final smartcity.SmartCity.DiscoveryRequest DEFAULT_INSTANCE;
+    // @@protoc_insertion_point(class_scope:smartcity.devices.DiscoveryRequest)
+    private static final smartcity.devices.SmartCity.DiscoveryRequest DEFAULT_INSTANCE;
     static {
-      DEFAULT_INSTANCE = new smartcity.SmartCity.DiscoveryRequest();
+      DEFAULT_INSTANCE = new smartcity.devices.SmartCity.DiscoveryRequest();
     }
 
-    public static smartcity.SmartCity.DiscoveryRequest getDefaultInstance() {
+    public static smartcity.devices.SmartCity.DiscoveryRequest getDefaultInstance() {
       return DEFAULT_INSTANCE;
     }
 
@@ -1215,14 +1232,14 @@ public final class SmartCity {
     }
 
     @java.lang.Override
-    public smartcity.SmartCity.DiscoveryRequest getDefaultInstanceForType() {
+    public smartcity.devices.SmartCity.DiscoveryRequest getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
   }
 
   public interface DeviceInfoOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:smartcity.DeviceInfo)
+      // @@protoc_insertion_point(interface_extends:smartcity.devices.DeviceInfo)
       com.google.protobuf.MessageOrBuilder {
 
     /**
@@ -1247,26 +1264,26 @@ public final class SmartCity {
 
     /**
      * <pre>
-     * Tipo do dispositivo (e.g., CAMERA, POST) 
+     * Tipo do dispositivo (e.g., CAMERA, ALARM)
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The enum numeric value on the wire for type.
      */
     int getTypeValue();
     /**
      * <pre>
-     * Tipo do dispositivo (e.g., CAMERA, POST) 
+     * Tipo do dispositivo (e.g., CAMERA, ALARM)
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The type.
      */
-    smartcity.SmartCity.DeviceType getType();
+    smartcity.devices.SmartCity.DeviceType getType();
 
     /**
      * <pre>
-     * Endereço IP do dispositivo 
+     * Endereço IP do dispositivo
      * </pre>
      *
      * <code>string ip_address = 3;</code>
@@ -1275,7 +1292,7 @@ public final class SmartCity {
     java.lang.String getIpAddress();
     /**
      * <pre>
-     * Endereço IP do dispositivo 
+     * Endereço IP do dispositivo
      * </pre>
      *
      * <code>string ip_address = 3;</code>
@@ -1286,7 +1303,7 @@ public final class SmartCity {
 
     /**
      * <pre>
-     * Porta TCP do dispositivo para controle 
+     * Porta TCP do dispositivo para controle
      * </pre>
      *
      * <code>int32 port = 4;</code>
@@ -1296,26 +1313,26 @@ public final class SmartCity {
 
     /**
      * <pre>
-     * Estado inicial do dispositivo (e.g., ON, OFF) 
+     * Estado inicial do dispositivo (e.g., ON, OFF)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+     * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
      * @return The enum numeric value on the wire for initialState.
      */
     int getInitialStateValue();
     /**
      * <pre>
-     * Estado inicial do dispositivo (e.g., ON, OFF) 
+     * Estado inicial do dispositivo (e.g., ON, OFF)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+     * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
      * @return The initialState.
      */
-    smartcity.SmartCity.DeviceStatus getInitialState();
+    smartcity.devices.SmartCity.DeviceStatus getInitialState();
 
     /**
      * <pre>
-     * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado 
+     * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado
      * </pre>
      *
      * <code>bool is_actuator = 6;</code>
@@ -1325,7 +1342,7 @@ public final class SmartCity {
 
     /**
      * <pre>
-     * Verdadeiro se o dispositivo é um sensor que envia dados 
+     * Verdadeiro se o dispositivo é um sensor que envia dados
      * </pre>
      *
      * <code>bool is_sensor = 7;</code>
@@ -1335,14 +1352,14 @@ public final class SmartCity {
   }
   /**
    * <pre>
-   * Mensagem enviada pelo Dispositivo em resposta a uma DiscoveryRequest 
+   * Mensagem enviada pelo Dispositivo em resposta a uma DiscoveryRequest
    * </pre>
    *
-   * Protobuf type {@code smartcity.DeviceInfo}
+   * Protobuf type {@code smartcity.devices.DeviceInfo}
    */
   public static final class DeviceInfo extends
       com.google.protobuf.GeneratedMessageV3 implements
-      // @@protoc_insertion_point(message_implements:smartcity.DeviceInfo)
+      // @@protoc_insertion_point(message_implements:smartcity.devices.DeviceInfo)
       DeviceInfoOrBuilder {
   private static final long serialVersionUID = 0L;
     // Use DeviceInfo.newBuilder() to construct.
@@ -1365,15 +1382,15 @@ public final class SmartCity {
 
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return smartcity.SmartCity.internal_static_smartcity_DeviceInfo_descriptor;
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceInfo_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return smartcity.SmartCity.internal_static_smartcity_DeviceInfo_fieldAccessorTable
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceInfo_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              smartcity.SmartCity.DeviceInfo.class, smartcity.SmartCity.DeviceInfo.Builder.class);
+              smartcity.devices.SmartCity.DeviceInfo.class, smartcity.devices.SmartCity.DeviceInfo.Builder.class);
     }
 
     public static final int DEVICE_ID_FIELD_NUMBER = 1;
@@ -1427,10 +1444,10 @@ public final class SmartCity {
     private int type_ = 0;
     /**
      * <pre>
-     * Tipo do dispositivo (e.g., CAMERA, POST) 
+     * Tipo do dispositivo (e.g., CAMERA, ALARM)
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The enum numeric value on the wire for type.
      */
     @java.lang.Override public int getTypeValue() {
@@ -1438,15 +1455,15 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Tipo do dispositivo (e.g., CAMERA, POST) 
+     * Tipo do dispositivo (e.g., CAMERA, ALARM)
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The type.
      */
-    @java.lang.Override public smartcity.SmartCity.DeviceType getType() {
-      smartcity.SmartCity.DeviceType result = smartcity.SmartCity.DeviceType.forNumber(type_);
-      return result == null ? smartcity.SmartCity.DeviceType.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.DeviceType getType() {
+      smartcity.devices.SmartCity.DeviceType result = smartcity.devices.SmartCity.DeviceType.forNumber(type_);
+      return result == null ? smartcity.devices.SmartCity.DeviceType.UNRECOGNIZED : result;
     }
 
     public static final int IP_ADDRESS_FIELD_NUMBER = 3;
@@ -1454,7 +1471,7 @@ public final class SmartCity {
     private volatile java.lang.Object ipAddress_ = "";
     /**
      * <pre>
-     * Endereço IP do dispositivo 
+     * Endereço IP do dispositivo
      * </pre>
      *
      * <code>string ip_address = 3;</code>
@@ -1475,7 +1492,7 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Endereço IP do dispositivo 
+     * Endereço IP do dispositivo
      * </pre>
      *
      * <code>string ip_address = 3;</code>
@@ -1500,7 +1517,7 @@ public final class SmartCity {
     private int port_ = 0;
     /**
      * <pre>
-     * Porta TCP do dispositivo para controle 
+     * Porta TCP do dispositivo para controle
      * </pre>
      *
      * <code>int32 port = 4;</code>
@@ -1515,10 +1532,10 @@ public final class SmartCity {
     private int initialState_ = 0;
     /**
      * <pre>
-     * Estado inicial do dispositivo (e.g., ON, OFF) 
+     * Estado inicial do dispositivo (e.g., ON, OFF)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+     * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
      * @return The enum numeric value on the wire for initialState.
      */
     @java.lang.Override public int getInitialStateValue() {
@@ -1526,22 +1543,22 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Estado inicial do dispositivo (e.g., ON, OFF) 
+     * Estado inicial do dispositivo (e.g., ON, OFF)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+     * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
      * @return The initialState.
      */
-    @java.lang.Override public smartcity.SmartCity.DeviceStatus getInitialState() {
-      smartcity.SmartCity.DeviceStatus result = smartcity.SmartCity.DeviceStatus.forNumber(initialState_);
-      return result == null ? smartcity.SmartCity.DeviceStatus.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.DeviceStatus getInitialState() {
+      smartcity.devices.SmartCity.DeviceStatus result = smartcity.devices.SmartCity.DeviceStatus.forNumber(initialState_);
+      return result == null ? smartcity.devices.SmartCity.DeviceStatus.UNRECOGNIZED : result;
     }
 
     public static final int IS_ACTUATOR_FIELD_NUMBER = 6;
     private boolean isActuator_ = false;
     /**
      * <pre>
-     * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado 
+     * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado
      * </pre>
      *
      * <code>bool is_actuator = 6;</code>
@@ -1556,7 +1573,7 @@ public final class SmartCity {
     private boolean isSensor_ = false;
     /**
      * <pre>
-     * Verdadeiro se o dispositivo é um sensor que envia dados 
+     * Verdadeiro se o dispositivo é um sensor que envia dados
      * </pre>
      *
      * <code>bool is_sensor = 7;</code>
@@ -1584,7 +1601,7 @@ public final class SmartCity {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(deviceId_)) {
         com.google.protobuf.GeneratedMessageV3.writeString(output, 1, deviceId_);
       }
-      if (type_ != smartcity.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
         output.writeEnum(2, type_);
       }
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(ipAddress_)) {
@@ -1593,7 +1610,7 @@ public final class SmartCity {
       if (port_ != 0) {
         output.writeInt32(4, port_);
       }
-      if (initialState_ != smartcity.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
+      if (initialState_ != smartcity.devices.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
         output.writeEnum(5, initialState_);
       }
       if (isActuator_ != false) {
@@ -1614,7 +1631,7 @@ public final class SmartCity {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(deviceId_)) {
         size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, deviceId_);
       }
-      if (type_ != smartcity.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(2, type_);
       }
@@ -1625,7 +1642,7 @@ public final class SmartCity {
         size += com.google.protobuf.CodedOutputStream
           .computeInt32Size(4, port_);
       }
-      if (initialState_ != smartcity.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
+      if (initialState_ != smartcity.devices.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(5, initialState_);
       }
@@ -1647,10 +1664,10 @@ public final class SmartCity {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof smartcity.SmartCity.DeviceInfo)) {
+      if (!(obj instanceof smartcity.devices.SmartCity.DeviceInfo)) {
         return super.equals(obj);
       }
-      smartcity.SmartCity.DeviceInfo other = (smartcity.SmartCity.DeviceInfo) obj;
+      smartcity.devices.SmartCity.DeviceInfo other = (smartcity.devices.SmartCity.DeviceInfo) obj;
 
       if (!getDeviceId()
           .equals(other.getDeviceId())) return false;
@@ -1696,44 +1713,44 @@ public final class SmartCity {
       return hash;
     }
 
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         java.nio.ByteBuffer data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(byte[] data)
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -1741,26 +1758,26 @@ public final class SmartCity {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
-    public static smartcity.SmartCity.DeviceInfo parseDelimitedFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DeviceInfo parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input);
     }
 
-    public static smartcity.SmartCity.DeviceInfo parseDelimitedFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DeviceInfo parseFrom(
+    public static smartcity.devices.SmartCity.DeviceInfo parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -1773,7 +1790,7 @@ public final class SmartCity {
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(smartcity.SmartCity.DeviceInfo prototype) {
+    public static Builder newBuilder(smartcity.devices.SmartCity.DeviceInfo prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
     @java.lang.Override
@@ -1790,29 +1807,29 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Mensagem enviada pelo Dispositivo em resposta a uma DiscoveryRequest 
+     * Mensagem enviada pelo Dispositivo em resposta a uma DiscoveryRequest
      * </pre>
      *
-     * Protobuf type {@code smartcity.DeviceInfo}
+     * Protobuf type {@code smartcity.devices.DeviceInfo}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:smartcity.DeviceInfo)
-        smartcity.SmartCity.DeviceInfoOrBuilder {
+        // @@protoc_insertion_point(builder_implements:smartcity.devices.DeviceInfo)
+        smartcity.devices.SmartCity.DeviceInfoOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceInfo_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceInfo_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceInfo_fieldAccessorTable
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceInfo_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                smartcity.SmartCity.DeviceInfo.class, smartcity.SmartCity.DeviceInfo.Builder.class);
+                smartcity.devices.SmartCity.DeviceInfo.class, smartcity.devices.SmartCity.DeviceInfo.Builder.class);
       }
 
-      // Construct using smartcity.SmartCity.DeviceInfo.newBuilder()
+      // Construct using smartcity.devices.SmartCity.DeviceInfo.newBuilder()
       private Builder() {
 
       }
@@ -1839,17 +1856,17 @@ public final class SmartCity {
       @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceInfo_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceInfo_descriptor;
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceInfo getDefaultInstanceForType() {
-        return smartcity.SmartCity.DeviceInfo.getDefaultInstance();
+      public smartcity.devices.SmartCity.DeviceInfo getDefaultInstanceForType() {
+        return smartcity.devices.SmartCity.DeviceInfo.getDefaultInstance();
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceInfo build() {
-        smartcity.SmartCity.DeviceInfo result = buildPartial();
+      public smartcity.devices.SmartCity.DeviceInfo build() {
+        smartcity.devices.SmartCity.DeviceInfo result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
@@ -1857,14 +1874,14 @@ public final class SmartCity {
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceInfo buildPartial() {
-        smartcity.SmartCity.DeviceInfo result = new smartcity.SmartCity.DeviceInfo(this);
+      public smartcity.devices.SmartCity.DeviceInfo buildPartial() {
+        smartcity.devices.SmartCity.DeviceInfo result = new smartcity.devices.SmartCity.DeviceInfo(this);
         if (bitField0_ != 0) { buildPartial0(result); }
         onBuilt();
         return result;
       }
 
-      private void buildPartial0(smartcity.SmartCity.DeviceInfo result) {
+      private void buildPartial0(smartcity.devices.SmartCity.DeviceInfo result) {
         int from_bitField0_ = bitField0_;
         if (((from_bitField0_ & 0x00000001) != 0)) {
           result.deviceId_ = deviceId_;
@@ -1923,16 +1940,16 @@ public final class SmartCity {
       }
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof smartcity.SmartCity.DeviceInfo) {
-          return mergeFrom((smartcity.SmartCity.DeviceInfo)other);
+        if (other instanceof smartcity.devices.SmartCity.DeviceInfo) {
+          return mergeFrom((smartcity.devices.SmartCity.DeviceInfo)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(smartcity.SmartCity.DeviceInfo other) {
-        if (other == smartcity.SmartCity.DeviceInfo.getDefaultInstance()) return this;
+      public Builder mergeFrom(smartcity.devices.SmartCity.DeviceInfo other) {
+        if (other == smartcity.devices.SmartCity.DeviceInfo.getDefaultInstance()) return this;
         if (!other.getDeviceId().isEmpty()) {
           deviceId_ = other.deviceId_;
           bitField0_ |= 0x00000001;
@@ -2131,10 +2148,10 @@ public final class SmartCity {
       private int type_ = 0;
       /**
        * <pre>
-       * Tipo do dispositivo (e.g., CAMERA, POST) 
+       * Tipo do dispositivo (e.g., CAMERA, ALARM)
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return The enum numeric value on the wire for type.
        */
       @java.lang.Override public int getTypeValue() {
@@ -2142,10 +2159,10 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipo do dispositivo (e.g., CAMERA, POST) 
+       * Tipo do dispositivo (e.g., CAMERA, ALARM)
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @param value The enum numeric value on the wire for type to set.
        * @return This builder for chaining.
        */
@@ -2157,27 +2174,27 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipo do dispositivo (e.g., CAMERA, POST) 
+       * Tipo do dispositivo (e.g., CAMERA, ALARM)
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return The type.
        */
       @java.lang.Override
-      public smartcity.SmartCity.DeviceType getType() {
-        smartcity.SmartCity.DeviceType result = smartcity.SmartCity.DeviceType.forNumber(type_);
-        return result == null ? smartcity.SmartCity.DeviceType.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.DeviceType getType() {
+        smartcity.devices.SmartCity.DeviceType result = smartcity.devices.SmartCity.DeviceType.forNumber(type_);
+        return result == null ? smartcity.devices.SmartCity.DeviceType.UNRECOGNIZED : result;
       }
       /**
        * <pre>
-       * Tipo do dispositivo (e.g., CAMERA, POST) 
+       * Tipo do dispositivo (e.g., CAMERA, ALARM)
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @param value The type to set.
        * @return This builder for chaining.
        */
-      public Builder setType(smartcity.SmartCity.DeviceType value) {
+      public Builder setType(smartcity.devices.SmartCity.DeviceType value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -2188,10 +2205,10 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipo do dispositivo (e.g., CAMERA, POST) 
+       * Tipo do dispositivo (e.g., CAMERA, ALARM)
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return This builder for chaining.
        */
       public Builder clearType() {
@@ -2204,7 +2221,7 @@ public final class SmartCity {
       private java.lang.Object ipAddress_ = "";
       /**
        * <pre>
-       * Endereço IP do dispositivo 
+       * Endereço IP do dispositivo
        * </pre>
        *
        * <code>string ip_address = 3;</code>
@@ -2224,7 +2241,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Endereço IP do dispositivo 
+       * Endereço IP do dispositivo
        * </pre>
        *
        * <code>string ip_address = 3;</code>
@@ -2245,7 +2262,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Endereço IP do dispositivo 
+       * Endereço IP do dispositivo
        * </pre>
        *
        * <code>string ip_address = 3;</code>
@@ -2262,7 +2279,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Endereço IP do dispositivo 
+       * Endereço IP do dispositivo
        * </pre>
        *
        * <code>string ip_address = 3;</code>
@@ -2276,7 +2293,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Endereço IP do dispositivo 
+       * Endereço IP do dispositivo
        * </pre>
        *
        * <code>string ip_address = 3;</code>
@@ -2296,7 +2313,7 @@ public final class SmartCity {
       private int port_ ;
       /**
        * <pre>
-       * Porta TCP do dispositivo para controle 
+       * Porta TCP do dispositivo para controle
        * </pre>
        *
        * <code>int32 port = 4;</code>
@@ -2308,7 +2325,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Porta TCP do dispositivo para controle 
+       * Porta TCP do dispositivo para controle
        * </pre>
        *
        * <code>int32 port = 4;</code>
@@ -2324,7 +2341,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Porta TCP do dispositivo para controle 
+       * Porta TCP do dispositivo para controle
        * </pre>
        *
        * <code>int32 port = 4;</code>
@@ -2340,10 +2357,10 @@ public final class SmartCity {
       private int initialState_ = 0;
       /**
        * <pre>
-       * Estado inicial do dispositivo (e.g., ON, OFF) 
+       * Estado inicial do dispositivo (e.g., ON, OFF)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+       * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
        * @return The enum numeric value on the wire for initialState.
        */
       @java.lang.Override public int getInitialStateValue() {
@@ -2351,10 +2368,10 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Estado inicial do dispositivo (e.g., ON, OFF) 
+       * Estado inicial do dispositivo (e.g., ON, OFF)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+       * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
        * @param value The enum numeric value on the wire for initialState to set.
        * @return This builder for chaining.
        */
@@ -2366,27 +2383,27 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Estado inicial do dispositivo (e.g., ON, OFF) 
+       * Estado inicial do dispositivo (e.g., ON, OFF)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+       * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
        * @return The initialState.
        */
       @java.lang.Override
-      public smartcity.SmartCity.DeviceStatus getInitialState() {
-        smartcity.SmartCity.DeviceStatus result = smartcity.SmartCity.DeviceStatus.forNumber(initialState_);
-        return result == null ? smartcity.SmartCity.DeviceStatus.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.DeviceStatus getInitialState() {
+        smartcity.devices.SmartCity.DeviceStatus result = smartcity.devices.SmartCity.DeviceStatus.forNumber(initialState_);
+        return result == null ? smartcity.devices.SmartCity.DeviceStatus.UNRECOGNIZED : result;
       }
       /**
        * <pre>
-       * Estado inicial do dispositivo (e.g., ON, OFF) 
+       * Estado inicial do dispositivo (e.g., ON, OFF)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+       * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
        * @param value The initialState to set.
        * @return This builder for chaining.
        */
-      public Builder setInitialState(smartcity.SmartCity.DeviceStatus value) {
+      public Builder setInitialState(smartcity.devices.SmartCity.DeviceStatus value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -2397,10 +2414,10 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Estado inicial do dispositivo (e.g., ON, OFF) 
+       * Estado inicial do dispositivo (e.g., ON, OFF)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus initial_state = 5;</code>
+       * <code>.smartcity.devices.DeviceStatus initial_state = 5;</code>
        * @return This builder for chaining.
        */
       public Builder clearInitialState() {
@@ -2413,7 +2430,7 @@ public final class SmartCity {
       private boolean isActuator_ ;
       /**
        * <pre>
-       * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado 
+       * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado
        * </pre>
        *
        * <code>bool is_actuator = 6;</code>
@@ -2425,7 +2442,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado 
+       * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado
        * </pre>
        *
        * <code>bool is_actuator = 6;</code>
@@ -2441,7 +2458,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado 
+       * Verdadeiro se o dispositivo pode receber comandos para modificar seu estado
        * </pre>
        *
        * <code>bool is_actuator = 6;</code>
@@ -2457,7 +2474,7 @@ public final class SmartCity {
       private boolean isSensor_ ;
       /**
        * <pre>
-       * Verdadeiro se o dispositivo é um sensor que envia dados 
+       * Verdadeiro se o dispositivo é um sensor que envia dados
        * </pre>
        *
        * <code>bool is_sensor = 7;</code>
@@ -2469,7 +2486,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Verdadeiro se o dispositivo é um sensor que envia dados 
+       * Verdadeiro se o dispositivo é um sensor que envia dados
        * </pre>
        *
        * <code>bool is_sensor = 7;</code>
@@ -2485,7 +2502,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Verdadeiro se o dispositivo é um sensor que envia dados 
+       * Verdadeiro se o dispositivo é um sensor que envia dados
        * </pre>
        *
        * <code>bool is_sensor = 7;</code>
@@ -2510,16 +2527,16 @@ public final class SmartCity {
       }
 
 
-      // @@protoc_insertion_point(builder_scope:smartcity.DeviceInfo)
+      // @@protoc_insertion_point(builder_scope:smartcity.devices.DeviceInfo)
     }
 
-    // @@protoc_insertion_point(class_scope:smartcity.DeviceInfo)
-    private static final smartcity.SmartCity.DeviceInfo DEFAULT_INSTANCE;
+    // @@protoc_insertion_point(class_scope:smartcity.devices.DeviceInfo)
+    private static final smartcity.devices.SmartCity.DeviceInfo DEFAULT_INSTANCE;
     static {
-      DEFAULT_INSTANCE = new smartcity.SmartCity.DeviceInfo();
+      DEFAULT_INSTANCE = new smartcity.devices.SmartCity.DeviceInfo();
     }
 
-    public static smartcity.SmartCity.DeviceInfo getDefaultInstance() {
+    public static smartcity.devices.SmartCity.DeviceInfo getDefaultInstance() {
       return DEFAULT_INSTANCE;
     }
 
@@ -2555,14 +2572,14 @@ public final class SmartCity {
     }
 
     @java.lang.Override
-    public smartcity.SmartCity.DeviceInfo getDefaultInstanceForType() {
+    public smartcity.devices.SmartCity.DeviceInfo getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
   }
 
   public interface DeviceUpdateOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:smartcity.DeviceUpdate)
+      // @@protoc_insertion_point(interface_extends:smartcity.devices.DeviceUpdate)
       com.google.protobuf.MessageOrBuilder {
 
     /**
@@ -2590,7 +2607,7 @@ public final class SmartCity {
      * Tipo do dispositivo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The enum numeric value on the wire for type.
      */
     int getTypeValue();
@@ -2599,29 +2616,29 @@ public final class SmartCity {
      * Tipo do dispositivo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The type.
      */
-    smartcity.SmartCity.DeviceType getType();
+    smartcity.devices.SmartCity.DeviceType getType();
 
     /**
      * <pre>
-     * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+     * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus current_status = 3;</code>
+     * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
      * @return The enum numeric value on the wire for currentStatus.
      */
     int getCurrentStatusValue();
     /**
      * <pre>
-     * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+     * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus current_status = 3;</code>
+     * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
      * @return The currentStatus.
      */
-    smartcity.SmartCity.DeviceStatus getCurrentStatus();
+    smartcity.devices.SmartCity.DeviceStatus getCurrentStatus();
 
     /**
      * <pre>
@@ -2635,7 +2652,7 @@ public final class SmartCity {
 
     /**
      * <pre>
-     * Para AIR_QUALITY_SENSOR
+     * Para AIR_QUALITY_SENSOR (usado para umidade)
      * </pre>
      *
      * <code>double air_quality_index = 5;</code>
@@ -2665,14 +2682,14 @@ public final class SmartCity {
   }
   /**
    * <pre>
-   * Mensagem para atualizações de estado do dispositivo ou leituras de sensor periódicas 
+   * Mensagem para atualizações de estado do dispositivo ou leituras de sensor periódicas
    * </pre>
    *
-   * Protobuf type {@code smartcity.DeviceUpdate}
+   * Protobuf type {@code smartcity.devices.DeviceUpdate}
    */
   public static final class DeviceUpdate extends
       com.google.protobuf.GeneratedMessageV3 implements
-      // @@protoc_insertion_point(message_implements:smartcity.DeviceUpdate)
+      // @@protoc_insertion_point(message_implements:smartcity.devices.DeviceUpdate)
       DeviceUpdateOrBuilder {
   private static final long serialVersionUID = 0L;
     // Use DeviceUpdate.newBuilder() to construct.
@@ -2695,15 +2712,15 @@ public final class SmartCity {
 
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return smartcity.SmartCity.internal_static_smartcity_DeviceUpdate_descriptor;
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceUpdate_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return smartcity.SmartCity.internal_static_smartcity_DeviceUpdate_fieldAccessorTable
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceUpdate_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              smartcity.SmartCity.DeviceUpdate.class, smartcity.SmartCity.DeviceUpdate.Builder.class);
+              smartcity.devices.SmartCity.DeviceUpdate.class, smartcity.devices.SmartCity.DeviceUpdate.Builder.class);
     }
 
     public static final int DEVICE_ID_FIELD_NUMBER = 1;
@@ -2760,7 +2777,7 @@ public final class SmartCity {
      * Tipo do dispositivo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The enum numeric value on the wire for type.
      */
     @java.lang.Override public int getTypeValue() {
@@ -2771,22 +2788,22 @@ public final class SmartCity {
      * Tipo do dispositivo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The type.
      */
-    @java.lang.Override public smartcity.SmartCity.DeviceType getType() {
-      smartcity.SmartCity.DeviceType result = smartcity.SmartCity.DeviceType.forNumber(type_);
-      return result == null ? smartcity.SmartCity.DeviceType.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.DeviceType getType() {
+      smartcity.devices.SmartCity.DeviceType result = smartcity.devices.SmartCity.DeviceType.forNumber(type_);
+      return result == null ? smartcity.devices.SmartCity.DeviceType.UNRECOGNIZED : result;
     }
 
     public static final int CURRENT_STATUS_FIELD_NUMBER = 3;
     private int currentStatus_ = 0;
     /**
      * <pre>
-     * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+     * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus current_status = 3;</code>
+     * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
      * @return The enum numeric value on the wire for currentStatus.
      */
     @java.lang.Override public int getCurrentStatusValue() {
@@ -2794,15 +2811,15 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+     * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
      * </pre>
      *
-     * <code>.smartcity.DeviceStatus current_status = 3;</code>
+     * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
      * @return The currentStatus.
      */
-    @java.lang.Override public smartcity.SmartCity.DeviceStatus getCurrentStatus() {
-      smartcity.SmartCity.DeviceStatus result = smartcity.SmartCity.DeviceStatus.forNumber(currentStatus_);
-      return result == null ? smartcity.SmartCity.DeviceStatus.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.DeviceStatus getCurrentStatus() {
+      smartcity.devices.SmartCity.DeviceStatus result = smartcity.devices.SmartCity.DeviceStatus.forNumber(currentStatus_);
+      return result == null ? smartcity.devices.SmartCity.DeviceStatus.UNRECOGNIZED : result;
     }
 
     public static final int TEMPERATURE_VALUE_FIELD_NUMBER = 4;
@@ -2824,7 +2841,7 @@ public final class SmartCity {
     private double airQualityIndex_ = 0D;
     /**
      * <pre>
-     * Para AIR_QUALITY_SENSOR
+     * Para AIR_QUALITY_SENSOR (usado para umidade)
      * </pre>
      *
      * <code>double air_quality_index = 5;</code>
@@ -2899,10 +2916,10 @@ public final class SmartCity {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(deviceId_)) {
         com.google.protobuf.GeneratedMessageV3.writeString(output, 1, deviceId_);
       }
-      if (type_ != smartcity.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
         output.writeEnum(2, type_);
       }
-      if (currentStatus_ != smartcity.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
+      if (currentStatus_ != smartcity.devices.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
         output.writeEnum(3, currentStatus_);
       }
       if (java.lang.Double.doubleToRawLongBits(temperatureValue_) != 0) {
@@ -2926,11 +2943,11 @@ public final class SmartCity {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(deviceId_)) {
         size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, deviceId_);
       }
-      if (type_ != smartcity.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(2, type_);
       }
-      if (currentStatus_ != smartcity.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
+      if (currentStatus_ != smartcity.devices.SmartCity.DeviceStatus.UNKNOWN_STATUS.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(3, currentStatus_);
       }
@@ -2955,10 +2972,10 @@ public final class SmartCity {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof smartcity.SmartCity.DeviceUpdate)) {
+      if (!(obj instanceof smartcity.devices.SmartCity.DeviceUpdate)) {
         return super.equals(obj);
       }
-      smartcity.SmartCity.DeviceUpdate other = (smartcity.SmartCity.DeviceUpdate) obj;
+      smartcity.devices.SmartCity.DeviceUpdate other = (smartcity.devices.SmartCity.DeviceUpdate) obj;
 
       if (!getDeviceId()
           .equals(other.getDeviceId())) return false;
@@ -3002,44 +3019,44 @@ public final class SmartCity {
       return hash;
     }
 
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         java.nio.ByteBuffer data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(byte[] data)
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -3047,26 +3064,26 @@ public final class SmartCity {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
-    public static smartcity.SmartCity.DeviceUpdate parseDelimitedFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DeviceUpdate parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input);
     }
 
-    public static smartcity.SmartCity.DeviceUpdate parseDelimitedFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DeviceUpdate parseFrom(
+    public static smartcity.devices.SmartCity.DeviceUpdate parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -3079,7 +3096,7 @@ public final class SmartCity {
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(smartcity.SmartCity.DeviceUpdate prototype) {
+    public static Builder newBuilder(smartcity.devices.SmartCity.DeviceUpdate prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
     @java.lang.Override
@@ -3096,29 +3113,29 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Mensagem para atualizações de estado do dispositivo ou leituras de sensor periódicas 
+     * Mensagem para atualizações de estado do dispositivo ou leituras de sensor periódicas
      * </pre>
      *
-     * Protobuf type {@code smartcity.DeviceUpdate}
+     * Protobuf type {@code smartcity.devices.DeviceUpdate}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:smartcity.DeviceUpdate)
-        smartcity.SmartCity.DeviceUpdateOrBuilder {
+        // @@protoc_insertion_point(builder_implements:smartcity.devices.DeviceUpdate)
+        smartcity.devices.SmartCity.DeviceUpdateOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceUpdate_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceUpdate_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceUpdate_fieldAccessorTable
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceUpdate_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                smartcity.SmartCity.DeviceUpdate.class, smartcity.SmartCity.DeviceUpdate.Builder.class);
+                smartcity.devices.SmartCity.DeviceUpdate.class, smartcity.devices.SmartCity.DeviceUpdate.Builder.class);
       }
 
-      // Construct using smartcity.SmartCity.DeviceUpdate.newBuilder()
+      // Construct using smartcity.devices.SmartCity.DeviceUpdate.newBuilder()
       private Builder() {
 
       }
@@ -3144,17 +3161,17 @@ public final class SmartCity {
       @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceUpdate_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceUpdate_descriptor;
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceUpdate getDefaultInstanceForType() {
-        return smartcity.SmartCity.DeviceUpdate.getDefaultInstance();
+      public smartcity.devices.SmartCity.DeviceUpdate getDefaultInstanceForType() {
+        return smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance();
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceUpdate build() {
-        smartcity.SmartCity.DeviceUpdate result = buildPartial();
+      public smartcity.devices.SmartCity.DeviceUpdate build() {
+        smartcity.devices.SmartCity.DeviceUpdate result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
@@ -3162,14 +3179,14 @@ public final class SmartCity {
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceUpdate buildPartial() {
-        smartcity.SmartCity.DeviceUpdate result = new smartcity.SmartCity.DeviceUpdate(this);
+      public smartcity.devices.SmartCity.DeviceUpdate buildPartial() {
+        smartcity.devices.SmartCity.DeviceUpdate result = new smartcity.devices.SmartCity.DeviceUpdate(this);
         if (bitField0_ != 0) { buildPartial0(result); }
         onBuilt();
         return result;
       }
 
-      private void buildPartial0(smartcity.SmartCity.DeviceUpdate result) {
+      private void buildPartial0(smartcity.devices.SmartCity.DeviceUpdate result) {
         int from_bitField0_ = bitField0_;
         if (((from_bitField0_ & 0x00000001) != 0)) {
           result.deviceId_ = deviceId_;
@@ -3225,16 +3242,16 @@ public final class SmartCity {
       }
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof smartcity.SmartCity.DeviceUpdate) {
-          return mergeFrom((smartcity.SmartCity.DeviceUpdate)other);
+        if (other instanceof smartcity.devices.SmartCity.DeviceUpdate) {
+          return mergeFrom((smartcity.devices.SmartCity.DeviceUpdate)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(smartcity.SmartCity.DeviceUpdate other) {
-        if (other == smartcity.SmartCity.DeviceUpdate.getDefaultInstance()) return this;
+      public Builder mergeFrom(smartcity.devices.SmartCity.DeviceUpdate other) {
+        if (other == smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance()) return this;
         if (!other.getDeviceId().isEmpty()) {
           deviceId_ = other.deviceId_;
           bitField0_ |= 0x00000001;
@@ -3428,7 +3445,7 @@ public final class SmartCity {
        * Tipo do dispositivo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return The enum numeric value on the wire for type.
        */
       @java.lang.Override public int getTypeValue() {
@@ -3439,7 +3456,7 @@ public final class SmartCity {
        * Tipo do dispositivo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @param value The enum numeric value on the wire for type to set.
        * @return This builder for chaining.
        */
@@ -3454,24 +3471,24 @@ public final class SmartCity {
        * Tipo do dispositivo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return The type.
        */
       @java.lang.Override
-      public smartcity.SmartCity.DeviceType getType() {
-        smartcity.SmartCity.DeviceType result = smartcity.SmartCity.DeviceType.forNumber(type_);
-        return result == null ? smartcity.SmartCity.DeviceType.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.DeviceType getType() {
+        smartcity.devices.SmartCity.DeviceType result = smartcity.devices.SmartCity.DeviceType.forNumber(type_);
+        return result == null ? smartcity.devices.SmartCity.DeviceType.UNRECOGNIZED : result;
       }
       /**
        * <pre>
        * Tipo do dispositivo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @param value The type to set.
        * @return This builder for chaining.
        */
-      public Builder setType(smartcity.SmartCity.DeviceType value) {
+      public Builder setType(smartcity.devices.SmartCity.DeviceType value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -3485,7 +3502,7 @@ public final class SmartCity {
        * Tipo do dispositivo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return This builder for chaining.
        */
       public Builder clearType() {
@@ -3498,10 +3515,10 @@ public final class SmartCity {
       private int currentStatus_ = 0;
       /**
        * <pre>
-       * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+       * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus current_status = 3;</code>
+       * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
        * @return The enum numeric value on the wire for currentStatus.
        */
       @java.lang.Override public int getCurrentStatusValue() {
@@ -3509,10 +3526,10 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+       * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus current_status = 3;</code>
+       * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
        * @param value The enum numeric value on the wire for currentStatus to set.
        * @return This builder for chaining.
        */
@@ -3524,27 +3541,27 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+       * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus current_status = 3;</code>
+       * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
        * @return The currentStatus.
        */
       @java.lang.Override
-      public smartcity.SmartCity.DeviceStatus getCurrentStatus() {
-        smartcity.SmartCity.DeviceStatus result = smartcity.SmartCity.DeviceStatus.forNumber(currentStatus_);
-        return result == null ? smartcity.SmartCity.DeviceStatus.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.DeviceStatus getCurrentStatus() {
+        smartcity.devices.SmartCity.DeviceStatus result = smartcity.devices.SmartCity.DeviceStatus.forNumber(currentStatus_);
+        return result == null ? smartcity.devices.SmartCity.DeviceStatus.UNRECOGNIZED : result;
       }
       /**
        * <pre>
-       * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+       * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus current_status = 3;</code>
+       * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
        * @param value The currentStatus to set.
        * @return This builder for chaining.
        */
-      public Builder setCurrentStatus(smartcity.SmartCity.DeviceStatus value) {
+      public Builder setCurrentStatus(smartcity.devices.SmartCity.DeviceStatus value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -3555,10 +3572,10 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Para atuadores (e.g., ON/OFF para poste, RED/GREEN para semáforo) 
+       * Para atuadores (e.g., ON/OFF para alarme, RED/GREEN para semáforo)
        * </pre>
        *
-       * <code>.smartcity.DeviceStatus current_status = 3;</code>
+       * <code>.smartcity.devices.DeviceStatus current_status = 3;</code>
        * @return This builder for chaining.
        */
       public Builder clearCurrentStatus() {
@@ -3615,7 +3632,7 @@ public final class SmartCity {
       private double airQualityIndex_ ;
       /**
        * <pre>
-       * Para AIR_QUALITY_SENSOR
+       * Para AIR_QUALITY_SENSOR (usado para umidade)
        * </pre>
        *
        * <code>double air_quality_index = 5;</code>
@@ -3627,7 +3644,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Para AIR_QUALITY_SENSOR
+       * Para AIR_QUALITY_SENSOR (usado para umidade)
        * </pre>
        *
        * <code>double air_quality_index = 5;</code>
@@ -3643,7 +3660,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Para AIR_QUALITY_SENSOR
+       * Para AIR_QUALITY_SENSOR (usado para umidade)
        * </pre>
        *
        * <code>double air_quality_index = 5;</code>
@@ -3760,16 +3777,16 @@ public final class SmartCity {
       }
 
 
-      // @@protoc_insertion_point(builder_scope:smartcity.DeviceUpdate)
+      // @@protoc_insertion_point(builder_scope:smartcity.devices.DeviceUpdate)
     }
 
-    // @@protoc_insertion_point(class_scope:smartcity.DeviceUpdate)
-    private static final smartcity.SmartCity.DeviceUpdate DEFAULT_INSTANCE;
+    // @@protoc_insertion_point(class_scope:smartcity.devices.DeviceUpdate)
+    private static final smartcity.devices.SmartCity.DeviceUpdate DEFAULT_INSTANCE;
     static {
-      DEFAULT_INSTANCE = new smartcity.SmartCity.DeviceUpdate();
+      DEFAULT_INSTANCE = new smartcity.devices.SmartCity.DeviceUpdate();
     }
 
-    public static smartcity.SmartCity.DeviceUpdate getDefaultInstance() {
+    public static smartcity.devices.SmartCity.DeviceUpdate getDefaultInstance() {
       return DEFAULT_INSTANCE;
     }
 
@@ -3805,14 +3822,14 @@ public final class SmartCity {
     }
 
     @java.lang.Override
-    public smartcity.SmartCity.DeviceUpdate getDefaultInstanceForType() {
+    public smartcity.devices.SmartCity.DeviceUpdate getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
   }
 
   public interface DeviceCommandOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:smartcity.DeviceCommand)
+      // @@protoc_insertion_point(interface_extends:smartcity.devices.DeviceCommand)
       com.google.protobuf.MessageOrBuilder {
 
     /**
@@ -3840,7 +3857,7 @@ public final class SmartCity {
      * Tipo do dispositivo alvo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The enum numeric value on the wire for type.
      */
     int getTypeValue();
@@ -3849,14 +3866,14 @@ public final class SmartCity {
      * Tipo do dispositivo alvo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The type.
      */
-    smartcity.SmartCity.DeviceType getType();
+    smartcity.devices.SmartCity.DeviceType getType();
 
     /**
      * <pre>
-     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
      * </pre>
      *
      * <code>string command_type = 3;</code>
@@ -3865,7 +3882,7 @@ public final class SmartCity {
     java.lang.String getCommandType();
     /**
      * <pre>
-     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
      * </pre>
      *
      * <code>string command_type = 3;</code>
@@ -3876,7 +3893,7 @@ public final class SmartCity {
 
     /**
      * <pre>
-     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
      * </pre>
      *
      * <code>string command_value = 4;</code>
@@ -3885,7 +3902,7 @@ public final class SmartCity {
     java.lang.String getCommandValue();
     /**
      * <pre>
-     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
      * </pre>
      *
      * <code>string command_value = 4;</code>
@@ -3896,14 +3913,14 @@ public final class SmartCity {
   }
   /**
    * <pre>
-   * Mensagem para comandos enviados do Gateway para o Dispositivo (via TCP) 
+   * Mensagem para comandos enviados do Gateway para o Dispositivo (via TCP)
    * </pre>
    *
-   * Protobuf type {@code smartcity.DeviceCommand}
+   * Protobuf type {@code smartcity.devices.DeviceCommand}
    */
   public static final class DeviceCommand extends
       com.google.protobuf.GeneratedMessageV3 implements
-      // @@protoc_insertion_point(message_implements:smartcity.DeviceCommand)
+      // @@protoc_insertion_point(message_implements:smartcity.devices.DeviceCommand)
       DeviceCommandOrBuilder {
   private static final long serialVersionUID = 0L;
     // Use DeviceCommand.newBuilder() to construct.
@@ -3926,15 +3943,15 @@ public final class SmartCity {
 
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return smartcity.SmartCity.internal_static_smartcity_DeviceCommand_descriptor;
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceCommand_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return smartcity.SmartCity.internal_static_smartcity_DeviceCommand_fieldAccessorTable
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceCommand_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              smartcity.SmartCity.DeviceCommand.class, smartcity.SmartCity.DeviceCommand.Builder.class);
+              smartcity.devices.SmartCity.DeviceCommand.class, smartcity.devices.SmartCity.DeviceCommand.Builder.class);
     }
 
     public static final int DEVICE_ID_FIELD_NUMBER = 1;
@@ -3991,7 +4008,7 @@ public final class SmartCity {
      * Tipo do dispositivo alvo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The enum numeric value on the wire for type.
      */
     @java.lang.Override public int getTypeValue() {
@@ -4002,12 +4019,12 @@ public final class SmartCity {
      * Tipo do dispositivo alvo
      * </pre>
      *
-     * <code>.smartcity.DeviceType type = 2;</code>
+     * <code>.smartcity.devices.DeviceType type = 2;</code>
      * @return The type.
      */
-    @java.lang.Override public smartcity.SmartCity.DeviceType getType() {
-      smartcity.SmartCity.DeviceType result = smartcity.SmartCity.DeviceType.forNumber(type_);
-      return result == null ? smartcity.SmartCity.DeviceType.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.DeviceType getType() {
+      smartcity.devices.SmartCity.DeviceType result = smartcity.devices.SmartCity.DeviceType.forNumber(type_);
+      return result == null ? smartcity.devices.SmartCity.DeviceType.UNRECOGNIZED : result;
     }
 
     public static final int COMMAND_TYPE_FIELD_NUMBER = 3;
@@ -4015,7 +4032,7 @@ public final class SmartCity {
     private volatile java.lang.Object commandType_ = "";
     /**
      * <pre>
-     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
      * </pre>
      *
      * <code>string command_type = 3;</code>
@@ -4036,7 +4053,7 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+     * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
      * </pre>
      *
      * <code>string command_type = 3;</code>
@@ -4062,7 +4079,7 @@ public final class SmartCity {
     private volatile java.lang.Object commandValue_ = "";
     /**
      * <pre>
-     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
      * </pre>
      *
      * <code>string command_value = 4;</code>
@@ -4083,7 +4100,7 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+     * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
      * </pre>
      *
      * <code>string command_value = 4;</code>
@@ -4121,7 +4138,7 @@ public final class SmartCity {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(deviceId_)) {
         com.google.protobuf.GeneratedMessageV3.writeString(output, 1, deviceId_);
       }
-      if (type_ != smartcity.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
         output.writeEnum(2, type_);
       }
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(commandType_)) {
@@ -4142,7 +4159,7 @@ public final class SmartCity {
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(deviceId_)) {
         size += com.google.protobuf.GeneratedMessageV3.computeStringSize(1, deviceId_);
       }
-      if (type_ != smartcity.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.DeviceType.UNKNOWN_DEVICE.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(2, type_);
       }
@@ -4162,10 +4179,10 @@ public final class SmartCity {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof smartcity.SmartCity.DeviceCommand)) {
+      if (!(obj instanceof smartcity.devices.SmartCity.DeviceCommand)) {
         return super.equals(obj);
       }
-      smartcity.SmartCity.DeviceCommand other = (smartcity.SmartCity.DeviceCommand) obj;
+      smartcity.devices.SmartCity.DeviceCommand other = (smartcity.devices.SmartCity.DeviceCommand) obj;
 
       if (!getDeviceId()
           .equals(other.getDeviceId())) return false;
@@ -4198,44 +4215,44 @@ public final class SmartCity {
       return hash;
     }
 
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         java.nio.ByteBuffer data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(byte[] data)
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -4243,26 +4260,26 @@ public final class SmartCity {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
-    public static smartcity.SmartCity.DeviceCommand parseDelimitedFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.DeviceCommand parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input);
     }
 
-    public static smartcity.SmartCity.DeviceCommand parseDelimitedFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.DeviceCommand parseFrom(
+    public static smartcity.devices.SmartCity.DeviceCommand parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -4275,7 +4292,7 @@ public final class SmartCity {
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(smartcity.SmartCity.DeviceCommand prototype) {
+    public static Builder newBuilder(smartcity.devices.SmartCity.DeviceCommand prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
     @java.lang.Override
@@ -4292,29 +4309,29 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Mensagem para comandos enviados do Gateway para o Dispositivo (via TCP) 
+     * Mensagem para comandos enviados do Gateway para o Dispositivo (via TCP)
      * </pre>
      *
-     * Protobuf type {@code smartcity.DeviceCommand}
+     * Protobuf type {@code smartcity.devices.DeviceCommand}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:smartcity.DeviceCommand)
-        smartcity.SmartCity.DeviceCommandOrBuilder {
+        // @@protoc_insertion_point(builder_implements:smartcity.devices.DeviceCommand)
+        smartcity.devices.SmartCity.DeviceCommandOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceCommand_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceCommand_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceCommand_fieldAccessorTable
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceCommand_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                smartcity.SmartCity.DeviceCommand.class, smartcity.SmartCity.DeviceCommand.Builder.class);
+                smartcity.devices.SmartCity.DeviceCommand.class, smartcity.devices.SmartCity.DeviceCommand.Builder.class);
       }
 
-      // Construct using smartcity.SmartCity.DeviceCommand.newBuilder()
+      // Construct using smartcity.devices.SmartCity.DeviceCommand.newBuilder()
       private Builder() {
 
       }
@@ -4338,17 +4355,17 @@ public final class SmartCity {
       @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return smartcity.SmartCity.internal_static_smartcity_DeviceCommand_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_DeviceCommand_descriptor;
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceCommand getDefaultInstanceForType() {
-        return smartcity.SmartCity.DeviceCommand.getDefaultInstance();
+      public smartcity.devices.SmartCity.DeviceCommand getDefaultInstanceForType() {
+        return smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance();
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceCommand build() {
-        smartcity.SmartCity.DeviceCommand result = buildPartial();
+      public smartcity.devices.SmartCity.DeviceCommand build() {
+        smartcity.devices.SmartCity.DeviceCommand result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
@@ -4356,14 +4373,14 @@ public final class SmartCity {
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.DeviceCommand buildPartial() {
-        smartcity.SmartCity.DeviceCommand result = new smartcity.SmartCity.DeviceCommand(this);
+      public smartcity.devices.SmartCity.DeviceCommand buildPartial() {
+        smartcity.devices.SmartCity.DeviceCommand result = new smartcity.devices.SmartCity.DeviceCommand(this);
         if (bitField0_ != 0) { buildPartial0(result); }
         onBuilt();
         return result;
       }
 
-      private void buildPartial0(smartcity.SmartCity.DeviceCommand result) {
+      private void buildPartial0(smartcity.devices.SmartCity.DeviceCommand result) {
         int from_bitField0_ = bitField0_;
         if (((from_bitField0_ & 0x00000001) != 0)) {
           result.deviceId_ = deviceId_;
@@ -4413,16 +4430,16 @@ public final class SmartCity {
       }
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof smartcity.SmartCity.DeviceCommand) {
-          return mergeFrom((smartcity.SmartCity.DeviceCommand)other);
+        if (other instanceof smartcity.devices.SmartCity.DeviceCommand) {
+          return mergeFrom((smartcity.devices.SmartCity.DeviceCommand)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(smartcity.SmartCity.DeviceCommand other) {
-        if (other == smartcity.SmartCity.DeviceCommand.getDefaultInstance()) return this;
+      public Builder mergeFrom(smartcity.devices.SmartCity.DeviceCommand other) {
+        if (other == smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance()) return this;
         if (!other.getDeviceId().isEmpty()) {
           deviceId_ = other.deviceId_;
           bitField0_ |= 0x00000001;
@@ -4602,7 +4619,7 @@ public final class SmartCity {
        * Tipo do dispositivo alvo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return The enum numeric value on the wire for type.
        */
       @java.lang.Override public int getTypeValue() {
@@ -4613,7 +4630,7 @@ public final class SmartCity {
        * Tipo do dispositivo alvo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @param value The enum numeric value on the wire for type to set.
        * @return This builder for chaining.
        */
@@ -4628,24 +4645,24 @@ public final class SmartCity {
        * Tipo do dispositivo alvo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return The type.
        */
       @java.lang.Override
-      public smartcity.SmartCity.DeviceType getType() {
-        smartcity.SmartCity.DeviceType result = smartcity.SmartCity.DeviceType.forNumber(type_);
-        return result == null ? smartcity.SmartCity.DeviceType.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.DeviceType getType() {
+        smartcity.devices.SmartCity.DeviceType result = smartcity.devices.SmartCity.DeviceType.forNumber(type_);
+        return result == null ? smartcity.devices.SmartCity.DeviceType.UNRECOGNIZED : result;
       }
       /**
        * <pre>
        * Tipo do dispositivo alvo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @param value The type to set.
        * @return This builder for chaining.
        */
-      public Builder setType(smartcity.SmartCity.DeviceType value) {
+      public Builder setType(smartcity.devices.SmartCity.DeviceType value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -4659,7 +4676,7 @@ public final class SmartCity {
        * Tipo do dispositivo alvo
        * </pre>
        *
-       * <code>.smartcity.DeviceType type = 2;</code>
+       * <code>.smartcity.devices.DeviceType type = 2;</code>
        * @return This builder for chaining.
        */
       public Builder clearType() {
@@ -4672,7 +4689,7 @@ public final class SmartCity {
       private java.lang.Object commandType_ = "";
       /**
        * <pre>
-       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
        * </pre>
        *
        * <code>string command_type = 3;</code>
@@ -4692,7 +4709,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
        * </pre>
        *
        * <code>string command_type = 3;</code>
@@ -4713,7 +4730,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
        * </pre>
        *
        * <code>string command_type = 3;</code>
@@ -4730,7 +4747,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
        * </pre>
        *
        * <code>string command_type = 3;</code>
@@ -4744,7 +4761,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER") 
+       * Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
        * </pre>
        *
        * <code>string command_type = 3;</code>
@@ -4764,7 +4781,7 @@ public final class SmartCity {
       private java.lang.Object commandValue_ = "";
       /**
        * <pre>
-       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
        * </pre>
        *
        * <code>string command_value = 4;</code>
@@ -4784,7 +4801,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
        * </pre>
        *
        * <code>string command_value = 4;</code>
@@ -4805,7 +4822,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
        * </pre>
        *
        * <code>string command_value = 4;</code>
@@ -4822,7 +4839,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
        * </pre>
        *
        * <code>string command_value = 4;</code>
@@ -4836,7 +4853,7 @@ public final class SmartCity {
       }
       /**
        * <pre>
-       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores. 
+       * Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
        * </pre>
        *
        * <code>string command_value = 4;</code>
@@ -4865,16 +4882,16 @@ public final class SmartCity {
       }
 
 
-      // @@protoc_insertion_point(builder_scope:smartcity.DeviceCommand)
+      // @@protoc_insertion_point(builder_scope:smartcity.devices.DeviceCommand)
     }
 
-    // @@protoc_insertion_point(class_scope:smartcity.DeviceCommand)
-    private static final smartcity.SmartCity.DeviceCommand DEFAULT_INSTANCE;
+    // @@protoc_insertion_point(class_scope:smartcity.devices.DeviceCommand)
+    private static final smartcity.devices.SmartCity.DeviceCommand DEFAULT_INSTANCE;
     static {
-      DEFAULT_INSTANCE = new smartcity.SmartCity.DeviceCommand();
+      DEFAULT_INSTANCE = new smartcity.devices.SmartCity.DeviceCommand();
     }
 
-    public static smartcity.SmartCity.DeviceCommand getDefaultInstance() {
+    public static smartcity.devices.SmartCity.DeviceCommand getDefaultInstance() {
       return DEFAULT_INSTANCE;
     }
 
@@ -4910,26 +4927,26 @@ public final class SmartCity {
     }
 
     @java.lang.Override
-    public smartcity.SmartCity.DeviceCommand getDefaultInstanceForType() {
+    public smartcity.devices.SmartCity.DeviceCommand getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
   }
 
   public interface ClientRequestOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:smartcity.ClientRequest)
+      // @@protoc_insertion_point(interface_extends:smartcity.devices.ClientRequest)
       com.google.protobuf.MessageOrBuilder {
 
     /**
-     * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+     * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
      * @return The enum numeric value on the wire for type.
      */
     int getTypeValue();
     /**
-     * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+     * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
      * @return The type.
      */
-    smartcity.SmartCity.ClientRequest.RequestType getType();
+    smartcity.devices.SmartCity.ClientRequest.RequestType getType();
 
     /**
      * <pre>
@@ -4956,7 +4973,7 @@ public final class SmartCity {
      * Necessário para SEND_DEVICE_COMMAND
      * </pre>
      *
-     * <code>.smartcity.DeviceCommand command = 3;</code>
+     * <code>.smartcity.devices.DeviceCommand command = 3;</code>
      * @return Whether the command field is set.
      */
     boolean hasCommand();
@@ -4965,29 +4982,29 @@ public final class SmartCity {
      * Necessário para SEND_DEVICE_COMMAND
      * </pre>
      *
-     * <code>.smartcity.DeviceCommand command = 3;</code>
+     * <code>.smartcity.devices.DeviceCommand command = 3;</code>
      * @return The command.
      */
-    smartcity.SmartCity.DeviceCommand getCommand();
+    smartcity.devices.SmartCity.DeviceCommand getCommand();
     /**
      * <pre>
      * Necessário para SEND_DEVICE_COMMAND
      * </pre>
      *
-     * <code>.smartcity.DeviceCommand command = 3;</code>
+     * <code>.smartcity.devices.DeviceCommand command = 3;</code>
      */
-    smartcity.SmartCity.DeviceCommandOrBuilder getCommandOrBuilder();
+    smartcity.devices.SmartCity.DeviceCommandOrBuilder getCommandOrBuilder();
   }
   /**
    * <pre>
-   * Requisições do Cliente para o Gateway 
+   * Requisições do Cliente para o Gateway
    * </pre>
    *
-   * Protobuf type {@code smartcity.ClientRequest}
+   * Protobuf type {@code smartcity.devices.ClientRequest}
    */
   public static final class ClientRequest extends
       com.google.protobuf.GeneratedMessageV3 implements
-      // @@protoc_insertion_point(message_implements:smartcity.ClientRequest)
+      // @@protoc_insertion_point(message_implements:smartcity.devices.ClientRequest)
       ClientRequestOrBuilder {
   private static final long serialVersionUID = 0L;
     // Use ClientRequest.newBuilder() to construct.
@@ -5008,19 +5025,19 @@ public final class SmartCity {
 
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return smartcity.SmartCity.internal_static_smartcity_ClientRequest_descriptor;
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_ClientRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return smartcity.SmartCity.internal_static_smartcity_ClientRequest_fieldAccessorTable
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_ClientRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              smartcity.SmartCity.ClientRequest.class, smartcity.SmartCity.ClientRequest.Builder.class);
+              smartcity.devices.SmartCity.ClientRequest.class, smartcity.devices.SmartCity.ClientRequest.Builder.class);
     }
 
     /**
-     * Protobuf enum {@code smartcity.ClientRequest.RequestType}
+     * Protobuf enum {@code smartcity.devices.ClientRequest.RequestType}
      */
     public enum RequestType
         implements com.google.protobuf.ProtocolMessageEnum {
@@ -5034,7 +5051,7 @@ public final class SmartCity {
       UNKNOWN_REQUEST(0),
       /**
        * <pre>
-       * Cliente requisita uma lista de dispositivos conectados 
+       * Cliente requisita uma lista de dispositivos conectados
        * </pre>
        *
        * <code>LIST_DEVICES = 1;</code>
@@ -5042,7 +5059,7 @@ public final class SmartCity {
       LIST_DEVICES(1),
       /**
        * <pre>
-       * Cliente requisita o status de um dispositivo específico 
+       * Cliente requisita o status de um dispositivo específico
        * </pre>
        *
        * <code>GET_DEVICE_STATUS = 2;</code>
@@ -5050,7 +5067,7 @@ public final class SmartCity {
       GET_DEVICE_STATUS(2),
       /**
        * <pre>
-       * Cliente envia um comando para um dispositivo específico 
+       * Cliente envia um comando para um dispositivo específico
        * </pre>
        *
        * <code>SEND_DEVICE_COMMAND = 3;</code>
@@ -5069,7 +5086,7 @@ public final class SmartCity {
       public static final int UNKNOWN_REQUEST_VALUE = 0;
       /**
        * <pre>
-       * Cliente requisita uma lista de dispositivos conectados 
+       * Cliente requisita uma lista de dispositivos conectados
        * </pre>
        *
        * <code>LIST_DEVICES = 1;</code>
@@ -5077,7 +5094,7 @@ public final class SmartCity {
       public static final int LIST_DEVICES_VALUE = 1;
       /**
        * <pre>
-       * Cliente requisita o status de um dispositivo específico 
+       * Cliente requisita o status de um dispositivo específico
        * </pre>
        *
        * <code>GET_DEVICE_STATUS = 2;</code>
@@ -5085,7 +5102,7 @@ public final class SmartCity {
       public static final int GET_DEVICE_STATUS_VALUE = 2;
       /**
        * <pre>
-       * Cliente envia um comando para um dispositivo específico 
+       * Cliente envia um comando para um dispositivo específico
        * </pre>
        *
        * <code>SEND_DEVICE_COMMAND = 3;</code>
@@ -5151,7 +5168,7 @@ public final class SmartCity {
       }
       public static final com.google.protobuf.Descriptors.EnumDescriptor
           getDescriptor() {
-        return smartcity.SmartCity.ClientRequest.getDescriptor().getEnumTypes().get(0);
+        return smartcity.devices.SmartCity.ClientRequest.getDescriptor().getEnumTypes().get(0);
       }
 
       private static final RequestType[] VALUES = values();
@@ -5174,26 +5191,26 @@ public final class SmartCity {
         this.value = value;
       }
 
-      // @@protoc_insertion_point(enum_scope:smartcity.ClientRequest.RequestType)
+      // @@protoc_insertion_point(enum_scope:smartcity.devices.ClientRequest.RequestType)
     }
 
     private int bitField0_;
     public static final int TYPE_FIELD_NUMBER = 1;
     private int type_ = 0;
     /**
-     * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+     * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
      * @return The enum numeric value on the wire for type.
      */
     @java.lang.Override public int getTypeValue() {
       return type_;
     }
     /**
-     * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+     * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
      * @return The type.
      */
-    @java.lang.Override public smartcity.SmartCity.ClientRequest.RequestType getType() {
-      smartcity.SmartCity.ClientRequest.RequestType result = smartcity.SmartCity.ClientRequest.RequestType.forNumber(type_);
-      return result == null ? smartcity.SmartCity.ClientRequest.RequestType.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.ClientRequest.RequestType getType() {
+      smartcity.devices.SmartCity.ClientRequest.RequestType result = smartcity.devices.SmartCity.ClientRequest.RequestType.forNumber(type_);
+      return result == null ? smartcity.devices.SmartCity.ClientRequest.RequestType.UNRECOGNIZED : result;
     }
 
     public static final int TARGET_DEVICE_ID_FIELD_NUMBER = 2;
@@ -5244,13 +5261,13 @@ public final class SmartCity {
     }
 
     public static final int COMMAND_FIELD_NUMBER = 3;
-    private smartcity.SmartCity.DeviceCommand command_;
+    private smartcity.devices.SmartCity.DeviceCommand command_;
     /**
      * <pre>
      * Necessário para SEND_DEVICE_COMMAND
      * </pre>
      *
-     * <code>.smartcity.DeviceCommand command = 3;</code>
+     * <code>.smartcity.devices.DeviceCommand command = 3;</code>
      * @return Whether the command field is set.
      */
     @java.lang.Override
@@ -5262,23 +5279,23 @@ public final class SmartCity {
      * Necessário para SEND_DEVICE_COMMAND
      * </pre>
      *
-     * <code>.smartcity.DeviceCommand command = 3;</code>
+     * <code>.smartcity.devices.DeviceCommand command = 3;</code>
      * @return The command.
      */
     @java.lang.Override
-    public smartcity.SmartCity.DeviceCommand getCommand() {
-      return command_ == null ? smartcity.SmartCity.DeviceCommand.getDefaultInstance() : command_;
+    public smartcity.devices.SmartCity.DeviceCommand getCommand() {
+      return command_ == null ? smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance() : command_;
     }
     /**
      * <pre>
      * Necessário para SEND_DEVICE_COMMAND
      * </pre>
      *
-     * <code>.smartcity.DeviceCommand command = 3;</code>
+     * <code>.smartcity.devices.DeviceCommand command = 3;</code>
      */
     @java.lang.Override
-    public smartcity.SmartCity.DeviceCommandOrBuilder getCommandOrBuilder() {
-      return command_ == null ? smartcity.SmartCity.DeviceCommand.getDefaultInstance() : command_;
+    public smartcity.devices.SmartCity.DeviceCommandOrBuilder getCommandOrBuilder() {
+      return command_ == null ? smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance() : command_;
     }
 
     private byte memoizedIsInitialized = -1;
@@ -5295,7 +5312,7 @@ public final class SmartCity {
     @java.lang.Override
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
-      if (type_ != smartcity.SmartCity.ClientRequest.RequestType.UNKNOWN_REQUEST.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.ClientRequest.RequestType.UNKNOWN_REQUEST.getNumber()) {
         output.writeEnum(1, type_);
       }
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(targetDeviceId_)) {
@@ -5313,7 +5330,7 @@ public final class SmartCity {
       if (size != -1) return size;
 
       size = 0;
-      if (type_ != smartcity.SmartCity.ClientRequest.RequestType.UNKNOWN_REQUEST.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.ClientRequest.RequestType.UNKNOWN_REQUEST.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(1, type_);
       }
@@ -5334,10 +5351,10 @@ public final class SmartCity {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof smartcity.SmartCity.ClientRequest)) {
+      if (!(obj instanceof smartcity.devices.SmartCity.ClientRequest)) {
         return super.equals(obj);
       }
-      smartcity.SmartCity.ClientRequest other = (smartcity.SmartCity.ClientRequest) obj;
+      smartcity.devices.SmartCity.ClientRequest other = (smartcity.devices.SmartCity.ClientRequest) obj;
 
       if (type_ != other.type_) return false;
       if (!getTargetDeviceId()
@@ -5371,44 +5388,44 @@ public final class SmartCity {
       return hash;
     }
 
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         java.nio.ByteBuffer data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(byte[] data)
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -5416,26 +5433,26 @@ public final class SmartCity {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
-    public static smartcity.SmartCity.ClientRequest parseDelimitedFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.ClientRequest parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input);
     }
 
-    public static smartcity.SmartCity.ClientRequest parseDelimitedFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.ClientRequest parseFrom(
+    public static smartcity.devices.SmartCity.ClientRequest parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -5448,7 +5465,7 @@ public final class SmartCity {
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(smartcity.SmartCity.ClientRequest prototype) {
+    public static Builder newBuilder(smartcity.devices.SmartCity.ClientRequest prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
     @java.lang.Override
@@ -5465,29 +5482,29 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Requisições do Cliente para o Gateway 
+     * Requisições do Cliente para o Gateway
      * </pre>
      *
-     * Protobuf type {@code smartcity.ClientRequest}
+     * Protobuf type {@code smartcity.devices.ClientRequest}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:smartcity.ClientRequest)
-        smartcity.SmartCity.ClientRequestOrBuilder {
+        // @@protoc_insertion_point(builder_implements:smartcity.devices.ClientRequest)
+        smartcity.devices.SmartCity.ClientRequestOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return smartcity.SmartCity.internal_static_smartcity_ClientRequest_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_ClientRequest_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return smartcity.SmartCity.internal_static_smartcity_ClientRequest_fieldAccessorTable
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_ClientRequest_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                smartcity.SmartCity.ClientRequest.class, smartcity.SmartCity.ClientRequest.Builder.class);
+                smartcity.devices.SmartCity.ClientRequest.class, smartcity.devices.SmartCity.ClientRequest.Builder.class);
       }
 
-      // Construct using smartcity.SmartCity.ClientRequest.newBuilder()
+      // Construct using smartcity.devices.SmartCity.ClientRequest.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
@@ -5520,17 +5537,17 @@ public final class SmartCity {
       @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return smartcity.SmartCity.internal_static_smartcity_ClientRequest_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_ClientRequest_descriptor;
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.ClientRequest getDefaultInstanceForType() {
-        return smartcity.SmartCity.ClientRequest.getDefaultInstance();
+      public smartcity.devices.SmartCity.ClientRequest getDefaultInstanceForType() {
+        return smartcity.devices.SmartCity.ClientRequest.getDefaultInstance();
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.ClientRequest build() {
-        smartcity.SmartCity.ClientRequest result = buildPartial();
+      public smartcity.devices.SmartCity.ClientRequest build() {
+        smartcity.devices.SmartCity.ClientRequest result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
@@ -5538,14 +5555,14 @@ public final class SmartCity {
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.ClientRequest buildPartial() {
-        smartcity.SmartCity.ClientRequest result = new smartcity.SmartCity.ClientRequest(this);
+      public smartcity.devices.SmartCity.ClientRequest buildPartial() {
+        smartcity.devices.SmartCity.ClientRequest result = new smartcity.devices.SmartCity.ClientRequest(this);
         if (bitField0_ != 0) { buildPartial0(result); }
         onBuilt();
         return result;
       }
 
-      private void buildPartial0(smartcity.SmartCity.ClientRequest result) {
+      private void buildPartial0(smartcity.devices.SmartCity.ClientRequest result) {
         int from_bitField0_ = bitField0_;
         if (((from_bitField0_ & 0x00000001) != 0)) {
           result.type_ = type_;
@@ -5597,16 +5614,16 @@ public final class SmartCity {
       }
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof smartcity.SmartCity.ClientRequest) {
-          return mergeFrom((smartcity.SmartCity.ClientRequest)other);
+        if (other instanceof smartcity.devices.SmartCity.ClientRequest) {
+          return mergeFrom((smartcity.devices.SmartCity.ClientRequest)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(smartcity.SmartCity.ClientRequest other) {
-        if (other == smartcity.SmartCity.ClientRequest.getDefaultInstance()) return this;
+      public Builder mergeFrom(smartcity.devices.SmartCity.ClientRequest other) {
+        if (other == smartcity.devices.SmartCity.ClientRequest.getDefaultInstance()) return this;
         if (other.type_ != 0) {
           setTypeValue(other.getTypeValue());
         }
@@ -5680,14 +5697,14 @@ public final class SmartCity {
 
       private int type_ = 0;
       /**
-       * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+       * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
        * @return The enum numeric value on the wire for type.
        */
       @java.lang.Override public int getTypeValue() {
         return type_;
       }
       /**
-       * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+       * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
        * @param value The enum numeric value on the wire for type to set.
        * @return This builder for chaining.
        */
@@ -5698,20 +5715,20 @@ public final class SmartCity {
         return this;
       }
       /**
-       * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+       * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
        * @return The type.
        */
       @java.lang.Override
-      public smartcity.SmartCity.ClientRequest.RequestType getType() {
-        smartcity.SmartCity.ClientRequest.RequestType result = smartcity.SmartCity.ClientRequest.RequestType.forNumber(type_);
-        return result == null ? smartcity.SmartCity.ClientRequest.RequestType.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.ClientRequest.RequestType getType() {
+        smartcity.devices.SmartCity.ClientRequest.RequestType result = smartcity.devices.SmartCity.ClientRequest.RequestType.forNumber(type_);
+        return result == null ? smartcity.devices.SmartCity.ClientRequest.RequestType.UNRECOGNIZED : result;
       }
       /**
-       * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+       * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
        * @param value The type to set.
        * @return This builder for chaining.
        */
-      public Builder setType(smartcity.SmartCity.ClientRequest.RequestType value) {
+      public Builder setType(smartcity.devices.SmartCity.ClientRequest.RequestType value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -5721,7 +5738,7 @@ public final class SmartCity {
         return this;
       }
       /**
-       * <code>.smartcity.ClientRequest.RequestType type = 1;</code>
+       * <code>.smartcity.devices.ClientRequest.RequestType type = 1;</code>
        * @return This builder for chaining.
        */
       public Builder clearType() {
@@ -5823,15 +5840,15 @@ public final class SmartCity {
         return this;
       }
 
-      private smartcity.SmartCity.DeviceCommand command_;
+      private smartcity.devices.SmartCity.DeviceCommand command_;
       private com.google.protobuf.SingleFieldBuilderV3<
-          smartcity.SmartCity.DeviceCommand, smartcity.SmartCity.DeviceCommand.Builder, smartcity.SmartCity.DeviceCommandOrBuilder> commandBuilder_;
+          smartcity.devices.SmartCity.DeviceCommand, smartcity.devices.SmartCity.DeviceCommand.Builder, smartcity.devices.SmartCity.DeviceCommandOrBuilder> commandBuilder_;
       /**
        * <pre>
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        * @return Whether the command field is set.
        */
       public boolean hasCommand() {
@@ -5842,12 +5859,12 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        * @return The command.
        */
-      public smartcity.SmartCity.DeviceCommand getCommand() {
+      public smartcity.devices.SmartCity.DeviceCommand getCommand() {
         if (commandBuilder_ == null) {
-          return command_ == null ? smartcity.SmartCity.DeviceCommand.getDefaultInstance() : command_;
+          return command_ == null ? smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance() : command_;
         } else {
           return commandBuilder_.getMessage();
         }
@@ -5857,9 +5874,9 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
-      public Builder setCommand(smartcity.SmartCity.DeviceCommand value) {
+      public Builder setCommand(smartcity.devices.SmartCity.DeviceCommand value) {
         if (commandBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
@@ -5877,10 +5894,10 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
       public Builder setCommand(
-          smartcity.SmartCity.DeviceCommand.Builder builderForValue) {
+          smartcity.devices.SmartCity.DeviceCommand.Builder builderForValue) {
         if (commandBuilder_ == null) {
           command_ = builderForValue.build();
         } else {
@@ -5895,13 +5912,13 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
-      public Builder mergeCommand(smartcity.SmartCity.DeviceCommand value) {
+      public Builder mergeCommand(smartcity.devices.SmartCity.DeviceCommand value) {
         if (commandBuilder_ == null) {
           if (((bitField0_ & 0x00000004) != 0) &&
             command_ != null &&
-            command_ != smartcity.SmartCity.DeviceCommand.getDefaultInstance()) {
+            command_ != smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance()) {
             getCommandBuilder().mergeFrom(value);
           } else {
             command_ = value;
@@ -5920,7 +5937,7 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
       public Builder clearCommand() {
         bitField0_ = (bitField0_ & ~0x00000004);
@@ -5937,9 +5954,9 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
-      public smartcity.SmartCity.DeviceCommand.Builder getCommandBuilder() {
+      public smartcity.devices.SmartCity.DeviceCommand.Builder getCommandBuilder() {
         bitField0_ |= 0x00000004;
         onChanged();
         return getCommandFieldBuilder().getBuilder();
@@ -5949,14 +5966,14 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
-      public smartcity.SmartCity.DeviceCommandOrBuilder getCommandOrBuilder() {
+      public smartcity.devices.SmartCity.DeviceCommandOrBuilder getCommandOrBuilder() {
         if (commandBuilder_ != null) {
           return commandBuilder_.getMessageOrBuilder();
         } else {
           return command_ == null ?
-              smartcity.SmartCity.DeviceCommand.getDefaultInstance() : command_;
+              smartcity.devices.SmartCity.DeviceCommand.getDefaultInstance() : command_;
         }
       }
       /**
@@ -5964,14 +5981,14 @@ public final class SmartCity {
        * Necessário para SEND_DEVICE_COMMAND
        * </pre>
        *
-       * <code>.smartcity.DeviceCommand command = 3;</code>
+       * <code>.smartcity.devices.DeviceCommand command = 3;</code>
        */
       private com.google.protobuf.SingleFieldBuilderV3<
-          smartcity.SmartCity.DeviceCommand, smartcity.SmartCity.DeviceCommand.Builder, smartcity.SmartCity.DeviceCommandOrBuilder> 
+          smartcity.devices.SmartCity.DeviceCommand, smartcity.devices.SmartCity.DeviceCommand.Builder, smartcity.devices.SmartCity.DeviceCommandOrBuilder> 
           getCommandFieldBuilder() {
         if (commandBuilder_ == null) {
           commandBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              smartcity.SmartCity.DeviceCommand, smartcity.SmartCity.DeviceCommand.Builder, smartcity.SmartCity.DeviceCommandOrBuilder>(
+              smartcity.devices.SmartCity.DeviceCommand, smartcity.devices.SmartCity.DeviceCommand.Builder, smartcity.devices.SmartCity.DeviceCommandOrBuilder>(
                   getCommand(),
                   getParentForChildren(),
                   isClean());
@@ -5992,16 +6009,16 @@ public final class SmartCity {
       }
 
 
-      // @@protoc_insertion_point(builder_scope:smartcity.ClientRequest)
+      // @@protoc_insertion_point(builder_scope:smartcity.devices.ClientRequest)
     }
 
-    // @@protoc_insertion_point(class_scope:smartcity.ClientRequest)
-    private static final smartcity.SmartCity.ClientRequest DEFAULT_INSTANCE;
+    // @@protoc_insertion_point(class_scope:smartcity.devices.ClientRequest)
+    private static final smartcity.devices.SmartCity.ClientRequest DEFAULT_INSTANCE;
     static {
-      DEFAULT_INSTANCE = new smartcity.SmartCity.ClientRequest();
+      DEFAULT_INSTANCE = new smartcity.devices.SmartCity.ClientRequest();
     }
 
-    public static smartcity.SmartCity.ClientRequest getDefaultInstance() {
+    public static smartcity.devices.SmartCity.ClientRequest getDefaultInstance() {
       return DEFAULT_INSTANCE;
     }
 
@@ -6037,26 +6054,26 @@ public final class SmartCity {
     }
 
     @java.lang.Override
-    public smartcity.SmartCity.ClientRequest getDefaultInstanceForType() {
+    public smartcity.devices.SmartCity.ClientRequest getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
   }
 
   public interface GatewayResponseOrBuilder extends
-      // @@protoc_insertion_point(interface_extends:smartcity.GatewayResponse)
+      // @@protoc_insertion_point(interface_extends:smartcity.devices.GatewayResponse)
       com.google.protobuf.MessageOrBuilder {
 
     /**
-     * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+     * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
      * @return The enum numeric value on the wire for type.
      */
     int getTypeValue();
     /**
-     * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+     * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
      * @return The type.
      */
-    smartcity.SmartCity.GatewayResponse.ResponseType getType();
+    smartcity.devices.SmartCity.GatewayResponse.ResponseType getType();
 
     /**
      * <pre>
@@ -6083,24 +6100,24 @@ public final class SmartCity {
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
-    java.util.List<smartcity.SmartCity.DeviceInfo> 
+    java.util.List<smartcity.devices.SmartCity.DeviceInfo> 
         getDevicesList();
     /**
      * <pre>
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
-    smartcity.SmartCity.DeviceInfo getDevices(int index);
+    smartcity.devices.SmartCity.DeviceInfo getDevices(int index);
     /**
      * <pre>
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
     int getDevicesCount();
     /**
@@ -6108,18 +6125,18 @@ public final class SmartCity {
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
-    java.util.List<? extends smartcity.SmartCity.DeviceInfoOrBuilder> 
+    java.util.List<? extends smartcity.devices.SmartCity.DeviceInfoOrBuilder> 
         getDevicesOrBuilderList();
     /**
      * <pre>
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
-    smartcity.SmartCity.DeviceInfoOrBuilder getDevicesOrBuilder(
+    smartcity.devices.SmartCity.DeviceInfoOrBuilder getDevicesOrBuilder(
         int index);
 
     /**
@@ -6127,7 +6144,7 @@ public final class SmartCity {
      * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
      * </pre>
      *
-     * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+     * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
      * @return Whether the deviceStatus field is set.
      */
     boolean hasDeviceStatus();
@@ -6136,18 +6153,18 @@ public final class SmartCity {
      * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
      * </pre>
      *
-     * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+     * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
      * @return The deviceStatus.
      */
-    smartcity.SmartCity.DeviceUpdate getDeviceStatus();
+    smartcity.devices.SmartCity.DeviceUpdate getDeviceStatus();
     /**
      * <pre>
      * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
      * </pre>
      *
-     * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+     * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
      */
-    smartcity.SmartCity.DeviceUpdateOrBuilder getDeviceStatusOrBuilder();
+    smartcity.devices.SmartCity.DeviceUpdateOrBuilder getDeviceStatusOrBuilder();
 
     /**
      * <pre>
@@ -6171,14 +6188,14 @@ public final class SmartCity {
   }
   /**
    * <pre>
-   * Respostas do Gateway para o Cliente 
+   * Respostas do Gateway para o Cliente
    * </pre>
    *
-   * Protobuf type {@code smartcity.GatewayResponse}
+   * Protobuf type {@code smartcity.devices.GatewayResponse}
    */
   public static final class GatewayResponse extends
       com.google.protobuf.GeneratedMessageV3 implements
-      // @@protoc_insertion_point(message_implements:smartcity.GatewayResponse)
+      // @@protoc_insertion_point(message_implements:smartcity.devices.GatewayResponse)
       GatewayResponseOrBuilder {
   private static final long serialVersionUID = 0L;
     // Use GatewayResponse.newBuilder() to construct.
@@ -6201,19 +6218,19 @@ public final class SmartCity {
 
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return smartcity.SmartCity.internal_static_smartcity_GatewayResponse_descriptor;
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_GatewayResponse_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return smartcity.SmartCity.internal_static_smartcity_GatewayResponse_fieldAccessorTable
+      return smartcity.devices.SmartCity.internal_static_smartcity_devices_GatewayResponse_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              smartcity.SmartCity.GatewayResponse.class, smartcity.SmartCity.GatewayResponse.Builder.class);
+              smartcity.devices.SmartCity.GatewayResponse.class, smartcity.devices.SmartCity.GatewayResponse.Builder.class);
     }
 
     /**
-     * Protobuf enum {@code smartcity.GatewayResponse.ResponseType}
+     * Protobuf enum {@code smartcity.devices.GatewayResponse.ResponseType}
      */
     public enum ResponseType
         implements com.google.protobuf.ProtocolMessageEnum {
@@ -6361,7 +6378,7 @@ public final class SmartCity {
       }
       public static final com.google.protobuf.Descriptors.EnumDescriptor
           getDescriptor() {
-        return smartcity.SmartCity.GatewayResponse.getDescriptor().getEnumTypes().get(0);
+        return smartcity.devices.SmartCity.GatewayResponse.getDescriptor().getEnumTypes().get(0);
       }
 
       private static final ResponseType[] VALUES = values();
@@ -6384,26 +6401,26 @@ public final class SmartCity {
         this.value = value;
       }
 
-      // @@protoc_insertion_point(enum_scope:smartcity.GatewayResponse.ResponseType)
+      // @@protoc_insertion_point(enum_scope:smartcity.devices.GatewayResponse.ResponseType)
     }
 
     private int bitField0_;
     public static final int TYPE_FIELD_NUMBER = 1;
     private int type_ = 0;
     /**
-     * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+     * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
      * @return The enum numeric value on the wire for type.
      */
     @java.lang.Override public int getTypeValue() {
       return type_;
     }
     /**
-     * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+     * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
      * @return The type.
      */
-    @java.lang.Override public smartcity.SmartCity.GatewayResponse.ResponseType getType() {
-      smartcity.SmartCity.GatewayResponse.ResponseType result = smartcity.SmartCity.GatewayResponse.ResponseType.forNumber(type_);
-      return result == null ? smartcity.SmartCity.GatewayResponse.ResponseType.UNRECOGNIZED : result;
+    @java.lang.Override public smartcity.devices.SmartCity.GatewayResponse.ResponseType getType() {
+      smartcity.devices.SmartCity.GatewayResponse.ResponseType result = smartcity.devices.SmartCity.GatewayResponse.ResponseType.forNumber(type_);
+      return result == null ? smartcity.devices.SmartCity.GatewayResponse.ResponseType.UNRECOGNIZED : result;
     }
 
     public static final int MESSAGE_FIELD_NUMBER = 2;
@@ -6455,16 +6472,16 @@ public final class SmartCity {
 
     public static final int DEVICES_FIELD_NUMBER = 3;
     @SuppressWarnings("serial")
-    private java.util.List<smartcity.SmartCity.DeviceInfo> devices_;
+    private java.util.List<smartcity.devices.SmartCity.DeviceInfo> devices_;
     /**
      * <pre>
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
     @java.lang.Override
-    public java.util.List<smartcity.SmartCity.DeviceInfo> getDevicesList() {
+    public java.util.List<smartcity.devices.SmartCity.DeviceInfo> getDevicesList() {
       return devices_;
     }
     /**
@@ -6472,10 +6489,10 @@ public final class SmartCity {
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
     @java.lang.Override
-    public java.util.List<? extends smartcity.SmartCity.DeviceInfoOrBuilder> 
+    public java.util.List<? extends smartcity.devices.SmartCity.DeviceInfoOrBuilder> 
         getDevicesOrBuilderList() {
       return devices_;
     }
@@ -6484,7 +6501,7 @@ public final class SmartCity {
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
     @java.lang.Override
     public int getDevicesCount() {
@@ -6495,10 +6512,10 @@ public final class SmartCity {
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
     @java.lang.Override
-    public smartcity.SmartCity.DeviceInfo getDevices(int index) {
+    public smartcity.devices.SmartCity.DeviceInfo getDevices(int index) {
       return devices_.get(index);
     }
     /**
@@ -6506,22 +6523,22 @@ public final class SmartCity {
      * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
      * </pre>
      *
-     * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+     * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
      */
     @java.lang.Override
-    public smartcity.SmartCity.DeviceInfoOrBuilder getDevicesOrBuilder(
+    public smartcity.devices.SmartCity.DeviceInfoOrBuilder getDevicesOrBuilder(
         int index) {
       return devices_.get(index);
     }
 
     public static final int DEVICE_STATUS_FIELD_NUMBER = 4;
-    private smartcity.SmartCity.DeviceUpdate deviceStatus_;
+    private smartcity.devices.SmartCity.DeviceUpdate deviceStatus_;
     /**
      * <pre>
      * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
      * </pre>
      *
-     * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+     * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
      * @return Whether the deviceStatus field is set.
      */
     @java.lang.Override
@@ -6533,23 +6550,23 @@ public final class SmartCity {
      * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
      * </pre>
      *
-     * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+     * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
      * @return The deviceStatus.
      */
     @java.lang.Override
-    public smartcity.SmartCity.DeviceUpdate getDeviceStatus() {
-      return deviceStatus_ == null ? smartcity.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
+    public smartcity.devices.SmartCity.DeviceUpdate getDeviceStatus() {
+      return deviceStatus_ == null ? smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
     }
     /**
      * <pre>
      * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
      * </pre>
      *
-     * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+     * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
      */
     @java.lang.Override
-    public smartcity.SmartCity.DeviceUpdateOrBuilder getDeviceStatusOrBuilder() {
-      return deviceStatus_ == null ? smartcity.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
+    public smartcity.devices.SmartCity.DeviceUpdateOrBuilder getDeviceStatusOrBuilder() {
+      return deviceStatus_ == null ? smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
     }
 
     public static final int COMMAND_STATUS_FIELD_NUMBER = 5;
@@ -6613,7 +6630,7 @@ public final class SmartCity {
     @java.lang.Override
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
-      if (type_ != smartcity.SmartCity.GatewayResponse.ResponseType.UNKNOWN_RESPONSE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.GatewayResponse.ResponseType.UNKNOWN_RESPONSE.getNumber()) {
         output.writeEnum(1, type_);
       }
       if (!com.google.protobuf.GeneratedMessageV3.isStringEmpty(message_)) {
@@ -6637,7 +6654,7 @@ public final class SmartCity {
       if (size != -1) return size;
 
       size = 0;
-      if (type_ != smartcity.SmartCity.GatewayResponse.ResponseType.UNKNOWN_RESPONSE.getNumber()) {
+      if (type_ != smartcity.devices.SmartCity.GatewayResponse.ResponseType.UNKNOWN_RESPONSE.getNumber()) {
         size += com.google.protobuf.CodedOutputStream
           .computeEnumSize(1, type_);
       }
@@ -6665,10 +6682,10 @@ public final class SmartCity {
       if (obj == this) {
        return true;
       }
-      if (!(obj instanceof smartcity.SmartCity.GatewayResponse)) {
+      if (!(obj instanceof smartcity.devices.SmartCity.GatewayResponse)) {
         return super.equals(obj);
       }
-      smartcity.SmartCity.GatewayResponse other = (smartcity.SmartCity.GatewayResponse) obj;
+      smartcity.devices.SmartCity.GatewayResponse other = (smartcity.devices.SmartCity.GatewayResponse) obj;
 
       if (type_ != other.type_) return false;
       if (!getMessage()
@@ -6712,44 +6729,44 @@ public final class SmartCity {
       return hash;
     }
 
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         java.nio.ByteBuffer data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         java.nio.ByteBuffer data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(byte[] data)
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
       return PARSER.parseFrom(data, extensionRegistry);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -6757,26 +6774,26 @@ public final class SmartCity {
           .parseWithIOException(PARSER, input, extensionRegistry);
     }
 
-    public static smartcity.SmartCity.GatewayResponse parseDelimitedFrom(java.io.InputStream input)
+    public static smartcity.devices.SmartCity.GatewayResponse parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input);
     }
 
-    public static smartcity.SmartCity.GatewayResponse parseDelimitedFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
       return com.google.protobuf.GeneratedMessageV3
           .parseWithIOException(PARSER, input);
     }
-    public static smartcity.SmartCity.GatewayResponse parseFrom(
+    public static smartcity.devices.SmartCity.GatewayResponse parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
@@ -6789,7 +6806,7 @@ public final class SmartCity {
     public static Builder newBuilder() {
       return DEFAULT_INSTANCE.toBuilder();
     }
-    public static Builder newBuilder(smartcity.SmartCity.GatewayResponse prototype) {
+    public static Builder newBuilder(smartcity.devices.SmartCity.GatewayResponse prototype) {
       return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
     }
     @java.lang.Override
@@ -6806,29 +6823,29 @@ public final class SmartCity {
     }
     /**
      * <pre>
-     * Respostas do Gateway para o Cliente 
+     * Respostas do Gateway para o Cliente
      * </pre>
      *
-     * Protobuf type {@code smartcity.GatewayResponse}
+     * Protobuf type {@code smartcity.devices.GatewayResponse}
      */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-        // @@protoc_insertion_point(builder_implements:smartcity.GatewayResponse)
-        smartcity.SmartCity.GatewayResponseOrBuilder {
+        // @@protoc_insertion_point(builder_implements:smartcity.devices.GatewayResponse)
+        smartcity.devices.SmartCity.GatewayResponseOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return smartcity.SmartCity.internal_static_smartcity_GatewayResponse_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_GatewayResponse_descriptor;
       }
 
       @java.lang.Override
       protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return smartcity.SmartCity.internal_static_smartcity_GatewayResponse_fieldAccessorTable
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_GatewayResponse_fieldAccessorTable
             .ensureFieldAccessorsInitialized(
-                smartcity.SmartCity.GatewayResponse.class, smartcity.SmartCity.GatewayResponse.Builder.class);
+                smartcity.devices.SmartCity.GatewayResponse.class, smartcity.devices.SmartCity.GatewayResponse.Builder.class);
       }
 
-      // Construct using smartcity.SmartCity.GatewayResponse.newBuilder()
+      // Construct using smartcity.devices.SmartCity.GatewayResponse.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
@@ -6870,17 +6887,17 @@ public final class SmartCity {
       @java.lang.Override
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return smartcity.SmartCity.internal_static_smartcity_GatewayResponse_descriptor;
+        return smartcity.devices.SmartCity.internal_static_smartcity_devices_GatewayResponse_descriptor;
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.GatewayResponse getDefaultInstanceForType() {
-        return smartcity.SmartCity.GatewayResponse.getDefaultInstance();
+      public smartcity.devices.SmartCity.GatewayResponse getDefaultInstanceForType() {
+        return smartcity.devices.SmartCity.GatewayResponse.getDefaultInstance();
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.GatewayResponse build() {
-        smartcity.SmartCity.GatewayResponse result = buildPartial();
+      public smartcity.devices.SmartCity.GatewayResponse build() {
+        smartcity.devices.SmartCity.GatewayResponse result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
@@ -6888,15 +6905,15 @@ public final class SmartCity {
       }
 
       @java.lang.Override
-      public smartcity.SmartCity.GatewayResponse buildPartial() {
-        smartcity.SmartCity.GatewayResponse result = new smartcity.SmartCity.GatewayResponse(this);
+      public smartcity.devices.SmartCity.GatewayResponse buildPartial() {
+        smartcity.devices.SmartCity.GatewayResponse result = new smartcity.devices.SmartCity.GatewayResponse(this);
         buildPartialRepeatedFields(result);
         if (bitField0_ != 0) { buildPartial0(result); }
         onBuilt();
         return result;
       }
 
-      private void buildPartialRepeatedFields(smartcity.SmartCity.GatewayResponse result) {
+      private void buildPartialRepeatedFields(smartcity.devices.SmartCity.GatewayResponse result) {
         if (devicesBuilder_ == null) {
           if (((bitField0_ & 0x00000004) != 0)) {
             devices_ = java.util.Collections.unmodifiableList(devices_);
@@ -6908,7 +6925,7 @@ public final class SmartCity {
         }
       }
 
-      private void buildPartial0(smartcity.SmartCity.GatewayResponse result) {
+      private void buildPartial0(smartcity.devices.SmartCity.GatewayResponse result) {
         int from_bitField0_ = bitField0_;
         if (((from_bitField0_ & 0x00000001) != 0)) {
           result.type_ = type_;
@@ -6963,16 +6980,16 @@ public final class SmartCity {
       }
       @java.lang.Override
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof smartcity.SmartCity.GatewayResponse) {
-          return mergeFrom((smartcity.SmartCity.GatewayResponse)other);
+        if (other instanceof smartcity.devices.SmartCity.GatewayResponse) {
+          return mergeFrom((smartcity.devices.SmartCity.GatewayResponse)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
 
-      public Builder mergeFrom(smartcity.SmartCity.GatewayResponse other) {
-        if (other == smartcity.SmartCity.GatewayResponse.getDefaultInstance()) return this;
+      public Builder mergeFrom(smartcity.devices.SmartCity.GatewayResponse other) {
+        if (other == smartcity.devices.SmartCity.GatewayResponse.getDefaultInstance()) return this;
         if (other.type_ != 0) {
           setTypeValue(other.getTypeValue());
         }
@@ -7052,9 +7069,9 @@ public final class SmartCity {
                 break;
               } // case 18
               case 26: {
-                smartcity.SmartCity.DeviceInfo m =
+                smartcity.devices.SmartCity.DeviceInfo m =
                     input.readMessage(
-                        smartcity.SmartCity.DeviceInfo.parser(),
+                        smartcity.devices.SmartCity.DeviceInfo.parser(),
                         extensionRegistry);
                 if (devicesBuilder_ == null) {
                   ensureDevicesIsMutable();
@@ -7095,14 +7112,14 @@ public final class SmartCity {
 
       private int type_ = 0;
       /**
-       * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+       * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
        * @return The enum numeric value on the wire for type.
        */
       @java.lang.Override public int getTypeValue() {
         return type_;
       }
       /**
-       * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+       * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
        * @param value The enum numeric value on the wire for type to set.
        * @return This builder for chaining.
        */
@@ -7113,20 +7130,20 @@ public final class SmartCity {
         return this;
       }
       /**
-       * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+       * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
        * @return The type.
        */
       @java.lang.Override
-      public smartcity.SmartCity.GatewayResponse.ResponseType getType() {
-        smartcity.SmartCity.GatewayResponse.ResponseType result = smartcity.SmartCity.GatewayResponse.ResponseType.forNumber(type_);
-        return result == null ? smartcity.SmartCity.GatewayResponse.ResponseType.UNRECOGNIZED : result;
+      public smartcity.devices.SmartCity.GatewayResponse.ResponseType getType() {
+        smartcity.devices.SmartCity.GatewayResponse.ResponseType result = smartcity.devices.SmartCity.GatewayResponse.ResponseType.forNumber(type_);
+        return result == null ? smartcity.devices.SmartCity.GatewayResponse.ResponseType.UNRECOGNIZED : result;
       }
       /**
-       * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+       * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
        * @param value The type to set.
        * @return This builder for chaining.
        */
-      public Builder setType(smartcity.SmartCity.GatewayResponse.ResponseType value) {
+      public Builder setType(smartcity.devices.SmartCity.GatewayResponse.ResponseType value) {
         if (value == null) {
           throw new NullPointerException();
         }
@@ -7136,7 +7153,7 @@ public final class SmartCity {
         return this;
       }
       /**
-       * <code>.smartcity.GatewayResponse.ResponseType type = 1;</code>
+       * <code>.smartcity.devices.GatewayResponse.ResponseType type = 1;</code>
        * @return This builder for chaining.
        */
       public Builder clearType() {
@@ -7238,26 +7255,26 @@ public final class SmartCity {
         return this;
       }
 
-      private java.util.List<smartcity.SmartCity.DeviceInfo> devices_ =
+      private java.util.List<smartcity.devices.SmartCity.DeviceInfo> devices_ =
         java.util.Collections.emptyList();
       private void ensureDevicesIsMutable() {
         if (!((bitField0_ & 0x00000004) != 0)) {
-          devices_ = new java.util.ArrayList<smartcity.SmartCity.DeviceInfo>(devices_);
+          devices_ = new java.util.ArrayList<smartcity.devices.SmartCity.DeviceInfo>(devices_);
           bitField0_ |= 0x00000004;
          }
       }
 
       private com.google.protobuf.RepeatedFieldBuilderV3<
-          smartcity.SmartCity.DeviceInfo, smartcity.SmartCity.DeviceInfo.Builder, smartcity.SmartCity.DeviceInfoOrBuilder> devicesBuilder_;
+          smartcity.devices.SmartCity.DeviceInfo, smartcity.devices.SmartCity.DeviceInfo.Builder, smartcity.devices.SmartCity.DeviceInfoOrBuilder> devicesBuilder_;
 
       /**
        * <pre>
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public java.util.List<smartcity.SmartCity.DeviceInfo> getDevicesList() {
+      public java.util.List<smartcity.devices.SmartCity.DeviceInfo> getDevicesList() {
         if (devicesBuilder_ == null) {
           return java.util.Collections.unmodifiableList(devices_);
         } else {
@@ -7269,7 +7286,7 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public int getDevicesCount() {
         if (devicesBuilder_ == null) {
@@ -7283,9 +7300,9 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public smartcity.SmartCity.DeviceInfo getDevices(int index) {
+      public smartcity.devices.SmartCity.DeviceInfo getDevices(int index) {
         if (devicesBuilder_ == null) {
           return devices_.get(index);
         } else {
@@ -7297,10 +7314,10 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder setDevices(
-          int index, smartcity.SmartCity.DeviceInfo value) {
+          int index, smartcity.devices.SmartCity.DeviceInfo value) {
         if (devicesBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
@@ -7318,10 +7335,10 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder setDevices(
-          int index, smartcity.SmartCity.DeviceInfo.Builder builderForValue) {
+          int index, smartcity.devices.SmartCity.DeviceInfo.Builder builderForValue) {
         if (devicesBuilder_ == null) {
           ensureDevicesIsMutable();
           devices_.set(index, builderForValue.build());
@@ -7336,9 +7353,9 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public Builder addDevices(smartcity.SmartCity.DeviceInfo value) {
+      public Builder addDevices(smartcity.devices.SmartCity.DeviceInfo value) {
         if (devicesBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
@@ -7356,10 +7373,10 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder addDevices(
-          int index, smartcity.SmartCity.DeviceInfo value) {
+          int index, smartcity.devices.SmartCity.DeviceInfo value) {
         if (devicesBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
@@ -7377,10 +7394,10 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder addDevices(
-          smartcity.SmartCity.DeviceInfo.Builder builderForValue) {
+          smartcity.devices.SmartCity.DeviceInfo.Builder builderForValue) {
         if (devicesBuilder_ == null) {
           ensureDevicesIsMutable();
           devices_.add(builderForValue.build());
@@ -7395,10 +7412,10 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder addDevices(
-          int index, smartcity.SmartCity.DeviceInfo.Builder builderForValue) {
+          int index, smartcity.devices.SmartCity.DeviceInfo.Builder builderForValue) {
         if (devicesBuilder_ == null) {
           ensureDevicesIsMutable();
           devices_.add(index, builderForValue.build());
@@ -7413,10 +7430,10 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder addAllDevices(
-          java.lang.Iterable<? extends smartcity.SmartCity.DeviceInfo> values) {
+          java.lang.Iterable<? extends smartcity.devices.SmartCity.DeviceInfo> values) {
         if (devicesBuilder_ == null) {
           ensureDevicesIsMutable();
           com.google.protobuf.AbstractMessageLite.Builder.addAll(
@@ -7432,7 +7449,7 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder clearDevices() {
         if (devicesBuilder_ == null) {
@@ -7449,7 +7466,7 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
       public Builder removeDevices(int index) {
         if (devicesBuilder_ == null) {
@@ -7466,9 +7483,9 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public smartcity.SmartCity.DeviceInfo.Builder getDevicesBuilder(
+      public smartcity.devices.SmartCity.DeviceInfo.Builder getDevicesBuilder(
           int index) {
         return getDevicesFieldBuilder().getBuilder(index);
       }
@@ -7477,9 +7494,9 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public smartcity.SmartCity.DeviceInfoOrBuilder getDevicesOrBuilder(
+      public smartcity.devices.SmartCity.DeviceInfoOrBuilder getDevicesOrBuilder(
           int index) {
         if (devicesBuilder_ == null) {
           return devices_.get(index);  } else {
@@ -7491,9 +7508,9 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public java.util.List<? extends smartcity.SmartCity.DeviceInfoOrBuilder> 
+      public java.util.List<? extends smartcity.devices.SmartCity.DeviceInfoOrBuilder> 
            getDevicesOrBuilderList() {
         if (devicesBuilder_ != null) {
           return devicesBuilder_.getMessageOrBuilderList();
@@ -7506,41 +7523,41 @@ public final class SmartCity {
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public smartcity.SmartCity.DeviceInfo.Builder addDevicesBuilder() {
+      public smartcity.devices.SmartCity.DeviceInfo.Builder addDevicesBuilder() {
         return getDevicesFieldBuilder().addBuilder(
-            smartcity.SmartCity.DeviceInfo.getDefaultInstance());
+            smartcity.devices.SmartCity.DeviceInfo.getDefaultInstance());
       }
       /**
        * <pre>
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public smartcity.SmartCity.DeviceInfo.Builder addDevicesBuilder(
+      public smartcity.devices.SmartCity.DeviceInfo.Builder addDevicesBuilder(
           int index) {
         return getDevicesFieldBuilder().addBuilder(
-            index, smartcity.SmartCity.DeviceInfo.getDefaultInstance());
+            index, smartcity.devices.SmartCity.DeviceInfo.getDefaultInstance());
       }
       /**
        * <pre>
        * Para DEVICE_LIST. Contém informações básicas dos dispositivos.
        * </pre>
        *
-       * <code>repeated .smartcity.DeviceInfo devices = 3;</code>
+       * <code>repeated .smartcity.devices.DeviceInfo devices = 3;</code>
        */
-      public java.util.List<smartcity.SmartCity.DeviceInfo.Builder> 
+      public java.util.List<smartcity.devices.SmartCity.DeviceInfo.Builder> 
            getDevicesBuilderList() {
         return getDevicesFieldBuilder().getBuilderList();
       }
       private com.google.protobuf.RepeatedFieldBuilderV3<
-          smartcity.SmartCity.DeviceInfo, smartcity.SmartCity.DeviceInfo.Builder, smartcity.SmartCity.DeviceInfoOrBuilder> 
+          smartcity.devices.SmartCity.DeviceInfo, smartcity.devices.SmartCity.DeviceInfo.Builder, smartcity.devices.SmartCity.DeviceInfoOrBuilder> 
           getDevicesFieldBuilder() {
         if (devicesBuilder_ == null) {
           devicesBuilder_ = new com.google.protobuf.RepeatedFieldBuilderV3<
-              smartcity.SmartCity.DeviceInfo, smartcity.SmartCity.DeviceInfo.Builder, smartcity.SmartCity.DeviceInfoOrBuilder>(
+              smartcity.devices.SmartCity.DeviceInfo, smartcity.devices.SmartCity.DeviceInfo.Builder, smartcity.devices.SmartCity.DeviceInfoOrBuilder>(
                   devices_,
                   ((bitField0_ & 0x00000004) != 0),
                   getParentForChildren(),
@@ -7550,15 +7567,15 @@ public final class SmartCity {
         return devicesBuilder_;
       }
 
-      private smartcity.SmartCity.DeviceUpdate deviceStatus_;
+      private smartcity.devices.SmartCity.DeviceUpdate deviceStatus_;
       private com.google.protobuf.SingleFieldBuilderV3<
-          smartcity.SmartCity.DeviceUpdate, smartcity.SmartCity.DeviceUpdate.Builder, smartcity.SmartCity.DeviceUpdateOrBuilder> deviceStatusBuilder_;
+          smartcity.devices.SmartCity.DeviceUpdate, smartcity.devices.SmartCity.DeviceUpdate.Builder, smartcity.devices.SmartCity.DeviceUpdateOrBuilder> deviceStatusBuilder_;
       /**
        * <pre>
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        * @return Whether the deviceStatus field is set.
        */
       public boolean hasDeviceStatus() {
@@ -7569,12 +7586,12 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        * @return The deviceStatus.
        */
-      public smartcity.SmartCity.DeviceUpdate getDeviceStatus() {
+      public smartcity.devices.SmartCity.DeviceUpdate getDeviceStatus() {
         if (deviceStatusBuilder_ == null) {
-          return deviceStatus_ == null ? smartcity.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
+          return deviceStatus_ == null ? smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
         } else {
           return deviceStatusBuilder_.getMessage();
         }
@@ -7584,9 +7601,9 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
-      public Builder setDeviceStatus(smartcity.SmartCity.DeviceUpdate value) {
+      public Builder setDeviceStatus(smartcity.devices.SmartCity.DeviceUpdate value) {
         if (deviceStatusBuilder_ == null) {
           if (value == null) {
             throw new NullPointerException();
@@ -7604,10 +7621,10 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
       public Builder setDeviceStatus(
-          smartcity.SmartCity.DeviceUpdate.Builder builderForValue) {
+          smartcity.devices.SmartCity.DeviceUpdate.Builder builderForValue) {
         if (deviceStatusBuilder_ == null) {
           deviceStatus_ = builderForValue.build();
         } else {
@@ -7622,13 +7639,13 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
-      public Builder mergeDeviceStatus(smartcity.SmartCity.DeviceUpdate value) {
+      public Builder mergeDeviceStatus(smartcity.devices.SmartCity.DeviceUpdate value) {
         if (deviceStatusBuilder_ == null) {
           if (((bitField0_ & 0x00000008) != 0) &&
             deviceStatus_ != null &&
-            deviceStatus_ != smartcity.SmartCity.DeviceUpdate.getDefaultInstance()) {
+            deviceStatus_ != smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance()) {
             getDeviceStatusBuilder().mergeFrom(value);
           } else {
             deviceStatus_ = value;
@@ -7647,7 +7664,7 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
       public Builder clearDeviceStatus() {
         bitField0_ = (bitField0_ & ~0x00000008);
@@ -7664,9 +7681,9 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
-      public smartcity.SmartCity.DeviceUpdate.Builder getDeviceStatusBuilder() {
+      public smartcity.devices.SmartCity.DeviceUpdate.Builder getDeviceStatusBuilder() {
         bitField0_ |= 0x00000008;
         onChanged();
         return getDeviceStatusFieldBuilder().getBuilder();
@@ -7676,14 +7693,14 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
-      public smartcity.SmartCity.DeviceUpdateOrBuilder getDeviceStatusOrBuilder() {
+      public smartcity.devices.SmartCity.DeviceUpdateOrBuilder getDeviceStatusOrBuilder() {
         if (deviceStatusBuilder_ != null) {
           return deviceStatusBuilder_.getMessageOrBuilder();
         } else {
           return deviceStatus_ == null ?
-              smartcity.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
+              smartcity.devices.SmartCity.DeviceUpdate.getDefaultInstance() : deviceStatus_;
         }
       }
       /**
@@ -7691,14 +7708,14 @@ public final class SmartCity {
        * Para DEVICE_STATUS_UPDATE. Contém status detalhado.
        * </pre>
        *
-       * <code>.smartcity.DeviceUpdate device_status = 4;</code>
+       * <code>.smartcity.devices.DeviceUpdate device_status = 4;</code>
        */
       private com.google.protobuf.SingleFieldBuilderV3<
-          smartcity.SmartCity.DeviceUpdate, smartcity.SmartCity.DeviceUpdate.Builder, smartcity.SmartCity.DeviceUpdateOrBuilder> 
+          smartcity.devices.SmartCity.DeviceUpdate, smartcity.devices.SmartCity.DeviceUpdate.Builder, smartcity.devices.SmartCity.DeviceUpdateOrBuilder> 
           getDeviceStatusFieldBuilder() {
         if (deviceStatusBuilder_ == null) {
           deviceStatusBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
-              smartcity.SmartCity.DeviceUpdate, smartcity.SmartCity.DeviceUpdate.Builder, smartcity.SmartCity.DeviceUpdateOrBuilder>(
+              smartcity.devices.SmartCity.DeviceUpdate, smartcity.devices.SmartCity.DeviceUpdate.Builder, smartcity.devices.SmartCity.DeviceUpdateOrBuilder>(
                   getDeviceStatus(),
                   getParentForChildren(),
                   isClean());
@@ -7811,16 +7828,16 @@ public final class SmartCity {
       }
 
 
-      // @@protoc_insertion_point(builder_scope:smartcity.GatewayResponse)
+      // @@protoc_insertion_point(builder_scope:smartcity.devices.GatewayResponse)
     }
 
-    // @@protoc_insertion_point(class_scope:smartcity.GatewayResponse)
-    private static final smartcity.SmartCity.GatewayResponse DEFAULT_INSTANCE;
+    // @@protoc_insertion_point(class_scope:smartcity.devices.GatewayResponse)
+    private static final smartcity.devices.SmartCity.GatewayResponse DEFAULT_INSTANCE;
     static {
-      DEFAULT_INSTANCE = new smartcity.SmartCity.GatewayResponse();
+      DEFAULT_INSTANCE = new smartcity.devices.SmartCity.GatewayResponse();
     }
 
-    public static smartcity.SmartCity.GatewayResponse getDefaultInstance() {
+    public static smartcity.devices.SmartCity.GatewayResponse getDefaultInstance() {
       return DEFAULT_INSTANCE;
     }
 
@@ -7856,42 +7873,42 @@ public final class SmartCity {
     }
 
     @java.lang.Override
-    public smartcity.SmartCity.GatewayResponse getDefaultInstanceForType() {
+    public smartcity.devices.SmartCity.GatewayResponse getDefaultInstanceForType() {
       return DEFAULT_INSTANCE;
     }
 
   }
 
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_smartcity_DiscoveryRequest_descriptor;
+    internal_static_smartcity_devices_DiscoveryRequest_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_smartcity_DiscoveryRequest_fieldAccessorTable;
+      internal_static_smartcity_devices_DiscoveryRequest_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_smartcity_DeviceInfo_descriptor;
+    internal_static_smartcity_devices_DeviceInfo_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_smartcity_DeviceInfo_fieldAccessorTable;
+      internal_static_smartcity_devices_DeviceInfo_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_smartcity_DeviceUpdate_descriptor;
+    internal_static_smartcity_devices_DeviceUpdate_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_smartcity_DeviceUpdate_fieldAccessorTable;
+      internal_static_smartcity_devices_DeviceUpdate_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_smartcity_DeviceCommand_descriptor;
+    internal_static_smartcity_devices_DeviceCommand_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_smartcity_DeviceCommand_fieldAccessorTable;
+      internal_static_smartcity_devices_DeviceCommand_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_smartcity_ClientRequest_descriptor;
+    internal_static_smartcity_devices_ClientRequest_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_smartcity_ClientRequest_fieldAccessorTable;
+      internal_static_smartcity_devices_ClientRequest_fieldAccessorTable;
   private static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_smartcity_GatewayResponse_descriptor;
+    internal_static_smartcity_devices_GatewayResponse_descriptor;
   private static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_smartcity_GatewayResponse_fieldAccessorTable;
+      internal_static_smartcity_devices_GatewayResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -7901,83 +7918,85 @@ public final class SmartCity {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\020smart_city.proto\022\tsmartcity\"Z\n\020Discove" +
-      "ryRequest\022\022\n\ngateway_ip\030\001 \001(\t\022\030\n\020gateway" +
-      "_tcp_port\030\002 \001(\005\022\030\n\020gateway_udp_port\030\003 \001(" +
-      "\005\"\276\001\n\nDeviceInfo\022\021\n\tdevice_id\030\001 \001(\t\022#\n\004t" +
-      "ype\030\002 \001(\0162\025.smartcity.DeviceType\022\022\n\nip_a" +
-      "ddress\030\003 \001(\t\022\014\n\004port\030\004 \001(\005\022.\n\rinitial_st" +
-      "ate\030\005 \001(\0162\027.smartcity.DeviceStatus\022\023\n\013is" +
-      "_actuator\030\006 \001(\010\022\021\n\tis_sensor\030\007 \001(\010\"\313\001\n\014D" +
-      "eviceUpdate\022\021\n\tdevice_id\030\001 \001(\t\022#\n\004type\030\002" +
-      " \001(\0162\025.smartcity.DeviceType\022/\n\016current_s" +
-      "tatus\030\003 \001(\0162\027.smartcity.DeviceStatus\022\031\n\021" +
+      "\n\020smart_city.proto\022\021smartcity.devices\"Z\n" +
+      "\020DiscoveryRequest\022\022\n\ngateway_ip\030\001 \001(\t\022\030\n" +
+      "\020gateway_tcp_port\030\002 \001(\005\022\030\n\020gateway_udp_p" +
+      "ort\030\003 \001(\005\"\316\001\n\nDeviceInfo\022\021\n\tdevice_id\030\001 " +
+      "\001(\t\022+\n\004type\030\002 \001(\0162\035.smartcity.devices.De" +
+      "viceType\022\022\n\nip_address\030\003 \001(\t\022\014\n\004port\030\004 \001" +
+      "(\005\0226\n\rinitial_state\030\005 \001(\0162\037.smartcity.de" +
+      "vices.DeviceStatus\022\023\n\013is_actuator\030\006 \001(\010\022" +
+      "\021\n\tis_sensor\030\007 \001(\010\"\333\001\n\014DeviceUpdate\022\021\n\td" +
+      "evice_id\030\001 \001(\t\022+\n\004type\030\002 \001(\0162\035.smartcity" +
+      ".devices.DeviceType\0227\n\016current_status\030\003 " +
+      "\001(\0162\037.smartcity.devices.DeviceStatus\022\031\n\021" +
       "temperature_value\030\004 \001(\001\022\031\n\021air_quality_i" +
       "ndex\030\005 \001(\001\022\034\n\024custom_config_status\030\006 \001(\t" +
-      "\"t\n\rDeviceCommand\022\021\n\tdevice_id\030\001 \001(\t\022#\n\004" +
-      "type\030\002 \001(\0162\025.smartcity.DeviceType\022\024\n\014com" +
-      "mand_type\030\003 \001(\t\022\025\n\rcommand_value\030\004 \001(\t\"\356" +
-      "\001\n\rClientRequest\0222\n\004type\030\001 \001(\0162$.smartci" +
-      "ty.ClientRequest.RequestType\022\030\n\020target_d" +
-      "evice_id\030\002 \001(\t\022)\n\007command\030\003 \001(\0132\030.smartc" +
-      "ity.DeviceCommand\"d\n\013RequestType\022\023\n\017UNKN" +
-      "OWN_REQUEST\020\000\022\020\n\014LIST_DEVICES\020\001\022\025\n\021GET_D" +
-      "EVICE_STATUS\020\002\022\027\n\023SEND_DEVICE_COMMAND\020\003\"" +
-      "\266\002\n\017GatewayResponse\0225\n\004type\030\001 \001(\0162\'.smar" +
-      "tcity.GatewayResponse.ResponseType\022\017\n\007me" +
-      "ssage\030\002 \001(\t\022&\n\007devices\030\003 \003(\0132\025.smartcity" +
-      ".DeviceInfo\022.\n\rdevice_status\030\004 \001(\0132\027.sma" +
-      "rtcity.DeviceUpdate\022\026\n\016command_status\030\005 " +
-      "\001(\t\"k\n\014ResponseType\022\024\n\020UNKNOWN_RESPONSE\020" +
-      "\000\022\017\n\013DEVICE_LIST\020\001\022\030\n\024DEVICE_STATUS_UPDA" +
-      "TE\020\002\022\017\n\013COMMAND_ACK\020\003\022\t\n\005ERROR\020\004*y\n\nDevi" +
-      "ceType\022\022\n\016UNKNOWN_DEVICE\020\000\022\n\n\006CAMERA\020\001\022\010" +
-      "\n\004POST\020\002\022\021\n\rTRAFFIC_LIGHT\020\003\022\026\n\022AIR_QUALI" +
-      "TY_SENSOR\020\004\022\026\n\022TEMPERATURE_SENSOR\020\005*h\n\014D" +
-      "eviceStatus\022\022\n\016UNKNOWN_STATUS\020\000\022\006\n\002ON\020\001\022" +
-      "\007\n\003OFF\020\002\022\010\n\004IDLE\020\003\022\n\n\006ACTIVE\020\004\022\t\n\005ERROR\020" +
-      "\005\022\007\n\003RED\020\006\022\t\n\005GREEN\020\007B\017Z\r./smartcitypbb\006" +
-      "proto3"
+      "\"|\n\rDeviceCommand\022\021\n\tdevice_id\030\001 \001(\t\022+\n\004" +
+      "type\030\002 \001(\0162\035.smartcity.devices.DeviceTyp" +
+      "e\022\024\n\014command_type\030\003 \001(\t\022\025\n\rcommand_value" +
+      "\030\004 \001(\t\"\376\001\n\rClientRequest\022:\n\004type\030\001 \001(\0162," +
+      ".smartcity.devices.ClientRequest.Request" +
+      "Type\022\030\n\020target_device_id\030\002 \001(\t\0221\n\007comman" +
+      "d\030\003 \001(\0132 .smartcity.devices.DeviceComman" +
+      "d\"d\n\013RequestType\022\023\n\017UNKNOWN_REQUEST\020\000\022\020\n" +
+      "\014LIST_DEVICES\020\001\022\025\n\021GET_DEVICE_STATUS\020\002\022\027" +
+      "\n\023SEND_DEVICE_COMMAND\020\003\"\316\002\n\017GatewayRespo" +
+      "nse\022=\n\004type\030\001 \001(\0162/.smartcity.devices.Ga" +
+      "tewayResponse.ResponseType\022\017\n\007message\030\002 " +
+      "\001(\t\022.\n\007devices\030\003 \003(\0132\035.smartcity.devices" +
+      ".DeviceInfo\0226\n\rdevice_status\030\004 \001(\0132\037.sma" +
+      "rtcity.devices.DeviceUpdate\022\026\n\016command_s" +
+      "tatus\030\005 \001(\t\"k\n\014ResponseType\022\024\n\020UNKNOWN_R" +
+      "ESPONSE\020\000\022\017\n\013DEVICE_LIST\020\001\022\030\n\024DEVICE_STA" +
+      "TUS_UPDATE\020\002\022\017\n\013COMMAND_ACK\020\003\022\t\n\005ERROR\020\004" +
+      "*\204\001\n\nDeviceType\022\022\n\016UNKNOWN_DEVICE\020\000\022\n\n\006C" +
+      "AMERA\020\001\022\010\n\004POST\020\002\022\021\n\rTRAFFIC_LIGHT\020\003\022\026\n\022" +
+      "AIR_QUALITY_SENSOR\020\004\022\026\n\022TEMPERATURE_SENS" +
+      "OR\020\005\022\t\n\005ALARM\020\006*h\n\014DeviceStatus\022\022\n\016UNKNO" +
+      "WN_STATUS\020\000\022\006\n\002ON\020\001\022\007\n\003OFF\020\002\022\010\n\004IDLE\020\003\022\n" +
+      "\n\006ACTIVE\020\004\022\t\n\005ERROR\020\005\022\007\n\003RED\020\006\022\t\n\005GREEN\020" +
+      "\007B\017Z\r./smartcitypbb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
         });
-    internal_static_smartcity_DiscoveryRequest_descriptor =
+    internal_static_smartcity_devices_DiscoveryRequest_descriptor =
       getDescriptor().getMessageTypes().get(0);
-    internal_static_smartcity_DiscoveryRequest_fieldAccessorTable = new
+    internal_static_smartcity_devices_DiscoveryRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_smartcity_DiscoveryRequest_descriptor,
+        internal_static_smartcity_devices_DiscoveryRequest_descriptor,
         new java.lang.String[] { "GatewayIp", "GatewayTcpPort", "GatewayUdpPort", });
-    internal_static_smartcity_DeviceInfo_descriptor =
+    internal_static_smartcity_devices_DeviceInfo_descriptor =
       getDescriptor().getMessageTypes().get(1);
-    internal_static_smartcity_DeviceInfo_fieldAccessorTable = new
+    internal_static_smartcity_devices_DeviceInfo_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_smartcity_DeviceInfo_descriptor,
+        internal_static_smartcity_devices_DeviceInfo_descriptor,
         new java.lang.String[] { "DeviceId", "Type", "IpAddress", "Port", "InitialState", "IsActuator", "IsSensor", });
-    internal_static_smartcity_DeviceUpdate_descriptor =
+    internal_static_smartcity_devices_DeviceUpdate_descriptor =
       getDescriptor().getMessageTypes().get(2);
-    internal_static_smartcity_DeviceUpdate_fieldAccessorTable = new
+    internal_static_smartcity_devices_DeviceUpdate_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_smartcity_DeviceUpdate_descriptor,
+        internal_static_smartcity_devices_DeviceUpdate_descriptor,
         new java.lang.String[] { "DeviceId", "Type", "CurrentStatus", "TemperatureValue", "AirQualityIndex", "CustomConfigStatus", });
-    internal_static_smartcity_DeviceCommand_descriptor =
+    internal_static_smartcity_devices_DeviceCommand_descriptor =
       getDescriptor().getMessageTypes().get(3);
-    internal_static_smartcity_DeviceCommand_fieldAccessorTable = new
+    internal_static_smartcity_devices_DeviceCommand_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_smartcity_DeviceCommand_descriptor,
+        internal_static_smartcity_devices_DeviceCommand_descriptor,
         new java.lang.String[] { "DeviceId", "Type", "CommandType", "CommandValue", });
-    internal_static_smartcity_ClientRequest_descriptor =
+    internal_static_smartcity_devices_ClientRequest_descriptor =
       getDescriptor().getMessageTypes().get(4);
-    internal_static_smartcity_ClientRequest_fieldAccessorTable = new
+    internal_static_smartcity_devices_ClientRequest_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_smartcity_ClientRequest_descriptor,
+        internal_static_smartcity_devices_ClientRequest_descriptor,
         new java.lang.String[] { "Type", "TargetDeviceId", "Command", });
-    internal_static_smartcity_GatewayResponse_descriptor =
+    internal_static_smartcity_devices_GatewayResponse_descriptor =
       getDescriptor().getMessageTypes().get(5);
-    internal_static_smartcity_GatewayResponse_fieldAccessorTable = new
+    internal_static_smartcity_devices_GatewayResponse_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_smartcity_GatewayResponse_descriptor,
+        internal_static_smartcity_devices_GatewayResponse_descriptor,
         new java.lang.String[] { "Type", "Message", "Devices", "DeviceStatus", "CommandStatus", });
   }
 
