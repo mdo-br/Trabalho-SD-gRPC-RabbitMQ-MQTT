@@ -1,149 +1,301 @@
-# Trabalho-SD
-A simple network sensor simulator with Java, Python, and Protocol Buffers, using TCP, UDP, and multicast communication.
+# Projeto de Simulação de Cidade Inteligente
 
-# Projeto Cidade Inteligente
+Este projeto implementa um sistema distribuído para simular o monitoramento e controle de uma cidade inteligente. A solução é composta por um Gateway central, diversos dispositivos inteligentes (sensores e atuadores) e clientes para interação com o sistema.
 
-Este projeto simula um sistema de cidade inteligente composto por um Gateway central, dispositivos inteligentes (sensores e atuadores) e um Cliente para controle e observação dos dispositivos. A comunicação entre os componentes utiliza sockets TCP e UDP, além de Protocol Buffers para serialização de mensagens. A descoberta de dispositivos é realizada via multicast UDP.
+O objetivo é aplicar conceitos de sistemas distribuídos, incluindo comunicação via sockets TCP/UDP, serialização de dados com Protocol Buffers e descoberta de serviços por meio de multicast UDP.
+
+## Arquitetura
+
+A arquitetura do sistema foi projetada para ser modular e escalável, separando as responsabilidades em componentes distintos. O diagrama abaixo ilustra os principais componentes e os fluxos de comunicação entre eles.
+
+```mermaid
+flowchart TB
+    subgraph Clientes
+        FE["Front-end Web (React/Vue)"]
+        CLI["Cliente de Controle (CLI)"]
+    end
+
+    subgraph "Back-end / API"
+        API["API REST (api_server.py)"]
+    end
+
+    subgraph Gateway
+        GW["Gateway (smart_city_gateway.py)"]
+    end
+
+    subgraph Dispositivos
+        subgraph Sensores
+            S["Sensores (ex: Temperatura)"]
+        end
+        subgraph Atuadores
+            A["Atuadores (ex: Poste, Semáforo, Câmera)"]
+        end
+    end
+
+    FE -- "HTTP/REST (JSON)" --> API
+    CLI -- "TCP (Protocol Buffers)" --> GW
+    API -- "TCP (Protocol Buffers)" --> GW
+    GW -- "TCP (Protocol Buffers)\nComando/Estado" --> S
+    GW -- "TCP (Protocol Buffers)\nComando/Estado" --> A
+    GW -- "UDP Multicast (Protocol Buffers)\nDescoberta" --> S
+    GW -- "UDP Multicast (Protocol Buffers)\nDescoberta" --> A
+    S -- "UDP (Protocol Buffers)\nDados sensoriados" --> GW
+```
+
+### Descrição dos Componentes
+
+  * **Dispositivos Inteligentes**: Simulam os equipamentos da cidade e são implementados como processos separados.
+
+      * **Sensores**: Enviam dados de forma periódica para o Gateway via UDP. Ex: Sensor de Temperatura.
+      * **Atuadores**: Recebem comandos do Gateway via TCP para alterar seu estado (ex: ligar/desligar um poste) e reportam seu estado atual. Ex: Poste, Câmera, Semáforo.
+
+  * **Gateway**: É o ponto central de controle e monitoramento do ambiente. Suas principais responsabilidades são:
+
+      * Realizar a descoberta de dispositivos ativos na rede enviando uma mensagem multicast UDP.
+      * Gerenciar o estado dos dispositivos e enviar comandos utilizando TCP.
+      * Receber dados periódicos dos sensores via UDP.
+
+  * **Cliente de Controle (CLI)**: Uma interface de linha de comando que permite ao usuário interagir com o sistema. Ele se conecta ao Gateway via TCP para:
+
+      * Consultar os estados dos dispositivos conectados.
+      * Enviar comandos para dispositivos específicos, como ligar/desligar um poste ou ajustar uma configuração.
+
+  * **API REST**: Este servidor atua como uma ponte entre o mundo HTTP e o ecossistema interno do Gateway. Ele recebe requisições de clientes web, as traduz para o formato Protocol Buffers e as encaminha para o Gateway via TCP. Essa abordagem permite a implementação de interfaces gráficas.
+
+  * **Front-end Web**: Uma interface gráfica web que consome a API REST. Essa implementação atende ao requisito opcional de fornecer uma interface visual para o usuário.
+
+## Comunicação e Serialização
+
+Para garantir a interoperabilidade e a eficiência da comunicação, o sistema adota os seguintes padrões:
+
+  * **Protocol Buffers**: Todas as mensagens trocadas entre os componentes do sistema (Cliente-Gateway e Gateway-Dispositivos) são serializadas utilizando Protocol Buffers.
+  * **TCP**: Utilizado para comunicações que exigem confiabilidade, como o envio de comandos de controle do Cliente para o Gateway e do Gateway para os Atuadores.
+  * **UDP**: Usado para o envio de informações periódicas e não críticas dos Sensores para o Gateway, como leituras de temperatura.
+  * **UDP Multicast**: Empregado para o mecanismo de descoberta, onde o Gateway envia uma única mensagem para um grupo de multicast e todos os dispositivos na escuta podem se identificar.
+
+---
+
+## Protocolo de Comunicação (`.proto`)
+
+O arquivo [`src/proto/smart_city.proto`](src/proto/smart_city.proto) define o **protocolo de comunicação** do sistema, especificando a sintaxe (estrutura e tipos das mensagens) e parte da semântica (significado dos campos e mensagens) trocadas entre os componentes, utilizando Protocol Buffers. Esse protocolo garante que clientes, gateway e dispositivos falem a mesma "linguagem", independentemente da linguagem de programação utilizada.
+
+O protocolo de comunicação do sistema é composto por:
+- **Sintaxe:** Definida pelo arquivo `.proto`, que descreve os campos, tipos e formatos das mensagens.
+- **Semântica e regras de interação:** Definidas pela arquitetura do sistema, que estabelece quem envia cada mensagem, quando, e como os participantes devem reagir a cada tipo de mensagem.
+
+### Principais Mensagens e Fluxos
+
+- **Descoberta de Dispositivos (UDP Multicast)**
+  - `DiscoveryRequest`: enviada pelo Gateway para a rede, solicitando que dispositivos se apresentem.
+  - `DeviceInfo`: resposta dos dispositivos ao Gateway, informando tipo, IP, porta, capacidades e estado inicial.
+  - **Exemplo de fluxo:**  
+    1. Gateway envia `DiscoveryRequest` via multicast UDP.
+    2. Dispositivos respondem com `DeviceInfo` via UDP unicast.
+
+- **Comunicação Gateway ↔ Dispositivos**
+  - `DeviceUpdate`: sensores enviam dados periódicos ao Gateway (UDP), atuadores reportam estado (TCP).
+    - Exemplo de payload para sensor de temperatura:
+      ```json
+      {
+        "device_id": "temp01",
+        "type": "TEMPERATURE_SENSOR",
+        "current_status": "ACTIVE",
+        "temperature_humidity": {
+          "temperature": 23.5,
+          "humidity": 60.0
+        }
+      }
+      ```
+    - Exemplo de payload para atuador (poste):
+      ```json
+      {
+        "device_id": "poste01",
+        "type": "POST",
+        "current_status": "ON"
+      }
+      ```
+  - `DeviceCommand`: comando do Gateway para um atuador (ex: ligar/desligar, alterar configuração).
+    - Exemplo:
+      ```json
+      {
+        "device_id": "poste01",
+        "type": "POST",
+        "command_type": "TURN_OFF",
+        "command_value": "OFF"
+      }
+      ```
+
+- **Comunicação Cliente ↔ Gateway**
+  - `ClientRequest`: mensagem do cliente para o Gateway (listar dispositivos, consultar status, enviar comando).
+    - Exemplo para listar dispositivos:
+      ```json
+      {
+        "type": "LIST_DEVICES"
+      }
+      ```
+    - Exemplo para enviar comando:
+      ```json
+      {
+        "type": "SEND_DEVICE_COMMAND",
+        "target_device_id": "poste01",
+        "command": {
+          "device_id": "poste01",
+          "type": "POST",
+          "command_type": "TURN_ON",
+          "command_value": "ON"
+        }
+      }
+      ```
+  - `GatewayResponse`: resposta do Gateway ao cliente (lista de dispositivos, status, confirmação de comando ou erro).
+    - Exemplo de resposta com lista de dispositivos:
+      ```json
+      {
+        "type": "DEVICE_LIST",
+        "devices": [
+          {
+            "device_id": "temp01",
+            "type": "TEMPERATURE_SENSOR",
+            "ip_address": "192.168.0.10",
+            "port": 5001,
+            "initial_state": "ACTIVE"
+          },
+          {
+            "device_id": "poste01",
+            "type": "POST",
+            "ip_address": "192.168.0.11",
+            "port": 5002,
+            "initial_state": "OFF"
+          }
+        ]
+      }
+      ```
+
+### Extensibilidade
+
+- Novos tipos de dispositivos podem ser adicionados facilmente nas enums `DeviceType` e `DeviceStatus`.
+- Campos específicos para cada tipo de sensor/atuador são definidos usando `oneof`, permitindo evolução sem quebrar compatibilidade.
+- O mesmo arquivo `.proto` é usado para gerar código em Python e Java, garantindo padronização.
+
+### Geração de Código
+
+```bash
+# Para Python
+protoc --python_out=src/proto/ src/proto/smart_city.proto
+
+# Para Java
+protoc --java_out=CAMINHO/DESTINO src/proto/smart_city.proto
+```
+
+---
 
 ## Estrutura do Projeto
 
-A estrutura de diretórios do projeto é organizada da seguinte forma:
 ```
 .
 ├── src
-│   ├── api                 # Abstrações de comunicação (se houver)
-│   ├── devices             # Implementações de dispositivos
-│   │   ├── atuadores       # Atuadores (Java)
-│   │   └── sensors         # Sensores (Java)
+│   ├── api/                  # (Opcional) Abstrações de comunicação
+│   │   ├── actuators/        # Atuadores (Java)
+│   │   │   └── AlarmActuator.java
+│   │   └── sensors/          # Sensores (Java)
 │   │       └── TemperatureHumiditySensor.java
-│   ├── front-end           # Cliente 
-│   ├── gateway             # Gateway (Python)
-│   │   ├── src             # Código gerado pelo Protobuf para Python
-│   │   │   └── proto
-│   │   │       └── smart_city_pb2.py
-│   │   └── smart_city_gateway.py
-│   └── proto               # Definições de mensagens Protocol Buffers (.proto)
-│       └── smart_city.proto
-├── pom.xml                 # Configuração do Maven para componentes Java
-├── requirements.txt        # Dependências Python
-└── .gitignore              # Arquivos e diretórios a serem ignorados pelo Git
+│   ├── client-test/          # Cliente de teste (Python)
+│   │   └── smart_city_client.py
+│   ├── gateway/              # Gateway (Python)
+│   │   ├── smart_city_gateway.py
+│   │   └── state.py
+│   └── proto/                # Definições Protocol Buffers (.proto) e código gerado
+│       ├── smart_city.proto
+│       └── smart_city_pb2.py (gerado, não versionado)
+├── target/                   # JARs gerados pelo Maven
+├── pom.xml                   # Configuração Maven (Java)
+├── requirements.txt          # Dependências Python
+├── .gitignore
+└── README.md
 ```
+
+---
 
 ## Requisitos
 
-Para executar os componentes atuais do projeto, você precisará ter instalado:
+- **Java 21 LTS**
+- **Apache Maven 3.9.x**
+- **Python 3.x**
+- **protoc (Protocol Buffers Compiler)**
+- **Git**
 
-* **Java Development Kit (JDK) 21 LTS**
-* **Apache Maven 3.9.10** (ou versão compatível)
-* **Python 3.x**
-* **Git**
+---
 
 ## Configuração do Ambiente
 
-### 1. Instalação e Configuração do JDK
+### Java
 
-1.  Baixe e instale o **JDK 21 LTS** a partir do site oficial da sua distribuição preferida (ex: Eclipse Adoptium, Oracle OpenJDK).
-2.  Configure a variável de ambiente `JAVA_HOME` para apontar para o diretório de instalação do seu JDK.
-3.  Adicione `%JAVA_HOME%/bin` (Windows) ou `$JAVA_HOME/bin` (Linux/macOS) ao seu `PATH` do sistema, garantindo que ele tenha prioridade para a execução do `java` e `javac`.
+1. Instale o JDK 21.
+2. Instale o Maven.
+3. Compile e gere os JARs:
+   ```bash
+   mvn clean package
+   ```
+   Isso irá gerar:
+   - `target/temperature-humidity-sensor.jar`
+   - `target/alarm-actuator.jar`
 
-### 2. Instalação e Configuração do Apache Maven
+### Python
 
-1.  Baixe e descompacte a distribuição binária do **Apache Maven 3.9.10** (ou versão compatível) do site oficial [https://maven.apache.org/download.cgi](https://maven.apache.org/download.cgi).
-2.  Descompacte-o em um diretório de sua escolha (ex: `/opt/maven`, `C:\Program Files\Apache\apache-maven-3.9.10`).
-3.  Configure a variável de ambiente `M2_HOME` para apontar para o diretório raiz da instalação do Maven.
-4.  Adicione `%M2_HOME%/bin` (Windows) ou `$M2_HOME/bin` (Linux/macOS) ao seu `PATH` do sistema.
+1. Crie e ative o ambiente virtual:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+2. Instale as dependências:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Gere o código Python do Protobuf:
+   ```bash
+   protoc --python_out=src/proto/ src/proto/smart_city.proto
+   ```
 
-### 3. Verificar Instalação
+---
 
-* Abra um **NOVO** terminal (Prompt de Comando, PowerShell, Bash, Zsh, etc.).
-* Verifique o Java:
-    ```bash
-    java -version
-    javac -version
-    echo $JAVA_HOME  # Para Linux/macOS
-    echo %JAVA_HOME% # Para Windows
-    ```
-    Você deve ver as informações do JDK 21.0.7.
-* Verifique o Maven:
-    ```bash
-    mvn -version
-    ```
-    Você deve ver as informações do Maven 3.9.10 e o JDK 21.0.7.
+## Execução dos Componentes
 
-## Executando os Componentes
+### 1. Gateway (Python)
 
-### 1. Configurar o Projeto Localmente
+Na raiz do projeto:
+```bash
+source venv/bin/activate
+python3 -m src.gateway.smart_city_gateway
+```
 
-É **altamente recomendado** mover o projeto de diretórios de sincronização de nuvem para um diretório de trabalho local padrão (ex: `~/projects/Trabalho-SD` no Linux/macOS ou `C:\Projetos\Trabalho-SD` no Windows) para evitar problemas de sincronização e performance durante o desenvolvimento.
+### 2. Cliente (Python)
 
-1.  Certifique-se de que o VS Code e quaisquer terminais abertos no projeto estejam fechados.
-2.  Copie (ou mova) a pasta raiz do projeto para o novo local.
-3.  Abra o VS Code e o projeto a partir do **novo local** (usando a opção "Abrir Pasta" ou equivalente).
+Em outro terminal, na raiz do projeto:
+```bash
+source venv/bin/activate
+python3 src/client-test/smart_city_client.py
+```
 
-### 2. Preparação dos Componentes Java (Sensores/Atuadores)
+### 3. Sensor de Temperatura/Umidade (Java)
 
-1.  **Certifique-se de que o arquivo `.gitignore` está configurado corretamente** na raiz do projeto para ignorar pastas geradas e arquivos de IDE, incluindo `.vscode/`, `/target/`, `/venv/`, `/src/gateway/src/`.
-2.  Na raiz do seu projeto (onde o `pom.xml` está), abra um terminal.
-3.  Execute o Maven para gerar as classes Protocol Buffers para Java, compilar o código Java e empacotar o sensor:
-    ```bash
-    mvn clean install -U
-    ```
-    Este comando irá:
-    * Baixar o compilador `protoc` (versão 3.25.1).
-    * Gerar as classes Java do Protocol Buffers em `target/generated-sources/protobuf/java/smartcity/`.
-    * Compilar o código Java (incluindo o gerado) e empacotar o sensor de temperatura em um JAR executável (`smart-city-java-components-1.0-SNAPSHOT-temperature-humidity-sensor.jar`) na pasta `target/`.
+Em outro terminal:
+```bash
+cd target
+java -jar temperature-humidity-sensor.jar sensor01
+```
 
-### 3. Preparação dos Componentes Python (Gateway)
+### 4. Atuador de Alarme (Java)
 
-1.  **Crie e ative um ambiente virtual Python (`venv`):**
-    * Na raiz do seu projeto, no terminal, execute:
-        ```bash
-        python -m venv venv
-        ```
-    * Ative o ambiente virtual:
-        * Windows (CMD/PowerShell): `.\venv\Scripts\activate`
-        * Linux/macOS (Bash/Zsh): `source venv/bin/activate`
-2.  **Crie o arquivo `requirements.txt`** na raiz do seu projeto com o seguinte conteúdo:
-    ```
-    protobuf==6.31.1
-    ```
-3.  **Instale as dependências Python** (com o ambiente virtual ativado):
-    ```bash
-    pip install -r requirements.txt
-    ```
-4.  **Gere as classes Protocol Buffers para Python:**
-    * Na raiz do seu projeto, com o ambiente virtual ativado, execute o `protoc` para gerar as classes Python a partir do seu `.proto`. **A pasta de saída é `src/gateway/src/proto/`**:
-        ```bash
-        protoc --python_out=src/gateway/src/proto/ src/proto/smart_city.proto
-        ```
-        Isso criará o arquivo `smart_city_pb2.py` (e possivelmente `smart_city_pb2.pyi`) dentro de `src/gateway/src/proto/`.
+Em outro terminal:
+```bash
+cd target
+java -jar alarm-actuator.jar atua01
+```
 
-## Instruções de Execução
+---
 
-Após a preparação de ambos os lados, você pode executar o Gateway e o Sensor.
+## Observações
 
-1.  **Abra DOIS terminais separados.**
-
-2.  **No PRIMEIRO Terminal (Para o Gateway Python):**
-    * Navegue até a raiz do seu projeto.
-    * Ative o ambiente virtual:
-        * Windows (CMD/PowerShell): `.\venv\Scripts\activate`
-        * Linux/macOS (Bash/Zsh): `source venv/bin/activate`
-    * Execute o Gateway:
-        ```bash
-        python src/gateway/smart_city_gateway.py
-        ```
-    * O Gateway começará a logar suas ações, incluindo o envio de mensagens multicast para descobrir dispositivos e escutar conexões.
-
-3.  **No SEGUNDO Terminal (Para o Sensor Java):**
-    * Navegue até a pasta `target/` do seu projeto.
-    * Execute o sensor usando o JAR com dependências. Você pode adicionar um ID para o sensor (opcional):
-        ```bash
-        java -jar smart-city-java-components-1.0-SNAPSHOT-jar-with-dependencies.jar MeuSensor01
-        ```
-    * O sensor começará a logar suas ações, como aguardar requisições de descoberta, enviar DeviceInfo para o Gateway (via TCP) e, em seguida, enviar dados periódicos (via UDP).
-
-**Interação Observada:**
-
-* No terminal do **Gateway (Python)**, você deverá ver logs indicando a descoberta do sensor (após a requisição multicast), o registro via TCP (recebendo o DeviceInfo) e, posteriormente, o recebimento dos dados sensoriados periodicamente (via UDP).
-* No terminal do **Sensor (Java)**, você verá logs de que ele recebeu a requisição de descoberta do Gateway, enviou suas informações e está enviando dados periódicos.
+- O arquivo `src/proto/smart_city_pb2.py` é gerado automaticamente e não é versionado.
+- IDs dos dispositivos agora são exatamente os argumentos passados na linha de comando.
+- O sistema suporta múltiplos tipos de dispositivos, facilmente extensível via `.proto`.
+- Para adicionar novos dispositivos, edite o arquivo `.proto` e gere novamente os códigos.
