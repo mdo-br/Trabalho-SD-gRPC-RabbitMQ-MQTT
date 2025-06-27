@@ -1,9 +1,19 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import socket
 import struct
 from src.proto import smart_city_pb2
 
 app = FastAPI()
+
+# Configuração do CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Ou especifique ["http://localhost:3000"] para restringir
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 GATEWAY_HOST = "localhost"
 GATEWAY_API_PORT = 12347
@@ -90,12 +100,14 @@ def get_device_status(device_id: str):
         base_response = {
             "id": d.device_id,
             "status": smart_city_pb2.DeviceStatus.Name(d.current_status),
-            "temperature_value": d.temperature_value,
-            "air_quality_index": d.air_quality_index,
-            "custom_config_status": d.custom_config_status
+            "custom_config_status": d.custom_config_status,
         }
 
-        # Se for ALARM e estiver ON, incluir "sound"
+        if d.HasField("temperature_humidity"):
+            base_response["temperature"] = d.temperature_humidity.temperature
+            base_response["humidity"] = d.temperature_humidity.humidity
+
+        # Exemplo para ALARM ligado
         if d.type == smart_city_pb2.DeviceType.ALARM and d.current_status == smart_city_pb2.DeviceStatus.ON:
             base_response["sound"] = "BEEP, BEEP, BEEP..."
 
@@ -104,34 +116,37 @@ def get_device_status(device_id: str):
     raise HTTPException(status_code=404, detail=res.message or "Dispositivo não encontrado")
 
 
+
+
+
 @app.put("/devices/config")
 def update_device_config(device_id: str, new_interval: int = None, new_status: str = None):
-    commands = []
+    try:
+        commands = []
+        if new_interval is not None:
+            commands.append(("SET_SAMPLING_RATE", str(new_interval)))
+        if new_status:
+            commands.append(("TURN_ON" if new_status == "ON" else "TURN_OFF", ""))
 
-    if new_interval is not None:
-        commands.append(("SET_SAMPLING_RATE", str(new_interval)))  # INT
-    if new_status:
-        commands.append(("TURN_ON" if new_status == "ON" else "TURN_OFF", "")) # ON/OFF
+        responses = []
 
-    responses = []
-
-    for command_type, value in commands:
-        req = smart_city_pb2.ClientRequest(
-            type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
-            target_device_id=device_id,
-            command=smart_city_pb2.DeviceCommand(
-                device_id=device_id,
-                command_type=command_type,
-                command_value=value
+        for command_type, value in commands:
+            req = smart_city_pb2.ClientRequest(
+                type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
+                target_device_id=device_id,
+                command=smart_city_pb2.DeviceCommand(
+                    device_id=device_id,
+                    command_type=command_type,
+                    command_value=value
+                )
             )
-        )
-        res = send_protobuf_request(req)
-        responses.append({
-            "command": command_type,
-            "status": res.command_status,
-            "message": res.message
-        })
+            res = send_protobuf_request(req)
+            responses.append({
+                "command": command_type,
+                "status": res.command_status,
+                "message": res.message
+            })
 
-    return {"results": responses}
-
-
+        return {"results": responses}
+    except Exception as e:
+        return {"error": str(e)}
