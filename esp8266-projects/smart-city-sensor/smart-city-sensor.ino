@@ -6,9 +6,9 @@
 #include <WiFiClient.h>
 
 // Configurações WiFi
-const char* ssid = "SMARTUFC";
-const char* password = "";
-1
+const char* ssid = "Bragas-2.4GHz";
+const char* password = "19071981";
+
 // Configurações de rede
 const char* multicastIP = "224.1.1.1";  // Endereço multicast do gateway
 const int multicastPort = 5007;         // Porta multicast do gateway
@@ -111,30 +111,6 @@ void readSensor() {
   Serial.printf("Temperatura: %.1f°C, Umidade: %.1f%%\n", temperature, humidity);
 }
 
-// Função para enviar DeviceUpdate via TCP
-void sendDeviceUpdateTCP(const uint8_t* buffer, size_t length) {
-  WiFiClient client;
-  if (client.connect(gatewayIP.c_str(), 12345)) { // Porta TCP do gateway
-    // Envia o tamanho da mensagem como varint (compatível com o gateway)
-    uint8_t varint[5];
-    size_t varint_len = 0;
-    size_t len = length;
-    do {
-      uint8_t byte = len & 0x7F;
-      len >>= 7;
-      if (len) byte |= 0x80;
-      varint[varint_len++] = byte;
-    } while (len);
-    client.write(varint, varint_len);
-    // Envia o payload protobuf
-    client.write(buffer, length);
-    client.stop();
-    Serial.printf("DeviceUpdate enviado via TCP para %s:12345 (%d bytes)\n", gatewayIP.c_str(), (int)length);
-  } else {
-    Serial.println("Falha ao conectar ao gateway via TCP!");
-  }
-}
-
 void sendSensorData() {
   smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
   // Configura o callback para o campo device_id
@@ -151,12 +127,56 @@ void sendSensorData() {
   bool status = pb_encode(&stream, smartcity_devices_DeviceUpdate_fields, &msg);
 
   if (status) {
-    sendDeviceUpdateTCP(buffer, stream.bytes_written);
+    // Enviar dados sensoriados via UDP (porta 12346)
+    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
+    udp.write(buffer, stream.bytes_written);
+    udp.endPacket();
+    Serial.printf("DeviceUpdate enviado via UDP para %s:%d (%d bytes)\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
   } else {
     Serial.println("Erro ao codificar com nanopb!");
   }
 }
 
 void sendDiscoveryResponse() {
-  // Opcional: implementar resposta de descoberta usando nanopb, se necessário pelo gateway
+  // Enviar DeviceInfo via TCP para se registrar no gateway
+  WiFiClient client;
+  if (client.connect(gatewayIP.c_str(), 12345)) { // Porta TCP do gateway
+    // Criar mensagem DeviceInfo
+    smartcity_devices_DeviceInfo msg = smartcity_devices_DeviceInfo_init_zero;
+    msg.device_id.funcs.encode = &encode_device_id;
+    msg.device_id.arg = (void*)deviceID;
+    msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+    msg.ip_address.funcs.encode = &encode_device_id;
+    msg.ip_address.arg = (void*)WiFi.localIP().toString().c_str();
+    msg.port = localUDPPort;
+    msg.initial_state = smartcity_devices_DeviceStatus_ACTIVE;
+    msg.is_actuator = false;
+    msg.is_sensor = true;
+
+    uint8_t buffer[128];
+    pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+    bool status = pb_encode(&stream, smartcity_devices_DeviceInfo_fields, &msg);
+
+    if (status) {
+      // Enviar o tamanho da mensagem como varint
+      uint8_t varint[5];
+      size_t varint_len = 0;
+      size_t len = stream.bytes_written;
+      do {
+        uint8_t byte = len & 0x7F;
+        len >>= 7;
+        if (len) byte |= 0x80;
+        varint[varint_len++] = byte;
+      } while (len);
+      client.write(varint, varint_len);
+      // Enviar o payload protobuf
+      client.write(buffer, stream.bytes_written);
+      client.stop();
+      Serial.printf("DeviceInfo enviado via TCP para %s:12345 (%d bytes)\n", gatewayIP.c_str(), (int)stream.bytes_written);
+    } else {
+      Serial.println("Erro ao codificar DeviceInfo com nanopb!");
+    }
+  } else {
+    Serial.println("Falha ao conectar ao gateway via TCP para registro!");
+  }
 } 

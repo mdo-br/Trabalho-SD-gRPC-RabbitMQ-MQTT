@@ -14,6 +14,7 @@ MULTICAST_GROUP = '224.1.1.1'
 MULTICAST_PORT = 5007
 GATEWAY_TCP_PORT = 12345
 GATEWAY_UDP_PORT = 12346
+ESP8266_UDP_PORT = 8888  # Porta para receber dados do ESP8266
 API_TCP_PORT = 12347
 
 
@@ -224,8 +225,8 @@ def handle_client_request(client_request, conn, addr):
                     device_update.current_sensor.current = dev_info['sensor_data'].get('current', 0.0)
                     device_update.current_sensor.voltage = dev_info['sensor_data'].get('voltage', 0.0)
                     device_update.current_sensor.power = dev_info['sensor_data'].get('power', 0.0)
-                # Adicione outros tipos conforme necessário
-                device_update.custom_config_status = dev_info['sensor_data'].get('custom_config_status', "")
+                    # Adicione outros tipos conforme necessário
+                    device_update.custom_config_status = dev_info['sensor_data'].get('custom_config_status', "")
             response.device_status.CopyFrom(device_update)
             response.message = "Status do dispositivo retornado com sucesso."
         else:
@@ -245,6 +246,7 @@ def handle_tcp_connection(conn, addr):
         print(f"[DEBUG] Aguardando mensagem do cliente/dispositivo...")
         # Lê os bytes da mensagem delimitada uma única vez
         message_bytes = read_delimited_message_bytes(reader)
+        
         # Tenta decodificar como DeviceInfo
         try:
             device_info = smart_city_pb2.DeviceInfo()
@@ -254,6 +256,7 @@ def handle_tcp_connection(conn, addr):
                 return
         except Exception as e:
             print(f"[DEBUG] Não é DeviceInfo: {e}")
+            
         # Tenta decodificar como ClientRequest
         try:
             client_request = smart_city_pb2.ClientRequest()
@@ -262,6 +265,7 @@ def handle_tcp_connection(conn, addr):
             return
         except Exception as e:
             print(f"[DEBUG] Não é ClientRequest: {e}")
+            
         logger.warning("Mensagem recebida não é DeviceInfo nem ClientRequest válida.")
     except Exception as e:
         print(f"[DEBUG] Exceção em handle_tcp_connection: {e}")
