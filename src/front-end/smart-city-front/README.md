@@ -13,7 +13,7 @@
 ```
 ## Executar o frontend
 ```bash
-- npm start
+npm start
 ```
 
 O app abrirá no navegador em: http://localhost:3000
