@@ -6,7 +6,7 @@
 #include <WiFiClient.h>
 
 // Configurações WiFi
-const char* ssid = "Bragas-2.4GHz";
+const char* ssid = "";
 const char* password = "19071981";
 
 // Configurações de rede
