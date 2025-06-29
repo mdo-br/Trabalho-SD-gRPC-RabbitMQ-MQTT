@@ -244,8 +244,11 @@ def handle_tcp_connection(conn, addr):
     try:
         reader = conn.makefile('rb')
         print(f"[DEBUG] Aguardando mensagem do cliente/dispositivo...")
+        
         # Lê os bytes da mensagem delimitada uma única vez
         message_bytes = read_delimited_message_bytes(reader)
+        print(f"[DEBUG] Mensagem recebida: {len(message_bytes)} bytes")
+        print(f"[DEBUG] Primeiros 10 bytes: {message_bytes[:10].hex()}")
         
         # Tenta decodificar como DeviceInfo
         try:
@@ -256,6 +259,7 @@ def handle_tcp_connection(conn, addr):
                 return
         except Exception as e:
             print(f"[DEBUG] Não é DeviceInfo: {e}")
+            print(f"[DEBUG] Erro detalhado: {type(e).__name__}: {str(e)}")
             
         # Tenta decodificar como ClientRequest
         try:
@@ -265,6 +269,7 @@ def handle_tcp_connection(conn, addr):
             return
         except Exception as e:
             print(f"[DEBUG] Não é ClientRequest: {e}")
+            print(f"[DEBUG] Erro detalhado: {type(e).__name__}: {str(e)}")
             
         logger.warning("Mensagem recebida não é DeviceInfo nem ClientRequest válida.")
     except Exception as e:
