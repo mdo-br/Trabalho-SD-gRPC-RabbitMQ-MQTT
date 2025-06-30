@@ -11,6 +11,12 @@
 ```bash
  npm install
 ```
+
+## Executar o backend
+```bash
+uvicorn src.api.src.api_server:app --reload --host 192.168.3.83 --port 8000 # mesmo IP que vai no frontend
+```
+
 ## Executar o frontend
 ```bash
 npm start

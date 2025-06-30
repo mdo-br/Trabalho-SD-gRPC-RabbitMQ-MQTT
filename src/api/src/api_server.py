@@ -121,16 +121,15 @@ def update_device_config(device_id: str, new_interval: int = None, new_status: s
     try:
         commands = []
         if new_interval is not None:
-            commands.append(("SET_SAMPLING_RATE", str(new_interval)))
+            commands.append(("SET_FREQ", str(new_interval)))
         if new_status:
-            commands.append(("TURN_ON" if new_status == "ON" else "TURN_OFF", ""))
+            commands.append(("START" if new_status == "ON" else "STOP", ""))
 
         responses = []
 
         for command_type, value in commands:
             req = smart_city_pb2.ClientRequest(
                 type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
-                target_device_id=device_id,
                 command=smart_city_pb2.DeviceCommand(
                     device_id=device_id,
                     command_type=command_type,
