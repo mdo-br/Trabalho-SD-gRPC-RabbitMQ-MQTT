@@ -140,3 +140,4 @@ extern const pb_msgdesc_t smartcity_devices_DeviceInfo_msg;
 #endif
 
 #endif
+ 

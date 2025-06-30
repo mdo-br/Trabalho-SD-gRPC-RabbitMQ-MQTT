@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(m
 logger = logging.getLogger(__name__)
 
 # --- Configurações de Conexão com o Gateway ---
-GATEWAY_IP = '127.0.0.1' # Mude para o IP do seu Gateway se não for localhost
+GATEWAY_IP = '192.168.0.20' # Mude para o IP do seu Gateway se não for localhost
 GATEWAY_TCP_PORT = 12345
 
 def _read_varint(sock):

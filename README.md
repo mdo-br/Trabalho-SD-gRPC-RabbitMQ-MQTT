@@ -256,7 +256,7 @@ protoc --nanopb_out=esp8266-projects/smart-city-sensor/ esp8266-projects/smart-c
 
 ### 1. Configurar Ambiente Python
 
-```bash
+    ```bash
 # Criar ambiente virtual
 python3 -m venv venv
 source venv/bin/activate  # Linux/Mac
@@ -269,7 +269,7 @@ pip install -r requirements.txt
 
 ### 2. Configurar Ambiente Java
 
-```bash
+    ```bash
 # Compilar dispositivos Java
 mvn clean package
 
@@ -278,7 +278,7 @@ mvn clean package
 
 ### 3. Gerar Código Protocol Buffers
 
-```bash
+    ```bash
 # Gerar código Python
 protoc --python_out=src/proto/ src/proto/smart_city.proto
 
@@ -288,7 +288,7 @@ protoc --java_out=src/proto/ src/proto/smart_city.proto
 
 ### 4. Configurar ESP8266 (Opcional)
 
-```bash
+        ```bash
 cd esp8266-projects/smart-city-sensor
 # Ver README.md específico do ESP8266 para instruções detalhadas
 ```
@@ -317,7 +317,7 @@ java -jar src/devices/actuators/AlarmActuator.jar
 
 ### 3. Testar com Cliente CLI
 
-```bash
+    ```bash
 # Terminal 3 - Cliente de teste
 python3 src/client-test/smart_city_client.py
 ```
@@ -405,7 +405,7 @@ Status: SUCCESS
    ```
 
 2. **Regenerar código:**
-   ```bash
+        ```bash
    protoc --python_out=src/proto/ src/proto/smart_city.proto
    ```
 
@@ -422,7 +422,7 @@ Status: SUCCESS
 
 ### Logs Úteis
 
-```bash
+        ```bash
 # Verificar dispositivos na rede
 sudo tcpdump -i any udp port 5007
 

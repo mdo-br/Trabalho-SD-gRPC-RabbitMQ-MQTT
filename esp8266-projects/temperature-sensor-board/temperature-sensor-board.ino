@@ -1,11 +1,3 @@
-/*
- * Temperature Sensor Board - ESP8266
- * Sensor de temperatura para placa desenvolvida
- * Baseado no código original com DHT11 e adaptado para Protocol Buffers
- * Comunica com o Gateway via UDP usando Protocol Buffers
- * Descoberta automática via multicast
- */
-
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include "pb_encode.h"
@@ -16,22 +8,22 @@
 
 // Configurações do Sensor DHT11
 #define DHTTYPE DHT11
-#define DHTPIN 3  // PINO DIGITAL UTILIZADO PELO SENSOR
+#define DHTPIN 3
 DHT dht(DHTPIN, DHTTYPE);
 
 // Configurações WiFi
-const char* ssid = "brisa-3604536";//"SUA_REDE_WIFI";
-const char* password = "9jqkpom5";//"SUA_SENHA_WIFI";
+const char* ssid = "brisa-3604536";
+const char* password = "9jqkpom5";
 
 // Configurações de rede
-const char* multicastIP = "224.1.1.1";  // Endereço multicast do gateway
-const int multicastPort = 5007;         // Porta multicast do gateway
-const int gatewayUDPPort = 12346;       // Porta UDP do Gateway (padrão)
-const int localUDPPort = 8890;          // Porta UDP local (diferente do outro sensor)
+const char* multicastIP = "224.1.1.1";
+const int multicastPort = 5007;
+const int gatewayUDPPort = 12346;
+const int localUDPPort = 8890;
 
 // Configurações do dispositivo
-const String ID_PCB = "001001001";      // ID referente a placa, MODIFICAR AQUI
-const String deviceID = "temp_board_" + ID_PCB;  // ID único para esta placa
+const String ID_PCB = "001001001";
+const String deviceID = "temp_board_" + ID_PCB;
 
 WiFiUDP udp;
 WiFiUDP multicastUdp;
@@ -41,25 +33,21 @@ float humidity = 0.0;
 float temperatureAnt = 0.0;
 float humidityAnt = 0.0;
 unsigned long lastSensorRead = 0;
-const unsigned long sensorInterval = 5000; // 5 segundos (mesmo do código original)
+const unsigned long sensorInterval = 5000;
 
-// Descoberta do gateway
 String gatewayIP = "";
 bool gatewayDiscovered = false;
 unsigned long lastDiscoveryAttempt = 0;
-const unsigned long discoveryInterval = 30000; // 30 segundos
+const unsigned long discoveryInterval = 30000;
 
-// Variável para armazenar o IP como string estática
 String deviceIP = "";
 
-// Callback para serializar o campo device_id
 bool encode_device_id(pb_ostream_t *stream, const pb_field_t *field, void * const *arg) {
   const char *device_id = (const char *)(*arg);
   return pb_encode_tag_for_field(stream, field) &&
          pb_encode_string(stream, (const uint8_t*)device_id, strlen(device_id));
 }
 
-// Callback para serializar o campo ip_address
 bool encode_ip_address(pb_ostream_t *stream, const pb_field_t *field, void * const *arg) {
   const char *ip_address = (const char *)(*arg);
   return pb_encode_tag_for_field(stream, field) &&
@@ -69,12 +57,11 @@ bool encode_ip_address(pb_ostream_t *stream, const pb_field_t *field, void * con
 void setup() {
   Serial.begin(115200);
   Serial.println("\n=== Temperature Sensor Board ESP8266 ===");
-  Serial.println("Placa desenvolvida - Sensor de Temperatura DHT11");
   Serial.print("ID da Placa: ");
   Serial.println(ID_PCB);
   
   connectToWiFi();
-  dht.begin(); // Inicializa o sensor DHT11
+  dht.begin();
   udp.begin(localUDPPort);
   multicastUdp.beginMulticast(WiFi.localIP(), IPAddress(224,1,1,1), multicastPort);
   Serial.println("Aguardando descoberta do gateway via multicast...");
@@ -86,7 +73,6 @@ void loop() {
   }
   processDiscoveryMessages();
   if (!gatewayDiscovered && (millis() - lastDiscoveryAttempt >= discoveryInterval)) {
-    Serial.println("Tentando descoberta ativa do gateway...");
     sendDiscoveryRequest();
     lastDiscoveryAttempt = millis();
   }
@@ -98,25 +84,19 @@ void loop() {
 }
 
 void connectToWiFi() {
-  if (WiFi.status() == WL_CONNECTED) {
-    return;
-  }
+  if (WiFi.status() == WL_CONNECTED) return;
 
   Serial.println();
-  Serial.println("Conectando-se");
-  Serial.print(ssid);
+  Serial.print("Conectando-se a ");
+  Serial.println(ssid);
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(100);
     Serial.print(".");
   }
-  
-  Serial.println();
-  Serial.print("Conectado na rede: ");
-  Serial.print(ssid);  
-  Serial.print("  IP obtido: ");
-  Serial.println(WiFi.localIP());
+
+  Serial.println("\nWiFi conectado. IP: " + WiFi.localIP().toString());
 }
 
 void processDiscoveryMessages() {
@@ -124,7 +104,6 @@ void processDiscoveryMessages() {
   if (packetSize) {
     uint8_t incomingPacket[255];
     int len = multicastUdp.read(incomingPacket, 255);
-    Serial.printf("Mensagem multicast recebida: %d bytes\n", len);
     IPAddress remoteIP = multicastUdp.remoteIP();
     if (remoteIP[0] != 0 && remoteIP[0] != 255) {
       gatewayIP = remoteIP.toString();
@@ -136,7 +115,7 @@ void processDiscoveryMessages() {
 }
 
 void sendDiscoveryRequest() {
-  String discoveryMsg = "DEVICE_DISCOVERY;ID:" + String(deviceID) + ";TYPE:TEMPERATURE_SENSOR;IP:" + WiFi.localIP().toString();
+  String discoveryMsg = "DEVICE_DISCOVERY;ID:" + deviceID + ";TYPE:TEMPERATURE_SENSOR;IP:" + WiFi.localIP().toString();
   udp.beginPacket("255.255.255.255", multicastPort);
   udp.write((uint8_t*)discoveryMsg.c_str(), discoveryMsg.length());
   udp.endPacket();
@@ -144,71 +123,48 @@ void sendDiscoveryRequest() {
 }
 
 void readSensor() {
-  // Leitura real do sensor DHT11 (baseado no código original)
   temperatureAnt = temperature;
-  temperature = dht.readTemperature(); 
-
   humidityAnt = humidity;
+  temperature = dht.readTemperature();
   humidity = dht.readHumidity();
-    
-  // Enviar dados apenas se houver mudança (como no código original)
-  if(temperature != temperatureAnt && !(isnan(temperature))){
-    Serial.print("Temperatura = "); 
-    Serial.print(temperature); 
-    Serial.print(" °C      |       "); 
-    Serial.print("Umidade = "); 
-    Serial.print(humidity); 
-    Serial.println();
-    
-    sendSensorData();
-  }
 
-  if(humidity != humidityAnt && !(isnan(humidity))){
-    Serial.print("Temperatura = "); 
-    Serial.print(temperature); 
-    Serial.print(" °C      |       "); 
-    Serial.print("Umidade = "); 
-    Serial.print(humidity); 
-    Serial.println();
-    
-    sendSensorData();
+  if (temperature != temperatureAnt || humidity != humidityAnt) {
+    Serial.printf("Temperatura = %.1f °C | Umidade = %.1f %%\n", temperature, humidity);
+    if (!isnan(temperature) && !isnan(humidity)) {
+      sendSensorData();
+    }
   }
 }
 
 void sendSensorData() {
   smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
-  // Configura o callback para o campo device_id
   msg.device_id.funcs.encode = &encode_device_id;
   msg.device_id.arg = (void*)deviceID.c_str();
   msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
   msg.current_status = smartcity_devices_DeviceStatus_ACTIVE;
+
+  // Usa oneof para dados de sensor
   msg.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
   msg.data.temperature_humidity.temperature = temperature;
   msg.data.temperature_humidity.humidity = humidity;
 
   uint8_t buffer[128];
   pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-  bool status = pb_encode(&stream, smartcity_devices_DeviceUpdate_fields, &msg);
-
-  if (status) {
-    // Enviar dados sensoriados via UDP (porta 12346)
+  if (pb_encode(&stream, smartcity_devices_DeviceUpdate_fields, &msg)) {
     udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
     udp.write(buffer, stream.bytes_written);
     udp.endPacket();
-    Serial.printf("DeviceUpdate enviado via UDP para %s:%d (%d bytes)\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
+    Serial.printf("DeviceUpdate enviado via UDP (%d bytes)\n", stream.bytes_written);
   } else {
     Serial.println("Erro ao codificar com nanopb!");
   }
 }
 
 void sendDiscoveryResponse() {
-  // Enviar DeviceInfo via TCP para se registrar no gateway
   WiFiClient client;
-  if (client.connect(gatewayIP.c_str(), 12345)) { // Porta TCP do gateway
-    // Atualizar o IP do dispositivo
+  if (client.connect(gatewayIP.c_str(), 12345)) {
     deviceIP = WiFi.localIP().toString();
-    
-    // Criar mensagem DeviceInfo
+
     smartcity_devices_DeviceInfo msg = smartcity_devices_DeviceInfo_init_zero;
     msg.device_id.funcs.encode = &encode_device_id;
     msg.device_id.arg = (void*)deviceID.c_str();
@@ -220,22 +176,10 @@ void sendDiscoveryResponse() {
     msg.is_actuator = false;
     msg.is_sensor = true;
 
-    // DEBUG: imprimir campos antes de serializar
-    Serial.println("[DEBUG] DeviceInfo a ser enviado:");
-    Serial.print("  device_id: "); Serial.println(deviceID);
-    Serial.print("  type: "); Serial.println((int)msg.type);
-    Serial.print("  ip_address: "); Serial.println(deviceIP);
-    Serial.print("  port: "); Serial.println(msg.port);
-    Serial.print("  initial_state: "); Serial.println((int)msg.initial_state);
-    Serial.print("  is_actuator: "); Serial.println(msg.is_actuator);
-    Serial.print("  is_sensor: "); Serial.println(msg.is_sensor);
-
     uint8_t buffer[128];
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-    bool status = pb_encode(&stream, smartcity_devices_DeviceInfo_fields, &msg);
-
-    if (status) {
-      // Enviar o tamanho da mensagem como varint
+    if (pb_encode(&stream, smartcity_devices_DeviceInfo_fields, &msg)) {
+      // varint (tamanho)
       uint8_t varint[5];
       size_t varint_len = 0;
       size_t len = stream.bytes_written;
@@ -246,20 +190,13 @@ void sendDiscoveryResponse() {
         varint[varint_len++] = byte;
       } while (len);
       client.write(varint, varint_len);
-      // Enviar o payload protobuf
       client.write(buffer, stream.bytes_written);
       client.stop();
-      Serial.printf("DeviceInfo enviado via TCP para %s:12345 (%d bytes)\n", gatewayIP.c_str(), (int)stream.bytes_written);
-      // DEBUG: imprimir bytes enviados
-      Serial.print("[DEBUG] Bytes enviados: ");
-      for (size_t i = 0; i < stream.bytes_written; ++i) {
-        Serial.printf("%02x ", buffer[i]);
-      }
-      Serial.println();
+      Serial.printf("DeviceInfo enviado via TCP (%d bytes)\n", stream.bytes_written);
     } else {
       Serial.println("Erro ao codificar DeviceInfo com nanopb!");
     }
   } else {
     Serial.println("Falha ao conectar ao gateway via TCP para registro!");
   }
-} 
+}
