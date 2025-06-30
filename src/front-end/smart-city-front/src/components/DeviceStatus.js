@@ -3,6 +3,8 @@ import React from 'react';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
+const IP = '192.168.3.83'
+
 export default function DeviceStatus({ device, onStatusChange, onIntervalChange }) {
   const [loading, setLoading] = React.useState(false);
   const [interval, setInterval] = React.useState(device.sampling_interval?.toString() || '');
@@ -12,7 +14,7 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
   React.useEffect(() => {
     async function fetchSensorData() {
       try {
-        const res = await axios.get('http://localhost:8000/device/data', {
+        const res = await axios.get(`http://${IP}:8000/device/data`, {
           params: { device_id: device.id }
         });
         setSensorData({
@@ -36,7 +38,7 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
     const newStatus = device.status === 'ON' ? 'OFF' : 'ON';
     setLoading(true);
     try {
-      await axios.put('http://localhost:8000/devices/config', null, {
+      await axios.put(`http://${IP}:8000/devices/config`, null, {
         params: {
           device_id: device.id,
           new_status: newStatus
@@ -58,7 +60,7 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
     }
     setLoading(true);
     try {
-      await axios.put('http://localhost:8000/devices/config', null, {
+      await axios.put(`http://${IP}:8000/devices/config`, null, {
         params: {
           device_id: device.id,
           new_interval: newInterval

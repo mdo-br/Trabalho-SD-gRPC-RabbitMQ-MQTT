@@ -2,6 +2,8 @@ import React from 'react';
 import axios from 'axios';
 import DevicesList from './components/DeviceList';
 
+const IP = '192.168.3.83'
+
 export default function App() {
   const [devices, setDevices] = React.useState([]);
 
@@ -11,7 +13,7 @@ export default function App() {
 
   async function fetchDevices() {
     try {
-      const response = await axios.get('http://localhost:8000/devices');
+      const response = await axios.get(`http://${IP}:8000/devices`);
       setDevices(response.data);
     } catch (error) {
       console.error('Erro ao buscar dispositivos:', error);

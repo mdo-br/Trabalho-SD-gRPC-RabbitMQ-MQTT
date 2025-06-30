@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GATEWAY_HOST = "localhost"
+GATEWAY_HOST = "192.168.3.129"
 GATEWAY_API_PORT = 12347
 
 def encode_varint(value: int) -> bytes:
@@ -109,14 +109,11 @@ def get_device_status(device_id: str):
 
         # Exemplo para ALARM ligado
         if d.type == smart_city_pb2.DeviceType.ALARM and d.current_status == smart_city_pb2.DeviceStatus.ON:
-            base_response["sound"] = "BEEP, BEEP, BEEP..."
+            base_response["sound"] = "Ligado"
 
         return base_response
 
     raise HTTPException(status_code=404, detail=res.message or "Dispositivo não encontrado")
-
-
-
 
 
 @app.put("/devices/config")
