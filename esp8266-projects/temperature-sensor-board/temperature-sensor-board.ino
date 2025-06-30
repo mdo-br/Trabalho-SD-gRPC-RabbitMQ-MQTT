@@ -12,8 +12,8 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 // Configurações WiFi
-const char* ssid = "brisa-3604536";
-const char* password = "9jqkpom5";
+const char* ssid = "ssid"; //sua rede wifi
+const char* password = "password"; // sua senha wifi
 
 // Configurações de rede
 const char* multicastIP = "224.1.1.1";

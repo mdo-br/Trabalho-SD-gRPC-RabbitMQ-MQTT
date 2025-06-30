@@ -13,8 +13,8 @@ unsigned long prevTime = millis();
 long msgInterval = 30000;
 String lampStatus = "OFF";
 
-const char* SSID = "brisa-3604536";
-const char* PASSWORD = "9jqkpom5";
+const char* SSID = "SSID"; //sua rede wifi
+const char* PASSWORD = "PASSWORD"; //sua senha wifi
 
 const char* multicastIP = "224.1.1.1";
 const int multicastPort = 5007;
