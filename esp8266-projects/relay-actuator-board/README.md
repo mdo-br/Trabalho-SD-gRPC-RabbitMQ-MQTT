@@ -19,7 +19,7 @@ Este é um atuador de relé para controle de lâmpada, baseado no ESP8266 e adap
 | **Tipo** | Sensor (leitura) | Atuador (controle) |
 | **Porta UDP** | 8890 | 8891 |
 | **ID da Placa** | 001001001 | 001001002 |
-| **DeviceType** | TEMPERATURE_SENSOR | ALARM |
+| **DeviceType** | TEMPERATURE_SENSOR | RELAY |
 | **is_actuator** | false | true |
 | **is_sensor** | true | false |
 | **Dados** | Temperatura/Umidade | Status ON/OFF |
@@ -89,7 +89,7 @@ void controlRelay(bool turnOn) {
 ```protobuf
 DeviceInfo {
   device_id: "relay_board_001001002"
-  type: ALARM
+  type: RELAY
   ip_address: "192.168.0.18"
   port: 8891
   initial_state: OFF
@@ -102,7 +102,7 @@ DeviceInfo {
 ```protobuf
 DeviceUpdate {
   device_id: "relay_board_001001002"
-  type: ALARM
+  type: RELAY
   current_status: ON  // ou OFF
 }
 ```

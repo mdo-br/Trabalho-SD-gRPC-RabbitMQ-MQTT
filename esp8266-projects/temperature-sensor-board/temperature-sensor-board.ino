@@ -40,8 +40,8 @@
 DHT dht(DHTPIN, DHTTYPE);            // Objeto do sensor DHT
 
 // --- Configurações de Rede WiFi ---
-const char* ssid = "ATLab";           // Nome da rede WiFi - CONFIGURAR
-const char* password = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
+const char* ssid = "SSID";           // Nome da rede WiFi - CONFIGURAR
+const char* password = "PASSWORD";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
