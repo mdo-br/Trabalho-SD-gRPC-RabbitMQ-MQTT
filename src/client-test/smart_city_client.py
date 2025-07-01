@@ -45,7 +45,7 @@ except ImportError as e:
     sys.exit(1)
 
 # --- Configurações de Conexão com o Gateway ---
-GATEWAY_IP = '127.0.0.1'  # IP do gateway - altere conforme necessário
+GATEWAY_IP = '192.168.3.121'  # IP do gateway - altere conforme necessário
 GATEWAY_TCP_PORT = 12345     # Porta TCP do gateway
 
 def _read_varint(sock):
@@ -105,34 +105,20 @@ def _encode_varint(value):
 
 def write_delimited_message(sock, message):
     """
-    Envia uma mensagem Protocol Buffers com delimitador de tamanho.
-    
-    Protocol Buffers usa um formato onde o tamanho da mensagem é codificado
-    como varint seguido pelos dados da mensagem.
-    
-    Args:
-        sock: Socket para envio
-        message: Objeto Protocol Buffers para serializar
+    Envia uma mensagem Protocol Buffers com delimitador de tamanho, agora usando SmartCityMessage como envelope.
     """
-    data = message.SerializeToString()
+    envelope = smart_city_pb2.SmartCityMessage()
+    if isinstance(message, smart_city_pb2.ClientRequest):
+        envelope.message_type = smart_city_pb2.MessageType.CLIENT_REQUEST
+        envelope.client_request.CopyFrom(message)
+    else:
+        raise ValueError("Tipo de mensagem não suportado para envelope!")
+    data = envelope.SerializeToString()
     sock.sendall(_encode_varint(len(data)) + data)
 
-def read_delimited_message(sock, message_type):
+def read_delimited_message(sock):
     """
-    Lê uma mensagem Protocol Buffers com delimitador de tamanho.
-    
-    Primeiro lê o varint com o tamanho da mensagem, depois lê os dados
-    correspondentes e deserializa para o tipo especificado.
-    
-    Args:
-        sock: Socket para leitura
-        message_type: Classe do tipo de mensagem Protocol Buffers
-        
-    Returns:
-        Objeto do tipo message_type deserializado
-        
-    Raises:
-        EOFError: Se o socket for fechado inesperadamente
+    Lê uma mensagem Protocol Buffers com delimitador de tamanho, esperando sempre SmartCityMessage.
     """
     length = _read_varint(sock)
     data = b''
@@ -141,9 +127,9 @@ def read_delimited_message(sock, message_type):
         if not chunk:
             raise EOFError("Socket fechado inesperadamente ao ler mensagem.")
         data += chunk
-    msg = message_type()
-    msg.ParseFromString(data)
-    return msg
+    envelope = smart_city_pb2.SmartCityMessage()
+    envelope.ParseFromString(data)
+    return envelope
 
 class SmartCityClient:
     """
@@ -172,30 +158,22 @@ class SmartCityClient:
     def send_request(self, request_proto):
         """
         Envia uma requisição Protocol Buffers para o Gateway e retorna a resposta.
-        
-        Estabelece uma conexão TCP com o gateway, envia a requisição e aguarda
-        a resposta. Trata erros de rede e decodificação.
-        
-        Args:
-            request_proto: Objeto Protocol Buffers da requisição
-            
-        Returns:
-            Objeto GatewayResponse ou None em caso de erro
+        Agora usa SmartCityMessage como envelope.
         """
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                # Conecta ao gateway
                 sock.connect((self.gateway_ip, self.gateway_port))
-                
-                # Envia a requisição
                 write_delimited_message(sock, request_proto)
                 logger.debug(f"Requisição enviada: {request_proto.DESCRIPTOR.full_name}")
-                
-                # Recebe a resposta
-                response_proto = read_delimited_message(sock, smart_city_pb2.GatewayResponse)
-                logger.debug(f"Resposta recebida: {response_proto.DESCRIPTOR.full_name}")
-                return response_proto
-                
+                envelope = read_delimited_message(sock)
+                # Trata o payload do envelope
+                if envelope.message_type == smart_city_pb2.MessageType.GATEWAY_RESPONSE:
+                    return envelope.gateway_response
+                elif envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
+                    return envelope.device_update
+                else:
+                    logger.error(f"Tipo de resposta inesperado: {envelope.message_type}")
+                    return None
         except socket.error as e:
             logger.error(f"Erro de socket ao comunicar com o Gateway: {e}")
             return None
@@ -225,19 +203,19 @@ class SmartCityClient:
         if response and response.type == smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST:
             devices = response.devices
             if devices:
-                print("\n" + "="*80)
+                print("\n" + "="*94)
                 print("    DISPOSITIVOS CONECTADOS AO GATEWAY")
-                print("="*80)
-                print(f"{'ID':<25} {'TIPO':<20} {'IP:PORTA':<15} {'STATUS':<10} {'ATUADOR':<8} {'SENSOR':<8}")
-                print("-"*80)
+                print("="*94)
+                print(f"{'ID':<25} {'TIPO':<20} {'IP:PORTA':<20} {'STATUS':<10} {'ATUADOR':<8} {'SENSOR':<8}")
+                print("-"*94)
                 
                 for device in devices:
                     device_type_name = smart_city_pb2.DeviceType.Name(device.type)
                     device_status_name = smart_city_pb2.DeviceStatus.Name(device.initial_state)
                     
-                    print(f"{device.device_id:<25} {device_type_name:<20} {device.ip_address}:{device.port:<15} {device_status_name:<10} {'SIM' if device.is_actuator else 'NAO':<8} {'SIM' if device.is_sensor else 'NAO':<8}")
+                    print(f"{device.device_id:<25} {device_type_name:<20} {device.ip_address}:{device.port:<7} {device_status_name:<10} {'SIM' if device.is_actuator else 'NAO':<8} {'SIM' if device.is_sensor else 'NAO':<8}")
                 
-                print("="*80)
+                print("="*94)
                 logger.info(f"Total de dispositivos: {len(devices)}")
             else:
                 logger.info("Nenhum dispositivo encontrado.")
@@ -321,7 +299,9 @@ class SmartCityClient:
                 logger.info(f"  Corrente: {dev_status.current_sensor.current}A")
                 logger.info(f"  Tensão: {dev_status.current_sensor.voltage}V")
                 logger.info(f"  Potência: {dev_status.current_sensor.power}W")
-            logger.info(f"  Configuração: {dev_status.custom_config_status}")
+            # Exibe frequência de envio se presente
+            if hasattr(dev_status, 'which_data') and dev_status.which_data == 21:  # frequency_ms = 21
+                logger.info(f"  Frequência de envio: {dev_status.data.frequency_ms} ms")
             logger.info("--------------------------------")
         elif response:
             logger.error(f"Erro ao obter status do dispositivo: {response.message}")
@@ -397,10 +377,8 @@ def relay_menu(client):
         print("="*50)
         print("1. Ligar Relé (TURN_ON)")
         print("2. Desligar Relé (TURN_OFF)")
-        print("3. Alternar Estado (TOGGLE)")
-        print("4. Consultar Status do Relé")
-        print("5. Comando Personalizado")
-        print("6. Voltar ao Menu Principal")
+        print("3. Consultar Status do Relé")
+        print("4. Voltar ao Menu Principal")
         print("-"*50)
         
         choice = input("Escolha uma opção: ").strip()
@@ -424,15 +402,6 @@ def relay_menu(client):
                 logger.warning("ID do relé não pode ser vazio.")
                 
         elif choice == '3':
-            # Alterna o estado do relé
-            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
-            if relay_id:
-                client.send_device_command(relay_id, "TOGGLE")
-                logger.info("Estado do relé alternado")
-            else:
-                logger.warning("ID do relé não pode ser vazio.")
-                
-        elif choice == '4':
             # Consulta status do relé
             relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
             if relay_id:
@@ -440,24 +409,7 @@ def relay_menu(client):
             else:
                 logger.warning("ID do relé não pode ser vazio.")
                 
-        elif choice == '5':
-            # Comando personalizado
-            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
-            if relay_id:
-                print("Comandos disponíveis:")
-                print("  - TURN_ON: Liga o relé")
-                print("  - TURN_OFF: Desliga o relé")
-                print("  - TOGGLE: Alterna o estado")
-                print("  - STATUS: Consulta status")
-                command = input("Comando: ").strip().upper()
-                if command:
-                    client.send_device_command(relay_id, command)
-                else:
-                    logger.warning("Comando não pode ser vazio.")
-            else:
-                logger.warning("ID do relé não pode ser vazio.")
-                
-        elif choice == '6':
+        elif choice == '4':
             # Volta ao menu principal
             break
         else:
@@ -477,8 +429,8 @@ def temperature_sensor_menu(client):
         print("\n" + "="*50)
         print("    COMANDOS DO SENSOR DE TEMPERATURA")
         print("="*50)
-        print("1. Ativar Sensor (ACTIVE)")
-        print("2. Pausar Sensor (IDLE)")
+        print("1. Ativar Sensor (TURN_ACTIVE)")
+        print("2. Pausar Sensor (TURN_IDLE)")
         print("3. Alterar Frequência de Envio (SET_FREQ)")
         print("4. Consultar Status do Sensor")
         print("5. Voltar ao Menu Principal")
@@ -490,7 +442,7 @@ def temperature_sensor_menu(client):
             # Ativa o sensor
             sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
             if sensor_id:
-                client.send_device_command(sensor_id, "ACTIVE")
+                client.send_device_command(sensor_id, "TURN_ACTIVE")
                 logger.info("Sensor ativado - enviando dados sensoriados")
             else:
                 logger.warning("ID do sensor não pode ser vazio.")
@@ -499,7 +451,7 @@ def temperature_sensor_menu(client):
             # Pausa o sensor
             sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
             if sensor_id:
-                client.send_device_command(sensor_id, "IDLE")
+                client.send_device_command(sensor_id, "TURN_IDLE")
                 logger.info("Sensor pausado - não enviando dados sensoriados")
             else:
                 logger.warning("ID do sensor não pode ser vazio.")

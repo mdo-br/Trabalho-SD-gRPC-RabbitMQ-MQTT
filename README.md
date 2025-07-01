@@ -91,119 +91,71 @@ Para garantir a interoperabilidade e a eficiência da comunicação, o sistema a
 
 ---
 
-## Protocolo de Comunicação (`.proto`)
+## Protocolo de Comunicação (.proto)
 
-O arquivo [`src/proto/smart_city.proto`](src/proto/smart_city.proto) define o **protocolo de comunicação** do sistema, especificando a sintaxe (estrutura e tipos das mensagens) e parte da semântica (significado dos campos e mensagens) das mensagens trocadas entre os componentes, utilizando Protocol Buffers. Esse protocolo garante que clientes, gateway e dispositivos falem a mesma "lingua", independentemente da linguagem de programação utilizada.
+- O arquivo central do protocolo é `src/proto/smart_city.proto`. Todos os dispositivos, gateway e cliente utilizam este arquivo para gerar o código das mensagens Protocol Buffers.
+- Todas as mensagens trocadas entre gateway, dispositivos e cliente são **encapsuladas em um envelope** `SmartCityMessage`, que possui um campo `message_type` e um `payload` (oneof) para o tipo de mensagem:
 
-O protocolo de comunicação do sistema é composto por:
-- **Sintaxe:** Definida pelo arquivo `.proto`, que descreve os campos, tipos e formatos das mensagens.
-- **Semântica e regras de interação:** Definidas pela arquitetura do sistema, que estabelece quem envia cada mensagem, quando, e como os participantes devem reagir a cada tipo de mensagem.
-
-### Principais Mensagens e Fluxos
-
-- **Descoberta de Dispositivos (UDP Multicast)**
-  - `DiscoveryRequest`: enviada pelo Gateway para a rede, solicitando que dispositivos se apresentem.
-  - `DeviceInfo`: resposta dos dispositivos ao Gateway, informando tipo, IP, porta, capacidades e estado inicial.
-  - **Exemplo de fluxo:**  
-    1. Gateway envia `DiscoveryRequest` via multicast UDP.
-    2. Dispositivos respondem com `DeviceInfo` via TCP.
-
-- **Comunicação Gateway ↔ Dispositivos**
-  - `DeviceUpdate`: sensores enviam dados periódicos ao Gateway (UDP), atuadores reportam estado (TCP).
-    - Exemplo de payload para sensor de temperatura:
-      ```json
-      {
-        "device_id": "esp8266_temp_01",
-        "type": "TEMPERATURE_SENSOR",
-        "current_status": "ACTIVE",
-        "temperature_humidity": {
-          "temperature": 23.5,
-          "humidity": 60.0
-        }
-      }
-      ```
-    - Exemplo de payload para atuador (alarme):
-      ```json
-      {
-        "device_id": "alarm_001",
-        "type": "ALARM",
-        "current_status": "ON"
-      }
-      ```
-  - `DeviceCommand`: comando do Gateway para um atuador (ex: ligar/desligar, alterar configuração).
-    - Exemplo:
-      ```json
-      {
-        "device_id": "alarm_001",
-        "type": "ALARM",
-        "command_type": "TURN_OFF",
-        "command_value": "OFF"
-      }
-      ```
-
-- **Comunicação Cliente ↔ Gateway**
-  - `ClientRequest`: mensagem do cliente para o Gateway (listar dispositivos, consultar status, enviar comando).
-    - Exemplo para listar dispositivos:
-      ```json
-      {
-        "type": "LIST_DEVICES"
-      }
-      ```
-    - Exemplo para enviar comando:
-      ```json
-      {
-        "type": "SEND_DEVICE_COMMAND",
-        "target_device_id": "alarm_001",
-        "command": {
-          "device_id": "alarm_001",
-          "type": "ALARM",
-          "command_type": "TURN_ON",
-          "command_value": "ON"
-        }
-      }
-      ```
-  - `GatewayResponse`: resposta do Gateway ao cliente (lista de dispositivos, status, confirmação de comando ou erro).
-    - Exemplo de resposta com lista de dispositivos:
-      ```json
-      {
-        "type": "DEVICE_LIST",
-        "devices": [
-          {
-            "device_id": "esp8266_temp_01",
-            "type": "TEMPERATURE_SENSOR",
-            "ip_address": "192.168.5.114",
-            "port": 8889,
-            "initial_state": "ACTIVE"
-          },
-          {
-            "device_id": "alarm_001",
-            "type": "ALARM",
-            "ip_address": "192.168.1.100",
-            "port": 5002,
-            "initial_state": "OFF"
-          }
-        ]
-      }
-      ```
-
-### Extensibilidade
-
-- Novos tipos de dispositivos podem ser adicionados facilmente nas enums `DeviceType` e `DeviceStatus`.
-- Campos específicos para cada tipo de sensor/atuador são definidos usando `oneof`, permitindo evolução sem quebrar compatibilidade.
-- O mesmo arquivo `.proto` é usado para gerar código em Python, Java e C++ (nanopb), garantindo padronização.
-
-### Geração de Código
-
-```bash
-# Para Python
-protoc --python_out=src/proto/ src/proto/smart_city.proto
-
-# Para Java
-protoc --java_out=CAMINHO/DESTINO src/proto/smart_city.proto
-
-# Para ESP8266 (nanopb)
-protoc --nanopb_out=esp8266-projects/smart-city-sensor/ esp8266-projects/smart-city-sensor/smart_city_esp8266.proto
+```protobuf
+message SmartCityMessage {
+  MessageType message_type = 1;
+  oneof payload {
+    ClientRequest client_request = 2;
+    DeviceUpdate device_update = 3;
+    GatewayResponse gateway_response = 4;
+    DeviceInfo device_info = 5;
+    DiscoveryRequest discovery_request = 6;
+  }
+}
 ```
+- Exemplos de tipos de mensagem: `CLIENT_REQUEST`, `DEVICE_UPDATE`, `DEVICE_INFO`, etc.
+- O registro de dispositivos é feito via TCP, enviando um envelope com `message_type = DEVICE_INFO`.
+- O envio de status (DeviceUpdate) é feito via UDP, também encapsulado no envelope.
+- O cliente envia comandos encapsulados em `CLIENT_REQUEST`.
+
+### Registro TCP Periódico
+- Os dispositivos ealizam **registro TCP periódico** no gateway (a cada 30 segundos), garantindo que o gateway reconheça dispositivos mesmo após reinicialização.
+
+### Padronização dos Comandos
+- Todos os comandos enviados para dispositivos seguem o padrão do .proto central, por exemplo:
+  - `TURN_ON`, `TURN_OFF` para relé
+  - `TURN_ACTIVE`, `TURN_IDLE`, `SET_FREQ` para sensor de temperatura
+
+### Exemplo de Envelope (JSON simplificado)
+```json
+{
+  "message_type": "CLIENT_REQUEST",
+  "client_request": {
+    "type": "SEND_DEVICE_COMMAND",
+    "target_device_id": "relay_board_001001003",
+    "command": {
+      "command_type": "TURN_ON",
+      "command_value": ""
+    }
+  }
+}
+```
+
+#### Exemplo de comando SET_FREQ para sensor de temperatura
+```json
+{
+  "message_type": "CLIENT_REQUEST",
+  "client_request": {
+    "type": "SEND_DEVICE_COMMAND",
+    "target_device_id": "temp_board_001001004",
+    "command": {
+      "command_type": "SET_FREQ",
+      "command_value": "10000"
+    }
+  }
+}
+```
+
+### Geração dos arquivos .pb.h/.pb.c
+- Para gerar os arquivos nanopb para cada dispositivo, use:
+  ```bash
+  ../../nanopb-0.4.9.1-linux-x86/generator-bin/protoc -I=../../src/proto --plugin=protoc-gen-nanopb=../../nanopb-0.4.9.1-linux-x86/generator-bin/protoc-gen-nanopb --nanopb_out=. ../../src/proto/smart_city.proto
+  ```
 
 ---
 
@@ -350,111 +302,139 @@ O ESP8266 deve ser programado e conectado à rede WiFi. Ele se descobrirá autom
 ✅ **Protocol Buffers:** Serialização em Python, Java e C++ (nanopb)
 ✅ **Sistema Real:** ESP8266 integrado e funcionando
 
-## Exemplos de Uso
+## Menu Interativo do Cliente
 
-### Listar Dispositivos Conectados
+O cliente Python possui um menu interativo com as seguintes opções:
+
 ```
---- Menu do Cliente SmartCity ---
-1. Listar Dispositivos
-2. Ligar Alarme (TURN_ON)
-3. Desligar Alarme (TURN_OFF)
-4. Consultar Status de um Dispositivo
+==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
+1. Listar Dispositivos Conectados
+2. Comandos do Relé/Atuador
+3. Comandos do Sensor de Temperatura
+4. Consultar Status de Dispositivo
 0. Sair
+-----------------------------------------------------------------------------
 
-Escolha uma opção: 1
+Comandos do Relé/Atuador:
+1. Ligar Relé (TURN_ON)
+2. Desligar Relé (TURN_OFF)
+3. Consultar Status do Relé
+4. Voltar ao Menu Principal
 
---- Dispositivos Conectados ---
-  ID: esp8266_temp_01, Tipo: TEMPERATURE_SENSOR, IP: 192.168.5.114:8889, Status: ACTIVE
-  ID: alarm_001, Tipo: ALARM, IP: 192.168.1.100:5002, Status: OFF
+Comandos do Sensor de Temperatura:
+1. Ativar Sensor (TURN_ACTIVE)
+2. Pausar Sensor (TURN_IDLE)
+3. Alterar Frequência de Envio (SET_FREQ)
+4. Consultar Status do Sensor
+5. Voltar ao Menu Principal
 ```
 
-### Consultar Status de Sensor
-```
-Escolha uma opção: 4
-ID do Dispositivo: esp8266_temp_01
+## Exemplos de Execução de Comandos
 
---- Status de 'esp8266_temp_01' ---
-  Tipo: TEMPERATURE_SENSOR
-  Status Atual: ACTIVE
-  Temperatura: 23.5°C
-  Umidade: 60.0%
+### Ligar Relé
 ```
-
-### Controlar Atuador
-```
+==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
+2. Comandos do Relé/Atuador
 Escolha uma opção: 2
-ID do Dispositivo: alarm_001
 
-Comando TURN_ON enviado para alarm_001
-Status: SUCCESS
+    COMANDOS DO RELÉ/ATUADOR
+1. Ligar Relé (TURN_ON)
+Escolha uma opção: 1
+ID do Relé/Atuador (ex: relay_001001001): relay_board_001001003
+[INFO]: Enviando comando 'TURN_ON' para dispositivo 'relay_board_001001003'...
+[INFO]: Comando enviado com sucesso para 'relay_board_001001003': Status=SUCCESS, Mensagem: Comando enviado com sucesso.
+[INFO]: Relé ligado
 ```
 
-## Desenvolvimento e Expansão
+### Pausar Sensor de Temperatura
+```
+==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
+3. Comandos do Sensor de Temperatura
+Escolha uma opção: 3
 
-### Adicionar Novo Tipo de Dispositivo
+    COMANDOS DO SENSOR DE TEMPERATURA
+2. Pausar Sensor (TURN_IDLE)
+Escolha uma opção: 2
+ID do Sensor de Temperatura (ex: temp_board_001001001): temp_board_001001004
+[INFO]: Enviando comando 'TURN_IDLE' para dispositivo 'temp_board_001001004'...
+[INFO]: Comando enviado com sucesso para 'temp_board_001001004': Status=SUCCESS, Mensagem: Comando enviado com sucesso.
+[INFO]: Sensor pausado - não enviando dados sensoriados
+```
 
-1. **Atualizar Protocol Buffers:**
-   ```proto
-   enum DeviceType {
-     // ... tipos existentes
-     NEW_DEVICE = 9;
-   }
-   ```
+### Alterar Frequência de Envio do Sensor
+```
+==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
+3. Comandos do Sensor de Temperatura
+Escolha uma opção: 3
 
-2. **Implementar Dispositivo Java:**
-   - Criar classe que implementa o protocolo
-   - Gerar JAR com dependências
+    COMANDOS DO SENSOR DE TEMPERATURA
+3. Alterar Frequência de Envio (SET_FREQ)
+Escolha uma opção: 3
+ID do Sensor de Temperatura (ex: temp_board_001001001): temp_board_001001004
+Frequência em milissegundos (1000-60000):
+  - 1000 = 1 segundo
+  - 5000 = 5 segundos (padrão)
+  - 10000 = 10 segundos
+  - 30000 = 30 segundos
+Nova frequência (ms): 10000
+[INFO]: Enviando comando 'SET_FREQ' para dispositivo 'temp_board_001001004'...
+[INFO]: Comando enviado com sucesso para 'temp_board_001001004': Status=SUCCESS, Mensagem: Comando enviado com sucesso.
+[INFO]: Frequência alterada para 10000 ms
+```
 
-3. **Atualizar Gateway:**
-   - Adicionar lógica específica se necessário
 
-### Adicionar Novo Campo de Dados
 
-1. **Atualizar .proto:**
-   ```proto
-   message DeviceUpdate {
-     // ... campos existentes
-     NewData new_data = 10;
-   }
-   ```
+### Dica: Monitorando a comunicação com tcpdump
 
-2. **Regenerar código:**
-        ```bash
-   protoc --python_out=src/proto/ src/proto/smart_city.proto
-   ```
+Você pode usar o tcpdump para depurar e monitorar o tráfego do sistema:
 
-3. **Atualizar implementações** nos dispositivos
-
-## Troubleshooting
-
-### Problemas Comuns
-
-- **Dispositivo não aparece:** Verificar se multicast está funcionando
-- **Erro de conexão:** Verificar portas e firewall
-- **Dados não atualizam:** Verificar se dispositivo está enviando via UDP
-- **ESP8266 não conecta:** Verificar credenciais WiFi no firmware
-
-### Logs Úteis
-
-        ```bash
-# Verificar dispositivos na rede
+```bash
+# Verificar dispositivos na rede (descoberta multicast)
 sudo tcpdump -i any udp port 5007
 
-# Monitorar comunicação TCP
+# Monitorar comunicação TCP (registro e comandos)
 sudo tcpdump -i any tcp port 12345
 
-# Verificar dados UDP
+# Verificar dados UDP (status dos dispositivos)
 sudo tcpdump -i any udp port 12346
 ```
 
-## Contribuição
+## Atualizando os arquivos gerados do Protobuf
 
-1. Fork o projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
-5. Abra um Pull Request
+Sempre que modificar o arquivo `smart_city.proto`, é necessário regenerar os arquivos para Python (gateway/cliente) e para C (firmware ESP8266).
 
-## Licença
+### 1. Gerar arquivos Python para o gateway/cliente
 
-Este projeto é parte de um trabalho acadêmico de Sistemas Distribuídos.
+Execute no diretório `src/proto/`:
+
+```bash
+protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --python_out=. smart_city.proto
+protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --python_out=. ../../nanopb-0.4.9.1-linux-x86/generator/proto/nanopb.proto
+```
+
+Isso irá gerar/atualizar os arquivos `smart_city_pb2.py` e `nanopb_pb2.py`.
+
+### 2. Gerar arquivos nanopb para ESP8266 (C/C++)
+
+Ainda no diretório `src/proto/`, execute:
+
+```bash
+protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --nanopb_out=. smart_city.proto
+```
+
+Copie os arquivos `.pb.h` e `.pb.c` gerados para os diretórios dos firmwares ESP8266:
+
+```bash
+cp smart_city.pb.* ../../esp8266-projects/relay-actuator-board/
+cp smart_city.pb.* ../../esp8266-projects/temperature-sensor-board/
+```
+
+### 3. Exportar PYTHONPATH para rodar o gateway/cliente
+
+Antes de rodar o gateway ou cliente Python, garanta que o diretório `src/proto/` está no PYTHONPATH:
+
+```bash
+export PYTHONPATH=$PYTHONPATH:$(pwd)/src/proto
+```
+
+Assim, os módulos `smart_city_pb2` e `nanopb_pb2` serão encontrados corretamente.

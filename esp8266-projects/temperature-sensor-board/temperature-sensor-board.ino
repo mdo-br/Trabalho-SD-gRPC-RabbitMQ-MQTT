@@ -29,7 +29,7 @@
 #include <WiFiServer.h>
 #include "pb_encode.h"
 #include "pb_decode.h"
-#include "smart_city_esp8266.pb.h"
+#include "smart_city.pb.h"
 #include "pb.h"
 #include <WiFiClient.h>
 #include <DHT.h>
@@ -40,8 +40,8 @@
 DHT dht(DHTPIN, DHTTYPE);            // Objeto do sensor DHT
 
 // --- Configurações de Rede WiFi ---
-const char* ssid = "homeoffice";           // Nome da rede WiFi - CONFIGURAR
-const char* password = "19071981";   // Senha da rede WiFi - CONFIGURAR
+const char* ssid = "ATLab";           // Nome da rede WiFi - CONFIGURAR
+const char* password = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
@@ -51,7 +51,7 @@ const int localUDPPort = 8890;          // Porta UDP local (diferente de outros 
 const int localTCPPort = 5000;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
-const String ID_PCB = "001001001";      // ID único da placa - MODIFICAR SE NECESSÁRIO
+const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
 const String deviceID = "temp_board_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
@@ -75,6 +75,10 @@ const unsigned long discoveryInterval = 30000; // Intervalo entre tentativas (30
 String deviceIP = "";                  // IP local do dispositivo
 bool deviceRegistered = false;         // Flag para evitar registro repetido
 bool sensorActive = true;              // Estado do sensor (ACTIVE/IDLE)
+
+// --- Variáveis para registro TCP periódico ---
+unsigned long lastRegisterAttempt = 0;
+const unsigned long registerInterval = 30000; // 30 segundos
 
 // --- Funções auxiliares para Protocol Buffers ---
 
@@ -147,6 +151,7 @@ void setup() {
 
 // --- Loop Principal ---
 void loop() {
+  unsigned long currentTime = millis();
   // Reconecta WiFi se necessário
   if (WiFi.status() != WL_CONNECTED) {
     connectToWiFi();
@@ -156,27 +161,33 @@ void loop() {
   processDiscoveryMessages();
   
   // Tenta descoberta ativa se ainda não encontrou o gateway
-  if (!gatewayDiscovered && (millis() - lastDiscoveryAttempt >= discoveryInterval)) {
+  if (!gatewayDiscovered && (currentTime - lastDiscoveryAttempt >= discoveryInterval)) {
     sendDiscoveryRequest();
-    lastDiscoveryAttempt = millis();
+    lastDiscoveryAttempt = currentTime;
   }
   
   // Lê sensor periodicamente se gateway foi descoberto e sensor está ativo
-  if (gatewayDiscovered && sensorActive && (millis() - lastSensorRead >= sensorInterval)) {
+  if (gatewayDiscovered && sensorActive && (currentTime - lastSensorRead >= sensorInterval)) {
     Serial.printf("Lendo sensor (ativo, intervalo: %d ms)\n", sensorInterval);
     readSensor();
-    lastSensorRead = millis();
-  } else if (gatewayDiscovered && !sensorActive && (millis() - lastSensorRead >= 10000)) {
+    lastSensorRead = currentTime;
+  } else if (gatewayDiscovered && !sensorActive && (currentTime - lastSensorRead >= 10000)) {
     // Log a cada 10 segundos quando sensor está pausado
     static unsigned long lastPauseLog = 0;
-    if (millis() - lastPauseLog >= 10000) {
+    if (currentTime - lastPauseLog >= 10000) {
       Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
-      lastPauseLog = millis();
+      lastPauseLog = currentTime;
     }
   }
   
   // Processa comandos TCP
   processTCPCommands();
+  
+  // Registro TCP periódico
+  if (gatewayDiscovered && (currentTime - lastRegisterAttempt >= registerInterval)) {
+    sendDiscoveryResponse();
+    lastRegisterAttempt = currentTime;
+  }
   
   delay(100);  // Pequena pausa para não sobrecarregar o processador
 }
@@ -227,91 +238,89 @@ void processDiscoveryMessages() {
 void processTCPCommands() {
   WiFiClient client = tcpServer.available();
   if (client) {
-    Serial.println("\n=== COMANDO TCP RECEBIDO ===");
-    Serial.printf("Cliente conectado de: %s\n", client.remoteIP().toString().c_str());
-
-    // Aguarda até ter pelo menos 1 byte para leitura
-    int waitCount = 0;
-    while (!client.available() && waitCount < 100) {
-      delay(10);
-      waitCount++;
+    Serial.println("\n[INFO] Cliente TCP conectado para comando");
+    while (client.connected()) {
+      if (client.available()) {
+        // Lê o tamanho da mensagem (varint)
+        uint32_t len = 0;
+        uint8_t shift = 0;
+        while (true) {
+          int b = client.read();
+          if (b == -1) break;
+          len |= (b & 0x7F) << shift;
+          if (!(b & 0x80)) break;
+          shift += 7;
+        }
+        if (len == 0) {
+          Serial.println("[ERRO] Tamanho do envelope inválido");
+          break;
+        }
+        // Lê o buffer do envelope
+        uint8_t buffer[256];
+        size_t readBytes = client.read(buffer, len);
+        if (readBytes != len) {
+          Serial.println("[ERRO] Falha ao ler envelope completo");
+          break;
+        }
+        // Decodifica o envelope SmartCityMessage
+        smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
+        pb_istream_t istream = pb_istream_from_buffer(buffer, len);
+        if (!pb_decode(&istream, smartcity_devices_SmartCityMessage_fields, &envelope)) {
+          Serial.println("[ERRO] Falha ao decodificar envelope SmartCityMessage");
+          break;
+        }
+        // Verifica se é um comando para o dispositivo
+        if (envelope.message_type == smartcity_devices_MessageType_CLIENT_REQUEST && envelope.which_payload == smartcity_devices_SmartCityMessage_client_request_tag) {
+          smartcity_devices_ClientRequest* req = &envelope.payload.client_request;
+          if (req->has_command) {
+            smartcity_devices_DeviceCommand* cmd = &req->command;
+            Serial.print("[DEBUG] Comando recebido: ");
+            Serial.println(cmd->command_type);
+            processCommand(
+                String(cmd->command_type),
+                String(cmd->command_value)
+            );
+            // --- Envia status atualizado como resposta TCP ---
+            smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
+            msg.device_id.funcs.encode = &encode_device_id;
+            msg.device_id.arg = (void*)deviceID.c_str();
+            msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+            msg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
+            msg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
+            msg.data.frequency_ms = sensorInterval;
+            // Cria envelope SmartCityMessage
+            smartcity_devices_SmartCityMessage resp_envelope = smartcity_devices_SmartCityMessage_init_zero;
+            resp_envelope.message_type = smartcity_devices_MessageType_DEVICE_UPDATE;
+            resp_envelope.which_payload = smartcity_devices_SmartCityMessage_device_update_tag;
+            resp_envelope.payload.device_update = msg;
+            // Serializa e envia via TCP
+            uint8_t resp_buffer[128];
+            pb_ostream_t resp_stream = pb_ostream_from_buffer(resp_buffer, sizeof(resp_buffer));
+            if (pb_encode(&resp_stream, smartcity_devices_SmartCityMessage_fields, &resp_envelope)) {
+              // Codifica o tamanho como varint
+              uint8_t resp_varint[5];
+              size_t resp_varint_len = 0;
+              size_t resp_len = resp_stream.bytes_written;
+              do {
+                uint8_t byte = resp_len & 0x7F;
+                resp_len >>= 7;
+                if (resp_len) byte |= 0x80;
+                resp_varint[resp_varint_len++] = byte;
+              } while (resp_len);
+              client.write(resp_varint, resp_varint_len);
+              client.write(resp_buffer, resp_stream.bytes_written);
+              Serial.printf("[DEBUG] Status (envelope) enviado via TCP para %s (%d bytes)\n", client.remoteIP().toString().c_str(), (int)resp_stream.bytes_written);
+            } else {
+              Serial.println("[ERRO] Falha ao serializar status para resposta TCP!");
+            }
+          }
+        } else {
+          Serial.println("[ERRO] Envelope recebido não é CLIENT_REQUEST");
+        }
+      }
     }
-    
-    if (!client.available()) {
-      Serial.println("ERRO: Nenhum dado disponível após aguardar");
-      client.stop();
-      return;
-    }
-
-    Serial.printf("Bytes disponíveis: %d\n", client.available());
-
-    // --- Leitura do Varint (Tamanho da Mensagem) ---
-    uint8_t varint[5];
-    int varint_len = 0;
-    while (client.available() && varint_len < 5) {
-      varint[varint_len] = client.read();
-      Serial.printf("Varint byte %d: 0x%02x\n", varint_len, varint[varint_len]);
-      if ((varint[varint_len] & 0x80) == 0) break;  // Último byte do varint
-      varint_len++;
-    }
-
-    // Decodifica o tamanho da mensagem do varint
-    size_t msg_len = 0;
-    for (int i = 0; i <= varint_len; i++) {
-      msg_len |= (varint[i] & 0x7F) << (7 * i);
-    }
-
-    Serial.printf("Tamanho da mensagem decodificado: %d bytes\n", (int)msg_len);
-
-    // Aguarda até o payload completo estar disponível
-    waitCount = 0;
-    while (client.available() < msg_len && waitCount < 100) {
-      delay(10);
-      waitCount++;
-    }
-
-    if (client.available() < msg_len) {
-      Serial.printf("ERRO: Payload incompleto. Disponível: %d, Esperado: %d\n", 
-                    client.available(), (int)msg_len);
-      client.stop();
-      return;
-    }
-
-    // --- Leitura do Payload Protocol Buffers ---
-    uint8_t buffer[128] = {0};
-    int bytes_read = client.readBytes(buffer, msg_len);
-
-    Serial.printf("Bytes lidos do payload: %d (esperado: %d)\n", bytes_read, (int)msg_len);
-    Serial.print("Payload completo (hex): ");
-    for (int i = 0; i < bytes_read && i < 32; i++) {
-      Serial.printf("%02x ", buffer[i]);
-    }
-    if (bytes_read > 32) Serial.print("...");
-    Serial.println();
-
-    // --- Decodificação Protocol Buffers ---
-    char cmd_buffer[64] = {0};
-    char value_buffer[64] = {0};
-    smartcity_devices_DeviceCommand command = smartcity_devices_DeviceCommand_init_zero;
-    command.command_type.funcs.decode = &decode_string;
-    command.command_type.arg = cmd_buffer;
-    command.command_value.funcs.decode = &decode_string;
-    command.command_value.arg = value_buffer;
-
-    pb_istream_t stream = pb_istream_from_buffer(buffer, bytes_read);
-    if (pb_decode(&stream, smartcity_devices_DeviceCommand_fields, &command)) {
-      String commandType = String(cmd_buffer);
-      String commandValue = String(value_buffer);
-      Serial.printf("SUCESSO: Comando decodificado: '%s' com valor: '%s'\n", 
-                    commandType.c_str(), commandValue.c_str());
-      processCommand(commandType, commandValue);  // Executa o comando
-    } else {
-      Serial.println("ERRO: Falha ao decodificar comando Protobuf!");
-      Serial.printf("Erro na posição: %d\n", (int)stream.bytes_left);
-    }
-
-    Serial.println("=== FIM DO COMANDO TCP ===\n");
     client.stop();
+    Serial.println("[INFO] Cliente TCP desconectado");
   }
 }
 
@@ -333,15 +342,15 @@ void processCommand(String commandType, String commandValue) {
     } else {
       Serial.printf("ERRO: Frequência inválida %d. Deve estar entre 1000 e 60000 ms.\n", newInterval);
     }
-  } else if (commandType == "ACTIVE") {
+  } else if (commandType == "TURN_ACTIVE") {
     // Ativa o envio de dados sensoriados
     sensorActive = true;
-    Serial.println("SUCESSO: Sensor ATIVADO - Enviando dados sensoriados");
+    Serial.println("SUCESSO: Sensor ATIVADO (TURN_ACTIVE) - Enviando dados sensoriados");
     sendStatusUpdate();  // Envia confirmação do status
-  } else if (commandType == "IDLE") {
+  } else if (commandType == "TURN_IDLE") {
     // Pausa o envio de dados sensoriados
     sensorActive = false;
-    Serial.println("SUCESSO: Sensor PAUSADO - Não enviando dados sensoriados");
+    Serial.println("SUCESSO: Sensor PAUSADO (TURN_IDLE) - Não enviando dados sensoriados");
     sendStatusUpdate();  // Envia confirmação do status
   } else {
     Serial.printf("ERRO: Comando não reconhecido: '%s'\n", commandType.c_str());
@@ -392,12 +401,34 @@ void sendSensorData() {
   msg.device_id.arg = (void*)deviceID.c_str();
   msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
   msg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-
   // Configura dados de temperatura e umidade usando oneof
   msg.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
   msg.data.temperature_humidity.temperature = temperature;
   msg.data.temperature_humidity.humidity = humidity;
-
+  // Preenche também a frequência de envio (oneof frequency_ms)
+  // (Opcional: pode enviar em outro DeviceUpdate, mas aqui é útil para debug)
+  // msg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
+  // msg.data.frequency_ms = sensorInterval;
+  
+  // Envia também a frequência atual em uma mensagem separada
+  // (isso garante que o gateway sempre tenha a frequência atualizada)
+  smartcity_devices_DeviceUpdate freqMsg = smartcity_devices_DeviceUpdate_init_zero;
+  freqMsg.device_id.funcs.encode = &encode_device_id;
+  freqMsg.device_id.arg = (void*)deviceID.c_str();
+  freqMsg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+  freqMsg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
+  freqMsg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
+  freqMsg.data.frequency_ms = sensorInterval;
+  
+  // Serializa e envia a mensagem de frequência via UDP
+  uint8_t freqBuffer[128];
+  pb_ostream_t freqStream = pb_ostream_from_buffer(freqBuffer, sizeof(freqBuffer));
+  if (pb_encode(&freqStream, smartcity_devices_DeviceUpdate_fields, &freqMsg)) {
+    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
+    udp.write(freqBuffer, freqStream.bytes_written);
+    udp.endPacket();
+    Serial.printf("Frequência enviada via UDP: %d ms (%d bytes)\n", sensorInterval, freqStream.bytes_written);
+  }
   // Serializa e envia via UDP
   uint8_t buffer[128];
   pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
@@ -413,70 +444,58 @@ void sendSensorData() {
 
 // --- Envio de Atualização de Status (UDP) ---
 void sendStatusUpdate() {
-  Serial.println("--- ENVIANDO STATUS ATUALIZADO ---");
-  Serial.printf("Status atual: %s\n", sensorActive ? "ACTIVE" : "IDLE");
-  Serial.printf("Gateway IP: %s\n", gatewayIP.c_str());
-  Serial.printf("Gateway descoberto: %s\n", gatewayDiscovered ? "SIM" : "NÃO");
-  
-  if (!gatewayDiscovered) {
-    Serial.println("ERRO: Gateway não descoberto, não é possível enviar status");
-    return;
-  }
-
-  // Cria mensagem DeviceUpdate com status atual
-  smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
-  msg.device_id.funcs.encode = &encode_device_id;
-  msg.device_id.arg = (void*)deviceID.c_str();
-  msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-  msg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-
-  // Só inclui dados sensoriados se o sensor estiver ATIVE
-  if (sensorActive) {
-    // Configura dados de temperatura e umidade usando oneof
-    msg.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
-    msg.data.temperature_humidity.temperature = temperature;
-    msg.data.temperature_humidity.humidity = humidity;
-  }
-
+  smartcity_devices_DeviceUpdate update = smartcity_devices_DeviceUpdate_init_zero;
+  update.device_id.funcs.encode = &encode_device_id;
+  update.device_id.arg = (void*)deviceID.c_str();
+  update.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+  update.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
+  update.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
+  update.data.frequency_ms = sensorInterval;
+  // Cria envelope SmartCityMessage
+  smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
+  envelope.message_type = smartcity_devices_MessageType_DEVICE_UPDATE;
+  envelope.payload.device_update = update;
+  envelope.which_payload = smartcity_devices_SmartCityMessage_device_update_tag;
   // Serializa e envia via UDP
-  uint8_t buffer[128];
+  uint8_t buffer[256];
   pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-  if (pb_encode(&stream, smartcity_devices_DeviceUpdate_fields, &msg)) {
+  if (pb_encode(&stream, smartcity_devices_SmartCityMessage_fields, &envelope) && gatewayDiscovered) {
     udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
     udp.write(buffer, stream.bytes_written);
     udp.endPacket();
-    Serial.printf("SUCESSO: Status enviado via UDP para %s:%d (%d bytes)\n", 
-                  gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
-  } else {
-    Serial.println("ERRO: Falha ao codificar mensagem de status com nanopb!");
+    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes)\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
   }
-  
-  Serial.println("--- FIM DO ENVIO DE STATUS ---");
 }
 
 // --- Resposta ao Gateway com DeviceInfo (TCP) ---
 void sendDiscoveryResponse() {
   WiFiClient client;
-  if (client.connect(gatewayIP.c_str(), 12345)) {  // Conecta na porta TCP do gateway
+  if (client.connect(gatewayIP.c_str(), 12345)) {
     deviceIP = WiFi.localIP().toString();
 
     // Cria mensagem DeviceInfo para registro
-    smartcity_devices_DeviceInfo msg = smartcity_devices_DeviceInfo_init_zero;
-    msg.device_id.funcs.encode = &encode_device_id;
-    msg.device_id.arg = (void*)deviceID.c_str();
-    msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-    msg.ip_address.funcs.encode = &encode_ip_address;
-    msg.ip_address.arg = (void*)deviceIP.c_str();
-    msg.port = localTCPPort;  // Porta TCP para comandos
-    msg.initial_state = smartcity_devices_DeviceStatus_ACTIVE;
-    msg.is_actuator = true;   // Este dispositivo pode receber comandos
-    msg.is_sensor = true;     // Este dispositivo também é um sensor
+    smartcity_devices_DeviceInfo deviceInfo = smartcity_devices_DeviceInfo_init_zero;
+    deviceInfo.device_id.funcs.encode = &encode_device_id;
+    deviceInfo.device_id.arg = (void*)deviceID.c_str();
+    deviceInfo.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+    deviceInfo.ip_address.funcs.encode = &encode_ip_address;
+    deviceInfo.ip_address.arg = (void*)deviceIP.c_str();
+    deviceInfo.port = localTCPPort;
+    deviceInfo.initial_state = smartcity_devices_DeviceStatus_ACTIVE;
+    deviceInfo.is_actuator = false;
+    deviceInfo.is_sensor = true;
+
+    // Cria envelope SmartCityMessage
+    smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
+    envelope.message_type = smartcity_devices_MessageType_DEVICE_INFO;
+    envelope.payload.device_info = deviceInfo;
+    envelope.which_payload = smartcity_devices_SmartCityMessage_device_info_tag;
 
     // Serializa a mensagem
-    uint8_t buffer[128];
+    uint8_t buffer[256];
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-    if (pb_encode(&stream, smartcity_devices_DeviceInfo_fields, &msg)) {
-      // Codifica o tamanho como varint (formato Protocol Buffers)
+    if (pb_encode(&stream, smartcity_devices_SmartCityMessage_fields, &envelope)) {
+      // Codifica o tamanho como varint
       uint8_t varint[5];
       size_t varint_len = 0;
       size_t len = stream.bytes_written;
@@ -486,16 +505,10 @@ void sendDiscoveryResponse() {
         if (len) byte |= 0x80;
         varint[varint_len++] = byte;
       } while (len);
-      
-      // Envia varint + payload
       client.write(varint, varint_len);
       client.write(buffer, stream.bytes_written);
       client.stop();
-      Serial.printf("DeviceInfo enviado via TCP (%d bytes)\n", stream.bytes_written);
-    } else {
-      Serial.println("Erro ao codificar DeviceInfo com nanopb!");
+      Serial.printf("DeviceInfo (envelope) enviado para gateway (%d bytes)\n", (int)stream.bytes_written);
     }
-  } else {
-    Serial.println("Falha ao conectar ao gateway via TCP para registro!");
   }
 }

@@ -1,9 +1,11 @@
 syntax = "proto3";
 
 // Pacote Protocol Buffers para organizar as mensagens
-package smartcity.devices;
+package smartcity_devices;
 
 option go_package = "./smartcitypb";
+
+import "nanopb.proto";
 
 // =====================================================================
 // ENUMS
@@ -17,7 +19,7 @@ enum DeviceType {
   TRAFFIC_LIGHT = 3;            // Semáforo
   AIR_QUALITY_SENSOR = 4;       // Sensor de qualidade do ar
   TEMPERATURE_SENSOR = 5;       // Sensor de temperatura
-  ALARM = 6;                    // Tipo para o atuador de alarme
+  RELAY = 6;                    // Atuador de relé (lâmpada, tomada, etc.)
   CURRENT_SENSOR = 7;           // Sensor de Corrente
   AC_IR_CONTROLLER = 8;         // Controlador de Ar-condicionado IR
 }
@@ -73,6 +75,7 @@ message DeviceUpdate {
     CurrentSensorData current_sensor = 6;
     CameraData camera = 7;
     ACIRStatus ac_ir_status = 8;
+    int32 frequency_ms = 21; // Frequência de envio em ms (usado por sensores de temperatura)
     // Adicione outros tipos aqui
   }
 
@@ -112,9 +115,9 @@ message DeviceCommand {
   string device_id = 1;             // ID do dispositivo alvo
   DeviceType type = 2;              // Tipo do dispositivo alvo
   // Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
-  string command_type = 3;
+  string command_type = 3 [(nanopb).max_length = 32];
   // Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
-  string command_value = 4;
+  string command_value = 4 [(nanopb).max_length = 32];
 }
 
 // =====================================================================
@@ -148,4 +151,28 @@ message GatewayResponse {
   repeated DeviceInfo devices = 3;    // Para DEVICE_LIST. Contém informações básicas dos dispositivos.
   DeviceUpdate device_status = 4;     // Para DEVICE_STATUS_UPDATE. Contém status detalhado.
   string command_status = 5;          // Para COMMAND_ACK (e.g., "SUCCESS", "FAILED")
+}
+
+// =====================================================================
+// ENVELOPE MESSAGE (para encapsular todas as trocas do sistema)
+// =====================================================================
+
+enum MessageType {
+  UNKNOWN = 0;
+  CLIENT_REQUEST = 1;
+  DEVICE_UPDATE = 2;
+  GATEWAY_RESPONSE = 3;
+  DEVICE_INFO = 4;
+  DISCOVERY_REQUEST = 5;
+}
+
+message SmartCityMessage {
+  MessageType message_type = 1;
+  oneof payload {
+    ClientRequest client_request = 2;
+    DeviceUpdate device_update = 3;
+    GatewayResponse gateway_response = 4;
+    DeviceInfo device_info = 5;
+    DiscoveryRequest discovery_request = 6;
+  }
 }

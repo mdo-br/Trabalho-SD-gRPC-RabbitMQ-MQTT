@@ -114,7 +114,12 @@ def log_device_info_periodic():
                 for dev_id, dev_info in connected_devices.items():
                     type_name = smart_city_pb2.DeviceType.Name(dev_info['type'])
                     status_name = smart_city_pb2.DeviceStatus.Name(dev_info['status'])
-                    logger.info(f"  ID: {dev_id} (Tipo: {type_name}), IP: {dev_info['ip']}:{dev_info['port']}, Status: {status_name}, Sensor Data: {dev_info.get('sensor_data', 'N/A')}, Última Vista: {time.time() - dev_info['last_seen']:.2f}s atrás")
+                    # Exibe dados de sensor e frequência, se disponíveis
+                    sensor_data = dev_info.get('sensor_data', {})
+                    freq_str = ''
+                    if 'frequency_ms' in sensor_data:
+                        freq_str = f", Freq: {sensor_data['frequency_ms']}ms"
+                    logger.info(f"  ID: {dev_id} (Tipo: {type_name}), IP: {dev_info['ip']}:{dev_info['port']}, Status: {status_name}, Sensor Data: {sensor_data}{freq_str}, Última Vista: {time.time() - dev_info['last_seen']:.2f}s atrás")
                 logger.info("---------------------------------------------")
             else:
                 logger.info("Nenhum dispositivo conectado ainda.")
@@ -149,21 +154,25 @@ def discover_devices():
         """Envia mensagens de descoberta a cada 10 segundos"""
         while True:
             try:
+                local_ip = get_local_ip()
+                logger.info(f"[DISCOVERY] Enviando pacote multicast: IP local={local_ip}, grupo={MULTICAST_GROUP}, porta={MULTICAST_PORT}, tamanho={len(payload)} bytes")
                 sock.sendto(payload, (MULTICAST_GROUP, MULTICAST_PORT))
+                logger.info(f"[DISCOVERY] Pacote multicast enviado para {MULTICAST_GROUP}:{MULTICAST_PORT} em {time.strftime('%H:%M:%S')}")
             except Exception as e:
-                logger.error(f"Erro no multicast discovery: {e}")
+                logger.error(f"[DISCOVERY][ERRO] Falha ao enviar multicast: {e}")
             time.sleep(10)
 
-    # Inicia thread para envio periódico de descoberta
     threading.Thread(target=periodic_discovery, daemon=True).start()
 
-    # Loop principal - escuta por respostas (mas as ignora)
+    # Loop principal - escuta por respostas (debug)
+    local_ip = get_local_ip()
     while True:
         try:
             data, addr = sock.recvfrom(4096)
-            logger.debug(f"Ignorando resposta UDP de descoberta de {addr}")
+            if addr[0] != local_ip:
+                logger.info(f"[DISCOVERY][RECV] Pacote UDP recebido na porta {MULTICAST_PORT} de {addr[0]}:{addr[1]}, tamanho={len(data)} bytes")
         except Exception as e:
-            logger.error(f"Erro na descoberta: {e}")
+            logger.error(f"[DISCOVERY][ERRO] Falha ao receber UDP: {e}")
 
 def handle_device_registration(device_info, addr):
     """
@@ -195,39 +204,41 @@ def handle_device_registration(device_info, addr):
 
 def write_delimited_message(conn, message):
     """
-    Envia uma mensagem Protocol Buffers com delimitador de tamanho.
-    
-    Protocol Buffers usa um formato onde o tamanho da mensagem é codificado
-    como varint seguido pelos dados da mensagem.
-    
-    Args:
-        conn: Conexão socket para envio
-        message: Objeto Protocol Buffers para serializar
+    Envia uma mensagem Protocol Buffers com delimitador de tamanho, agora usando SmartCityMessage como envelope.
     """
-    data = message.SerializeToString()
+    envelope = smart_city_pb2.SmartCityMessage()
+    # Detecta o tipo da mensagem e encapsula
+    if isinstance(message, smart_city_pb2.ClientRequest):
+        envelope.message_type = smart_city_pb2.MessageType.CLIENT_REQUEST
+        envelope.client_request.CopyFrom(message)
+    elif isinstance(message, smart_city_pb2.DeviceUpdate):
+        envelope.message_type = smart_city_pb2.MessageType.DEVICE_UPDATE
+        envelope.device_update.CopyFrom(message)
+    elif isinstance(message, smart_city_pb2.GatewayResponse):
+        envelope.message_type = smart_city_pb2.MessageType.GATEWAY_RESPONSE
+        envelope.gateway_response.CopyFrom(message)
+    elif isinstance(message, smart_city_pb2.DeviceInfo):
+        envelope.message_type = smart_city_pb2.MessageType.DEVICE_INFO
+        envelope.device_info.CopyFrom(message)
+    elif isinstance(message, smart_city_pb2.DiscoveryRequest):
+        envelope.message_type = smart_city_pb2.MessageType.DISCOVERY_REQUEST
+        envelope.discovery_request.CopyFrom(message)
+    else:
+        raise ValueError("Tipo de mensagem não suportado para envelope!")
+    data = envelope.SerializeToString()
     conn.sendall(encode_varint(len(data)) + data)
 
 def read_delimited_message_bytes(reader):
     """
-    Lê uma mensagem Protocol Buffers com delimitador de tamanho.
-    
-    Primeiro lê o varint com o tamanho da mensagem, depois lê os dados
-    correspondentes.
-    
-    Args:
-        reader: Stream de leitura
-        
-    Returns:
-        bytes: Dados da mensagem lida
-        
-    Raises:
-        EOFError: Se o stream for fechado inesperadamente
+    Lê uma mensagem Protocol Buffers com delimitador de tamanho, agora esperando sempre SmartCityMessage.
     """
     length = _read_varint(reader)
     data = reader.read(length)
     if len(data) != length:
         raise EOFError("Stream fechado inesperadamente.")
-    return data
+    envelope = smart_city_pb2.SmartCityMessage()
+    envelope.ParseFromString(data)
+    return envelope
 
 def handle_client_request(req, conn, addr):
     """
@@ -247,7 +258,7 @@ def handle_client_request(req, conn, addr):
     
     # Lista todos os dispositivos conectados
     if req.type == smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES:
-        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.DEVICE_LIST)
+        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST)
         with device_lock:
             for dev_id, dev in connected_devices.items():
                 info = smart_city_pb2.DeviceInfo(
@@ -261,16 +272,38 @@ def handle_client_request(req, conn, addr):
     # Envia comando para um dispositivo específico
     elif req.type == smart_city_pb2.ClientRequest.RequestType.SEND_DEVICE_COMMAND:
         dev_id = req.target_device_id
-        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.COMMAND_ACK)
+        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.COMMAND_ACK)
         with device_lock:
             dev = connected_devices.get(dev_id)
         if dev:
             try:
-                # Conecta ao dispositivo e envia o comando
+                # Conecta ao dispositivo e envia o comando como envelope
                 with socket.create_connection((dev['ip'], dev['port']), timeout=5) as sock:
-                    write_delimited_message(sock, req.command)
-                resp.command_status = "SUCCESS"
-                resp.message = "Comando enviado com sucesso."
+                    envelope = smart_city_pb2.SmartCityMessage()
+                    envelope.message_type = smart_city_pb2.MessageType.CLIENT_REQUEST
+                    envelope.client_request.CopyFrom(req)
+                    data = envelope.SerializeToString()
+                    sock.sendall(encode_varint(len(data)) + data)
+                    # --- Lê resposta TCP (DeviceUpdate) ---
+                    sock_file = sock.makefile('rb')
+                    resp_envelope = read_delimited_message_bytes(sock_file)
+                    if resp_envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
+                        update = resp_envelope.device_update
+                        logger.info(f"[GATEWAY] Status atualizado recebido do relé: {update.device_id} -> {smart_city_pb2.DeviceStatus.Name(update.current_status)}")
+                        with device_lock:
+                            if update.device_id in connected_devices:
+                                dev2 = connected_devices[update.device_id]
+                                dev2['status'] = update.current_status
+                                dev2['last_seen'] = time.time()
+                                # Armazena frequência se presente (dentro do oneof data)
+                                if update.which_data == 21:  # frequency_ms = 21
+                                    dev2['sensor_data']['frequency_ms'] = update.data.frequency_ms
+                        resp.command_status = "SUCCESS"
+                        resp.message = f"Comando enviado e status atualizado: {smart_city_pb2.DeviceStatus.Name(update.current_status)}"
+                    else:
+                        logger.warning(f"[GATEWAY] Envelope inesperado na resposta TCP: {resp_envelope.message_type}")
+                        resp.command_status = "FAILED"
+                        resp.message = "Resposta inesperada do dispositivo."
             except Exception as e:
                 resp.command_status = "FAILED"
                 resp.message = str(e)
@@ -281,7 +314,7 @@ def handle_client_request(req, conn, addr):
 
     # Obtém status de um dispositivo específico
     elif req.type == smart_city_pb2.ClientRequest.RequestType.GET_DEVICE_STATUS:
-        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.DEVICE_STATUS_UPDATE)
+        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_STATUS_UPDATE)
         dev_id = req.target_device_id
         with device_lock:
             dev = connected_devices.get(dev_id)
@@ -292,9 +325,16 @@ def handle_client_request(req, conn, addr):
             )
             # Adiciona dados de sensor se disponíveis
             if dev['is_sensor'] and isinstance(dev.get('sensor_data'), dict):
-                logger.debug(f"[DEBUG] Sensor Data de {dev_id}: {dev['sensor_data']}")
+                logger.info(f"[DEBUG] Sensor Data de {dev_id}: {dev['sensor_data']}")
                 update.temperature_humidity.temperature = dev['sensor_data'].get('temperature', 0.0)
                 update.temperature_humidity.humidity = dev['sensor_data'].get('humidity', 0.0)
+                # Adiciona frequência se disponível
+                if 'frequency_ms' in dev['sensor_data']:
+                    update.which_data = 21  # frequency_ms = 21
+                    update.data.frequency_ms = dev['sensor_data']['frequency_ms']
+                    logger.info(f"[DEBUG] Frequência adicionada ao DeviceUpdate: {dev['sensor_data']['frequency_ms']} ms")
+                else:
+                    logger.info(f"[DEBUG] Frequência NÃO encontrada em sensor_data para {dev_id}")
             resp.device_status.CopyFrom(update)
             resp.message = "Status retornado."
         else:
@@ -304,37 +344,22 @@ def handle_client_request(req, conn, addr):
 def handle_tcp_connection(conn, addr):
     """
     Gerencia uma conexão TCP individual.
-    
-    Tenta interpretar a mensagem recebida como:
-    1. DeviceInfo (registro de dispositivo)
-    2. ClientRequest (requisição de cliente)
-    
-    Args:
-        conn: Conexão socket TCP
-        addr: Endereço do cliente/dispositivo
+    Agora espera sempre SmartCityMessage como envelope.
     """
     logger.info(f"Conexão TCP de {addr}")
     try:
         reader = conn.makefile('rb')
-        data = read_delimited_message_bytes(reader)
-        
-        # Tenta interpretar como DeviceInfo (registro de dispositivo)
-        try:
-            info = smart_city_pb2.DeviceInfo()
-            info.ParseFromString(data)
+        envelope = read_delimited_message_bytes(reader)
+        # Desempacota e trata conforme o tipo
+        if envelope.message_type == smart_city_pb2.MessageType.CLIENT_REQUEST:
+            req = envelope.client_request
+            handle_client_request(req, conn, addr)
+        elif envelope.message_type == smart_city_pb2.MessageType.DEVICE_INFO:
+            info = envelope.device_info
             if info.device_id:
                 handle_device_registration(info, addr)
-                return
-        except Exception:
-            pass
-        
-        # Tenta interpretar como ClientRequest (requisição de cliente)
-        try:
-            req = smart_city_pb2.ClientRequest()
-            req.ParseFromString(data)
-            handle_client_request(req, conn, addr)
-        except Exception:
-            logger.warning("Mensagem desconhecida recebida.")
+        else:
+            logger.warning("Mensagem desconhecida recebida no envelope.")
     finally:
         conn.close()
 
@@ -358,7 +383,6 @@ def listen_tcp_connections():
 def listen_udp_sensored_data():
     """
     Thread que escuta por dados sensoriados via UDP.
-    
     Recebe mensagens DeviceUpdate de sensores via UDP na porta GATEWAY_UDP_PORT.
     Atualiza o status e dados dos sensores no dicionário de dispositivos conectados.
     """
@@ -369,21 +393,27 @@ def listen_udp_sensored_data():
     while True:
         try:
             data, addr = sock.recvfrom(4096)
+            logger.info(f"[UDP] Pacote recebido de {addr}, {len(data)} bytes")
             update = smart_city_pb2.DeviceUpdate()
             update.ParseFromString(data)
-            
+            logger.info(f"[UDP] DeviceUpdate: device_id={update.device_id}, type={update.type}, current_status={update.current_status}")
             with device_lock:
                 if update.device_id in connected_devices:
                     dev = connected_devices[update.device_id]
                     dev['status'] = update.current_status
                     dev['last_seen'] = time.time()
-                    
                     # Atualiza dados de sensor se disponíveis
                     if dev['is_sensor']:
                         if update.HasField("temperature_humidity"):
                             dev['sensor_data']['temperature'] = update.temperature_humidity.temperature
                             dev['sensor_data']['humidity'] = update.temperature_humidity.humidity
-                    logger.info(f"Atualização de status de {update.device_id}: {smart_city_pb2.DeviceStatus.Name(update.current_status)}")
+                        # Armazena frequência se presente (dentro do oneof data)
+                        if update.which_data == 21:  # frequency_ms = 21
+                            dev['sensor_data']['frequency_ms'] = update.data.frequency_ms
+                            logger.info(f"[UDP] Frequência armazenada para {update.device_id}: {update.data.frequency_ms} ms")
+                        else:
+                            logger.info(f"[UDP] Frequência NÃO encontrada no DeviceUpdate UDP para {update.device_id} (which_data={update.which_data})")
+                    logger.info(f"Atualização de status de {update.device_id}: {smart_city_pb2.DeviceStatus.Name(update.current_status)} (armazenado em dev['status'])")
                 else:
                     logger.warning(f"Atualização UDP ignorada. Dispositivo desconhecido: {update.device_id}")
         except Exception as e:
