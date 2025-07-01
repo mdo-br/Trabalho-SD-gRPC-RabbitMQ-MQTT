@@ -207,6 +207,20 @@ protoc --nanopb_out=esp8266-projects/smart-city-sensor/ esp8266-projects/smart-c
 
 ---
 
+## Tabela de Comandos para Relé e Sensor de Temperatura
+
+| Dispositivo           | Ação                        | Comando (`command_type`) | Valor (`command_value`) | Exemplo de chamada Python                                      | Menu Interativo                      |
+|-----------------------|-----------------------------|-------------------------|------------------------|----------------------------------------------------------------|--------------------------------------|
+| Relé/Atuador          | Ligar relé                  | TURN_ON                 | (vazio)                | client.send_device_command(relay_id, "TURN_ON")              | 1. Ligar Relé (TURN_ON)              |
+| Relé/Atuador          | Desligar relé               | TURN_OFF                | (vazio)                | client.send_device_command(relay_id, "TURN_OFF")             | 2. Desligar Relé (TURN_OFF)          |
+| Sensor Temperatura    | Ativar envio de dados       | TURN_ACTIVE             | (vazio)                | client.send_device_command(sensor_id, "TURN_ACTIVE")         | 1. Ativar Sensor (TURN_ACTIVE)       |
+| Sensor Temperatura    | Pausar envio de dados       | TURN_IDLE               | (vazio)                | client.send_device_command(sensor_id, "TURN_IDLE")           | 2. Pausar Sensor (TURN_IDLE)         |
+| Sensor Temperatura    | Alterar frequência de envio | SET_FREQ                | valor em ms            | client.send_device_command(sensor_id, "SET_FREQ", "10000")   | 3. Alterar Frequência de Envio       |
+
+> **Observações:**
+> - O campo `command_value` só é usado para `SET_FREQ` (ex: "10000" para 10 segundos).
+> - Os IDs dos dispositivos devem ser informados conforme o cadastro (ex: "relay_board_001001002", "temp_board_001001001").
+
 ## Estrutura do Projeto
 
 ```
