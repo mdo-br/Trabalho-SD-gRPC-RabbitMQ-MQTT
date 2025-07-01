@@ -18,8 +18,8 @@ enum DeviceType {
   AIR_QUALITY_SENSOR = 4;       // Sensor de qualidade do ar
   TEMPERATURE_SENSOR = 5;       // Sensor de temperatura
   ALARM = 6;                    // Tipo para o atuador de alarme
-  CURRENT_SENSOR = 7;           // Novo: Sensor de Corrente
-  AC_IR_CONTROLLER = 8;         // Novo: Controlador de Ar-condicionado IR
+  CURRENT_SENSOR = 7;           // Sensor de Corrente
+  AC_IR_CONTROLLER = 8;         // Controlador de Ar-condicionado IR
 }
 
 // Enumeração para o status dos dispositivos

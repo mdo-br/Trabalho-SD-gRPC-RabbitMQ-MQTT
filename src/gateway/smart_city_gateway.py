@@ -56,10 +56,14 @@ def get_local_ip():
     """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(('10.255.255.255', 1))
+        s.connect(('8.8.8.8', 80))  # Conecta ao Google DNS
         IP = s.getsockname()[0]
     except Exception:
-        IP = '127.0.0.1'
+        try:
+            s.connect(('10.255.255.255', 1))
+            IP = s.getsockname()[0]
+        except Exception:
+            IP = '127.0.0.1'
     finally:
         s.close()
     return IP
@@ -438,6 +442,12 @@ def main():
     
     O gateway roda indefinidamente até ser interrompido por Ctrl+C.
     """
+    # Determina e exibe o IP do gateway
+    gateway_ip = get_local_ip()
+    logger.info(f"Gateway iniciado com IP: {gateway_ip}")
+    logger.info(f"Portas: TCP={GATEWAY_TCP_PORT}, UDP={GATEWAY_UDP_PORT}, API={API_TCP_PORT}")
+    logger.info("=" * 50)
+    
     # Inicia todas as threads de serviço
     threading.Thread(target=discover_devices, daemon=True).start()
     threading.Thread(target=listen_tcp_connections, daemon=True).start()

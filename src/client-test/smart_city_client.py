@@ -45,7 +45,7 @@ except ImportError as e:
     sys.exit(1)
 
 # --- Configurações de Conexão com o Gateway ---
-GATEWAY_IP = '192.168.0.20'  # IP do gateway - altere conforme necessário
+GATEWAY_IP = '127.0.0.1'  # IP do gateway - altere conforme necessário
 GATEWAY_TCP_PORT = 12345     # Porta TCP do gateway
 
 def _read_varint(sock):
@@ -210,30 +210,37 @@ class SmartCityClient:
         """
         Solicita ao Gateway a lista de dispositivos conectados.
         
-        Envia uma requisição LIST_DEVICES e exibe informações sobre todos
-        os dispositivos registrados no gateway, incluindo tipo, status,
-        endereço IP e se são sensores ou atuadores.
+        Envia uma requisição LIST_DEVICES e exibe informações detalhadas
+        sobre cada dispositivo conectado ao gateway.
         """
         # Cria requisição para listar dispositivos
         request = smart_city_pb2.ClientRequest(
             type=smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES
         )
+        
         logger.info("Solicitando lista de dispositivos ao Gateway...")
         response = self.send_request(request)
 
         # Processa a resposta
         if response and response.type == smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST:
-            logger.info("--- Dispositivos Conectados ---")
-            if response.devices:
-                for dev in response.devices:
-                    device_type_name = smart_city_pb2.DeviceType.Name(dev.type)
-                    device_status_name = smart_city_pb2.DeviceStatus.Name(dev.initial_state)
-                    logger.info(f"  ID: {dev.device_id}, Tipo: {device_type_name}, "
-                                f"IP: {dev.ip_address}:{dev.port}, Status: {device_status_name}, "
-                                f"Atuador: {dev.is_actuator}, Sensor: {dev.is_sensor}")
+            devices = response.devices
+            if devices:
+                print("\n" + "="*80)
+                print("    DISPOSITIVOS CONECTADOS AO GATEWAY")
+                print("="*80)
+                print(f"{'ID':<25} {'TIPO':<20} {'IP:PORTA':<15} {'STATUS':<10} {'ATUADOR':<8} {'SENSOR':<8}")
+                print("-"*80)
+                
+                for device in devices:
+                    device_type_name = smart_city_pb2.DeviceType.Name(device.type)
+                    device_status_name = smart_city_pb2.DeviceStatus.Name(device.initial_state)
+                    
+                    print(f"{device.device_id:<25} {device_type_name:<20} {device.ip_address}:{device.port:<15} {device_status_name:<10} {'SIM' if device.is_actuator else 'NAO':<8} {'SIM' if device.is_sensor else 'NAO':<8}")
+                
+                print("="*80)
+                logger.info(f"Total de dispositivos: {len(devices)}")
             else:
                 logger.info("Nenhum dispositivo encontrado.")
-            logger.info("-----------------------------")
         elif response:
             logger.error(f"Erro ao listar dispositivos: {response.message}")
         else:
@@ -329,7 +336,8 @@ def main_menu():
     Cria uma instância do SmartCityClient e apresenta um menu de opções
     para testar as funcionalidades do sistema. Permite ao usuário:
     - Listar dispositivos conectados
-    - Ligar/desligar alarmes
+    - Controlar relés/atuadores
+    - Controlar sensores de temperatura
     - Consultar status de dispositivos
     """
     # Inicializa o cliente
@@ -337,12 +345,15 @@ def main_menu():
 
     # Loop principal do menu
     while True:
-        print("\n--- Menu do Cliente SmartCity ---")
-        print("1. Listar Dispositivos")
-        print("2. Ligar Alarme (TURN_ON)")
-        print("3. Desligar Alarme (TURN_OFF)")
-        print("4. Consultar Status de um Dispositivo")
+        print("\n" + "="*50)
+        print("    CLIENTE SMART CITY - MENU PRINCIPAL")
+        print("="*50)
+        print("1. Listar Dispositivos Conectados")
+        print("2. Comandos do Relé/Atuador")
+        print("3. Comandos do Sensor de Temperatura")
+        print("4. Consultar Status de Dispositivo")
         print("0. Sair")
+        print("-"*50)
         
         choice = input("Escolha uma opção: ").strip()
 
@@ -351,22 +362,14 @@ def main_menu():
             # Lista todos os dispositivos conectados
             client.list_devices()
         elif choice == '2':
-            # Liga um alarme específico
-            alarm_id = input("ID do Alarme a Ligar (ex: alarm_xxxx): ").strip()
-            if alarm_id:
-                client.send_device_command(alarm_id, "TURN_ON")
-            else:
-                logger.warning("ID do alarme não pode ser vazio.")
+            # Menu específico para comandos do relé/atuador
+            relay_menu(client)
         elif choice == '3':
-            # Desliga um alarme específico
-            alarm_id = input("ID do Alarme a Desligar (ex: alarm_xxxx): ").strip()
-            if alarm_id:
-                client.send_device_command(alarm_id, "TURN_OFF")
-            else:
-                logger.warning("ID do alarme não pode ser vazio.")
+            # Menu específico para comandos do sensor de temperatura
+            temperature_sensor_menu(client)
         elif choice == '4':
             # Consulta status de um dispositivo específico
-            device_id = input("ID do Dispositivo para Consultar Status (ex: temp_hum_sensor_xxxx ou alarm_xxxx): ").strip()
+            device_id = input("ID do Dispositivo para Consultar Status: ").strip()
             if device_id:
                 client.get_device_status(device_id)
             else:
@@ -374,6 +377,165 @@ def main_menu():
         elif choice == '0':
             # Sai do programa
             logger.info("Saindo do cliente SmartCity.")
+            break
+        else:
+            logger.warning("Opção inválida. Tente novamente.")
+
+
+def relay_menu(client):
+    """
+    Menu específico para comandos do relé/atuador.
+    
+    Permite ao usuário:
+    - Ligar/desligar relés
+    - Consultar status do relé
+    - Testar diferentes comandos
+    """
+    while True:
+        print("\n" + "="*50)
+        print("    COMANDOS DO RELÉ/ATUADOR")
+        print("="*50)
+        print("1. Ligar Relé (TURN_ON)")
+        print("2. Desligar Relé (TURN_OFF)")
+        print("3. Alternar Estado (TOGGLE)")
+        print("4. Consultar Status do Relé")
+        print("5. Comando Personalizado")
+        print("6. Voltar ao Menu Principal")
+        print("-"*50)
+        
+        choice = input("Escolha uma opção: ").strip()
+
+        if choice == '1':
+            # Liga o relé
+            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
+            if relay_id:
+                client.send_device_command(relay_id, "TURN_ON")
+                logger.info("Relé ligado")
+            else:
+                logger.warning("ID do relé não pode ser vazio.")
+                
+        elif choice == '2':
+            # Desliga o relé
+            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
+            if relay_id:
+                client.send_device_command(relay_id, "TURN_OFF")
+                logger.info("Relé desligado")
+            else:
+                logger.warning("ID do relé não pode ser vazio.")
+                
+        elif choice == '3':
+            # Alterna o estado do relé
+            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
+            if relay_id:
+                client.send_device_command(relay_id, "TOGGLE")
+                logger.info("Estado do relé alternado")
+            else:
+                logger.warning("ID do relé não pode ser vazio.")
+                
+        elif choice == '4':
+            # Consulta status do relé
+            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
+            if relay_id:
+                client.get_device_status(relay_id)
+            else:
+                logger.warning("ID do relé não pode ser vazio.")
+                
+        elif choice == '5':
+            # Comando personalizado
+            relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
+            if relay_id:
+                print("Comandos disponíveis:")
+                print("  - TURN_ON: Liga o relé")
+                print("  - TURN_OFF: Desliga o relé")
+                print("  - TOGGLE: Alterna o estado")
+                print("  - STATUS: Consulta status")
+                command = input("Comando: ").strip().upper()
+                if command:
+                    client.send_device_command(relay_id, command)
+                else:
+                    logger.warning("Comando não pode ser vazio.")
+            else:
+                logger.warning("ID do relé não pode ser vazio.")
+                
+        elif choice == '6':
+            # Volta ao menu principal
+            break
+        else:
+            logger.warning("Opção inválida. Tente novamente.")
+
+
+def temperature_sensor_menu(client):
+    """
+    Menu específico para comandos do sensor de temperatura.
+    
+    Permite ao usuário:
+    - Ativar/desativar envio de dados
+    - Alterar frequência de envio
+    - Consultar status do sensor
+    """
+    while True:
+        print("\n" + "="*50)
+        print("    COMANDOS DO SENSOR DE TEMPERATURA")
+        print("="*50)
+        print("1. Ativar Sensor (ACTIVE)")
+        print("2. Pausar Sensor (IDLE)")
+        print("3. Alterar Frequência de Envio (SET_FREQ)")
+        print("4. Consultar Status do Sensor")
+        print("5. Voltar ao Menu Principal")
+        print("-"*50)
+        
+        choice = input("Escolha uma opção: ").strip()
+
+        if choice == '1':
+            # Ativa o sensor
+            sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
+            if sensor_id:
+                client.send_device_command(sensor_id, "ACTIVE")
+                logger.info("Sensor ativado - enviando dados sensoriados")
+            else:
+                logger.warning("ID do sensor não pode ser vazio.")
+                
+        elif choice == '2':
+            # Pausa o sensor
+            sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
+            if sensor_id:
+                client.send_device_command(sensor_id, "IDLE")
+                logger.info("Sensor pausado - não enviando dados sensoriados")
+            else:
+                logger.warning("ID do sensor não pode ser vazio.")
+                
+        elif choice == '3':
+            # Altera frequência de envio
+            sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
+            if sensor_id:
+                print("Frequência em milissegundos (1000-60000):")
+                print("  - 1000 = 1 segundo")
+                print("  - 5000 = 5 segundos (padrão)")
+                print("  - 10000 = 10 segundos")
+                print("  - 30000 = 30 segundos")
+                freq_input = input("Nova frequência (ms): ").strip()
+                if freq_input.isdigit():
+                    freq_ms = int(freq_input)
+                    if 1000 <= freq_ms <= 60000:
+                        client.send_device_command(sensor_id, "SET_FREQ", str(freq_ms))
+                        logger.info(f"Frequência alterada para {freq_ms} ms")
+                    else:
+                        logger.warning("Frequência deve estar entre 1000 e 60000 ms.")
+                else:
+                    logger.warning("Frequência deve ser um número válido.")
+            else:
+                logger.warning("ID do sensor não pode ser vazio.")
+                
+        elif choice == '4':
+            # Consulta status do sensor
+            sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
+            if sensor_id:
+                client.get_device_status(sensor_id)
+            else:
+                logger.warning("ID do sensor não pode ser vazio.")
+                
+        elif choice == '5':
+            # Volta ao menu principal
             break
         else:
             logger.warning("Opção inválida. Tente novamente.")
