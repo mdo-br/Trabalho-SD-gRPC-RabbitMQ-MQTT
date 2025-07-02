@@ -262,8 +262,8 @@ def handle_client_request(req, conn, addr):
         now = time.time()
         with device_lock:
             for dev_id, dev in connected_devices.items():
-                # Considera "ligado" se enviou atualização nos últimos 40 segundos
-                if now - dev['last_seen'] <= 40:
+                # Considera "ligado" se enviou atualização nos últimos 8 segundos
+                if now - dev['last_seen'] <= 8:
                     info = smart_city_pb2.DeviceInfo(
                         device_id=dev_id, type=dev['type'], ip_address=dev['ip'],
                         port=dev['port'], initial_state=dev['status'],
