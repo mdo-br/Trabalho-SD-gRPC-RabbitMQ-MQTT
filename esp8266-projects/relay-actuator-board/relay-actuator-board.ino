@@ -62,7 +62,7 @@ WiFiServer tcpServer(localTCPPort);    // Servidor TCP para comandos
 String gatewayIP = "";                 // IP do gateway descoberto
 bool gatewayDiscovered = false;        // Flag indicando se o gateway foi encontrado
 unsigned long lastDiscoveryAttempt = 0; // Última tentativa de descoberta
-const unsigned long discoveryInterval = 10000; // 10 segundos
+const unsigned long discoveryInterval = 5000; // 5 segundos
 String deviceIP = "";                  // IP local do dispositivo
 
 // --- Variáveis para registro TCP periódico ---

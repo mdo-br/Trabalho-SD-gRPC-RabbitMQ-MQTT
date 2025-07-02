@@ -151,7 +151,7 @@ def discover_devices():
     payload = request.SerializeToString()
 
     def periodic_discovery():
-        """Envia mensagens de descoberta a cada 10 segundos"""
+        """Envia mensagens de descoberta a cada 5 segundos"""
         while True:
             try:
                 local_ip = get_local_ip()
@@ -160,7 +160,7 @@ def discover_devices():
                 logger.info(f"[DISCOVERY] Pacote multicast enviado para {MULTICAST_GROUP}:{MULTICAST_PORT} em {time.strftime('%H:%M:%S')}")
             except Exception as e:
                 logger.error(f"[DISCOVERY][ERRO] Falha ao enviar multicast: {e}")
-            time.sleep(10)
+            time.sleep(5)
 
     threading.Thread(target=periodic_discovery, daemon=True).start()
 
