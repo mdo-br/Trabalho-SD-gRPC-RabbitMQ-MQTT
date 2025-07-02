@@ -1,210 +1,94 @@
+# Smart City Gateway API
 
-# 🌆 Smart City Gateway API
-
-API para gerenciamento de dispositivos IoT em uma cidade inteligente. Permite listar dispositivos, obter informações, alterar ID, modificar status (ligar/desligar) e ajustar a frequência de captura dos sensores.
-
----
-
-## 🚀 Sobre a API
-
-- **Framework:** FastAPI
-- **Protocolo:** HTTP (REST)
-- **Descrição:** Permite controle e monitoramento de sensores e atuadores conectados no gateway.
+API para gerenciamento de sensores e atuadores em uma cidade inteligente.  
+Permite listar dispositivos, obter dados de sensores, controlar atuadores (relés) e ajustar a frequência de coleta dos sensores.
 
 ---
 
-## 🔌 Endpoints
+## Sobre a API
 
-| Método | Endpoint                               | Descrição                                       |
-|--------|-----------------------------------------|-------------------------------------------------|
-| GET    | `/devices/info`                        | Lista todos os dispositivos conectados          |
-| GET    | `/device/info`                          | Retorna informações de um dispositivo específico|
-| POST   | `/device/set-id`                        | Altera o ID de um dispositivo                  |
-| POST   | `/device/change-status`                 | Altera o status (ligado/desligado) do dispositivo|
-| POST   | `/device/change-capture-speed`          | Altera a frequência de captura de um sensor     |
-
----
-
-## 📄 Modelos de Dados
-
-### 🔍 DeviceInfo
-
-| Campo             | Tipo           | Descrição                              |
-|-------------------|----------------|-----------------------------------------|
-| id                | string         | ID do dispositivo                      |
-| ip                | string         | Endereço IP                            |
-| port              | integer        | Porta TCP                               |
-| type              | string         | Tipo (ex.: SENSOR, ACTUATOR)            |
-| status            | string         | Status (ex.: ACTIVE, OFF)               |
-| is_sensor         | boolean        | Se é um sensor                          |
-| is_actuator       | boolean        | Se é um atuador                         |
-| sensor_data       | dict           | Dados específicos do sensor              |
-| last_seen_seconds | float          | Segundos desde a última comunicação     |
+- **Framework:** FastAPI  
+- **Protocolo:** HTTP (REST)  
+- **Backend:** Comunicação via TCP com o Gateway usando Protobuf  
+- **Funcionalidades:**
+  - Listagem de dispositivos conectados
+  - Consulta de status e dados sensoriais
+  - Controle de relés (ligar/desligar)
+  - Alteração de estado de sensores (ativo/inativo)
+  - Ajuste da frequência de coleta dos sensores
 
 ---
 
-### 🔧 ChangeIdRequest
+## Endpoints
+
+| Método | Endpoint                      | Descrição                                                        |
+|--------|-------------------------------|------------------------------------------------------------------|
+| GET    | `/devices`                    | Lista todos os dispositivos conectados ao gateway                |
+| GET    | `/device/data`                | Retorna dados e status de um dispositivo                         |
+| PUT    | `/device/relay`               | Liga ou desliga um relé (atuador)                                |
+| PUT    | `/device/sensor/state`        | Ativa ou desativa um sensor                                      |
+| PUT    | `/device/sensor/frequency`    | Define o intervalo de coleta de dados para um sensor (em ms)     |
+
+---
+
+## Modelos de Dados
+
+### Resposta geral dos Dispositivos (Exemplo de descoberta)
 
 ```json
 {
-  "new_id": "string"
-}
-```
-
----
-
-### 🔧 ChangeStatusRequest
-
-```json
-{
-  "new_status": "ACTIVE" | "OFF"
-}
-```
-
----
-
-### 🔧 ChangeCaptureSpeedRequest
-
-```json
-{
-  "interval_seconds": float
-}
-```
-
----
-
-## 🔗 Endpoints Detalhados
-
----
-
-### 🔹 Listar todos os dispositivos
-
-**GET** `/devices/info`
-
-**Resposta Exemplo:**
-
-```json
-{
-  "dev001": {
-    "id": "dev001",
-    "ip": "192.168.0.10",
-    "port": 9000,
-    "type": "SENSOR",
-    "status": "ACTIVE",
-    "is_sensor": true,
-    "is_actuator": false,
-    "sensor_data": {
-      "temperature": 24.5,
-      "humidity": 60
-    },
-    "last_seen_seconds": 5.23
-  }
-}
-```
-
----
-
-### 🔹 Obter informações de um dispositivo
-
-**GET** `/device/info?device_id=dev001`
-
-**Resposta Exemplo:**
-
-```json
-{
-  "id": "dev001",
-  "ip": "192.168.0.10",
-  "port": 9000,
+  "id": "sensor01",
   "type": "SENSOR",
+  "ip": "192.168.3.45",
+  "port": 9001,
   "status": "ACTIVE",
   "is_sensor": true,
-  "is_actuator": false,
-  "sensor_data": {
-    "temperature": 24.5,
-    "humidity": 60
-  },
-  "last_seen_seconds": 3.12
+  "is_actuator": false
 }
 ```
 
----
-
-### 🔹 Alterar o ID do dispositivo
-
-**POST** `/device/set-id?device_id=dev001`
-
-**Body:**
+### Dados do Sensor
 
 ```json
 {
-  "new_id": "dev100"
+  "id": "sensor01",
+  "type": "SENSOR",
+  "status": "ACTIVE",
+  "custom_config_status": "default",
+  "temperature": 23.1,
+  "humidity": 55.0,
+  "frequency_ms": 5000
 }
 ```
 
-**Resposta:**
+## Exemplos com curl
 
-```json
-{
-  "message": "ID alterado de dev001 para dev100"
-}
+```bash
+curl -X GET "http://127.0.0.1:8000/devices"
 ```
 
----
-
-### 🔹 Alterar status (ligar/desligar)
-
-**POST** `/device/change-status?device_id=dev100`
-
-**Body:**
-
-```json
-{
-  "new_status": "OFF"
-}
+```bash
+curl -X GET "http://127.0.0.1:8000/device/data?device_id=sensor01"
 ```
 
-**Resposta:**
-
-```json
-{
-  "message": "Status do dispositivo dev100 alterado para OFF"
-}
+```bash
+curl -X PUT "http://localhost:8000/device/relay?device_id=relay01&action=TURN_ON"
 ```
 
-**Valores permitidos para `new_status`:**
-- `ACTIVE`
-- `OFF`
-
----
-
-### 🔹 Alterar frequência de captura do sensor
-
-**POST** `/device/change-capture-speed?device_id=dev100`
-
-**Body:**
-
-```json
-{
-  "interval_seconds": 10
-}
+```bash
+curl -X PUT "http://localhost:8000/device/relay?device_id=relay01&action=TURN_OFF"
 ```
 
-**Resposta:**
-
-```json
-{
-  "message": "Velocidade de captura do sensor dev100 alterada para 10 segundos"
-}
+```bash
+curl -X PUT "http://localhost:8000/device/sensor/state?device_id=sensor01&state=TURN_IDLE"
 ```
 
----
-
-## 🛠️ Como Usar
+## Como Usar
 
 1. Inicie a API:
 
 ```bash
-uvicorn src.api.api_server:app --reload
+uvicorn src.api.src.api_server:app --reload
 ```
 
 2. Acesse a documentação interativa no navegador:
@@ -212,53 +96,3 @@ uvicorn src.api.api_server:app --reload
 ```
 http://127.0.0.1:8000/docs
 ```
-
-3. Utilize qualquer cliente HTTP, como `curl`, Postman, Insomnia, ou diretamente no Python com `requests`.
-
----
-
-## 💡 Exemplos de chamadas usando `curl`
-
-- **Listar dispositivos:**
-
-```bash
-curl -X GET "http://127.0.0.1:8000/devices/info"
-```
-
-- **Obter informações de um dispositivo:**
-
-```bash
-curl -X GET "http://127.0.0.1:8000/device/info?device_id=dev001"
-```
-
-- **Alterar ID:**
-
-```bash
-curl -X POST "http://127.0.0.1:8000/device/set-id?device_id=dev001" \
--H "Content-Type: application/json" \
--d '{"new_id": "dev100"}'
-```
-
-- **Alterar status:**
-
-```bash
-curl -X POST "http://127.0.0.1:8000/device/change-status?device_id=dev100" \
--H "Content-Type: application/json" \
--d '{"new_status": "ACTIVE"}'
-```
-
-- **Alterar frequência de captura:**
-
-```bash
-curl -X POST "http://127.0.0.1:8000/device/change-capture-speed?device_id=dev100" \
--H "Content-Type: application/json" \
--d '{"interval_seconds": 5}'
-```
-
----
-
-## 🚧 Observações
-
-- O backend mantém o estado dos dispositivos em memória (`connected_devices`).
-- As alterações são feitas tanto localmente quanto remotamente via comandos TCP, utilizando `send_tcp_command`.
-- Se o servidor for reiniciado, os dispositivos precisam ser detectados novamente (a persistência não é implementada).

@@ -1,6 +1,6 @@
-# 📋 Guia Completo: Instalar Gateway no Raspberry Pi via SSH
+# Guia Completo: Instalar Gateway no Raspberry Pi via SSH
 
-## 🚀 Passos para Instalação
+## Passos para Instalação
 
 ### **1. Conectar via SSH**
 ```bash
@@ -56,7 +56,7 @@ source venv/bin/activate
 python3 -m src.gateway.smart_city_gateway
 ```
 
-## 🔧 Comandos Úteis
+## Comandos Úteis
 
 ### **Para Rodar em Background**
 ```bash
@@ -86,12 +86,12 @@ netstat -tlnp | grep :12346
 pkill -f smart_city_gateway
 ```
 
-## 🌐 Portas Utilizadas
+## Portas Utilizadas
 - **TCP 12345** - Comandos e registro de dispositivos
 - **UDP 12346** - Dados sensoriados dos dispositivos
 - **UDP 5007** - Multicast para descoberta de dispositivos
 
-## ✅ Verificação de Sucesso
+## Verificação de Sucesso
 O gateway está funcionando quando você vê logs como:
 ```
 [INFO] Gateway iniciado com IP: 192.168.1.100
@@ -100,7 +100,7 @@ O gateway está funcionando quando você vê logs como:
 [DISCOVERY] Enviando pacote multicast...
 ```
 
-## 📁 Estrutura de Arquivos .proto
+## Estrutura de Arquivos .proto
 
 ### **Para Gateway/Cliente (Python)**
 - **Arquivo:** `src/proto/smart_city.proto`
@@ -114,7 +114,7 @@ O gateway está funcionando quando você vê logs como:
 - **Gera:** `smart_city_devices.pb.h` e `smart_city_devices.pb.c`
 - **Características:** Versão completa com nanopb e opções de tamanho
 
-## 🎯 Resumo dos Comandos em Sequência
+## Resumo dos Comandos em Sequência
 ```bash
 ssh pi@ip_do_raspberry
 git clone https://github.com/JoaoAndrade18/Trabalho-SD.git
@@ -130,7 +130,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)/src/proto
 python3 -m src.gateway.smart_city_gateway
 ```
 
-## 🔄 Atualizações Futuras
+## Atualizações Futuras
 Se o protocolo for atualizado, execute apenas:
 ```bash
 cd src/proto

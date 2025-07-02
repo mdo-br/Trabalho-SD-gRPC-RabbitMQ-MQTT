@@ -321,13 +321,13 @@ O ESP8266 deve ser programado e conectado à rede WiFi. Ele se descobrirá autom
 
 ## Funcionalidades Testadas
 
-✅ **Descoberta de Dispositivos:** Multicast UDP funcionando
-✅ **Registro de Dispositivos:** DeviceInfo via TCP
-✅ **Dados Sensoriados:** DeviceUpdate via UDP (Java + ESP8266)
-✅ **Controle de Atuadores:** DeviceCommand via TCP
-✅ **Interface Cliente:** Listagem e consulta de status
-✅ **Protocol Buffers:** Serialização em Python, Java e C++ (nanopb)
-✅ **Sistema Real:** ESP8266 integrado e funcionando
+ **Descoberta de Dispositivos:** Multicast UDP funcionando
+ **Registro de Dispositivos:** DeviceInfo via TCP
+ **Dados Sensoriados:** DeviceUpdate via UDP (Java + ESP8266)
+ **Controle de Atuadores:** DeviceCommand via TCP
+ **Interface Cliente:** Listagem e consulta de status
+ **Protocol Buffers:** Serialização em Python, Java e C++ (nanopb)
+ **Sistema Real:** ESP8266 integrado e funcionando
 
 ## Menu Interativo do Cliente
 

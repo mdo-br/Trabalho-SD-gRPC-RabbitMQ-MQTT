@@ -6,7 +6,7 @@ from src.proto import smart_city_pb2
 
 app = FastAPI()
 
-# Configuração do CORS
+# Configuração do CORS para acesso a API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,6 +19,8 @@ GATEWAY_HOST = "192.168.3.129"
 GATEWAY_API_PORT = 12347
 
 # Utilitários de serialização varint (delimited Protobuf)
+# Encapsular mensagens Protobuf em tamanhos prefixadoss de forma a garantir 
+# que o receptor saiba o tamanho da mensagem antes de tentar ler os dados.
 
 def encode_varint(value: int) -> bytes:
     result = b""
@@ -54,8 +56,10 @@ def write_delimited_message(sock, message):
 def read_delimited_message(sock):
     reader = sock.makefile('rb')
     size = read_varint(reader)
+    
     return reader.read(size)
 
+# Envia uma mensagem Protobuf para o gateway e espera uma resposta, tuda a comunicação é feita por essa função.
 def send_protobuf_request(request_msg: smart_city_pb2.ClientRequest) -> smart_city_pb2.GatewayResponse | smart_city_pb2.DeviceUpdate:
     try:
         envelope = smart_city_pb2.SmartCityMessage(
@@ -65,13 +69,16 @@ def send_protobuf_request(request_msg: smart_city_pb2.ClientRequest) -> smart_ci
         with socket.create_connection((GATEWAY_HOST, GATEWAY_API_PORT), timeout=5) as sock:
             write_delimited_message(sock, envelope)
             data = read_delimited_message(sock)
+
             response_envelope = smart_city_pb2.SmartCityMessage()
             response_envelope.ParseFromString(data)
 
             if response_envelope.message_type == smart_city_pb2.MessageType.GATEWAY_RESPONSE:
                 return response_envelope.gateway_response
+            
             elif response_envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
                 return response_envelope.device_update
+            
             else:
                 raise HTTPException(status_code=500, detail=f"Tipo de mensagem inesperado: {response_envelope.message_type}")
 
@@ -131,6 +138,7 @@ def get_device_status(device_id: str):
 def control_relay(device_id: str, action: str):
     if action not in ["TURN_ON", "TURN_OFF"]:
         raise HTTPException(status_code=400, detail="Inválido. Use TURN_ON ou TURN_OFF.")
+    
     cmd = smart_city_pb2.DeviceCommand(device_id=device_id, command_type=action)
     req = smart_city_pb2.ClientRequest(
         type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
@@ -144,6 +152,7 @@ def control_relay(device_id: str, action: str):
 def change_sensor_state(device_id: str, state: str):
     if state not in ["TURN_ACTIVE", "TURN_IDLE"]:
         raise HTTPException(status_code=400, detail="Inválido. Use TURN_ACTIVE ou TURN_IDLE.")
+    
     cmd = smart_city_pb2.DeviceCommand(device_id=device_id, command_type=state)
     req = smart_city_pb2.ClientRequest(
         type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
@@ -157,6 +166,7 @@ def change_sensor_state(device_id: str, state: str):
 def set_sensor_frequency(device_id: str, frequency: int):
     if frequency < 1000 or frequency > 60000:
         raise HTTPException(status_code=400, detail="Frequência incorreto.")
+    
     cmd = smart_city_pb2.DeviceCommand(device_id=device_id, command_type="SET_FREQ", command_value=str(frequency))
     req = smart_city_pb2.ClientRequest(
         type=smart_city_pb2.ClientRequest.SEND_DEVICE_COMMAND,
