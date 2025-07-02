@@ -4,17 +4,41 @@ Este projeto implementa um sistema distribuído para simular o monitoramento e c
 
 O objetivo é aplicar conceitos de sistemas distribuídos, incluindo comunicação via sockets TCP/UDP, serialização de dados com Protocol Buffers e descoberta de serviços por meio de multicast UDP.
 
-## Status do Sistema
+## Arquitetura do Sistema
 
-✅ **Sistema 100% Funcional** - Todos os componentes estão operacionais e testados:
+A arquitetura do sistema é composta por:
 
-- ✅ **Gateway Python:** Processando dispositivos e clientes
-- ✅ **Dispositivos Java:** Sensores e atuadores simulados funcionando
-- ✅ **ESP8266:** Sensor real de temperatura/umidade integrado
-- ✅ **Cliente CLI:** Interface de controle funcional
-- ✅ **Protocol Buffers:** Serialização funcionando em todos os componentes
-- ✅ **Descoberta Multicast:** Funcionando corretamente
-- ✅ **Comunicação TCP/UDP:** Implementada conforme especificação
+- **Gateway:**
+  - Centraliza a comunicação, registro e controle dos dispositivos.
+  - Envia pacotes de descoberta (DiscoveryRequest) via UDP multicast para que sensores e atuadores possam encontrá-lo automaticamente na rede.
+  - Recebe registros (DeviceInfo) via TCP e status/dados (DeviceUpdate) via UDP dos dispositivos.
+  - Permite o envio de comandos para atuadores e sensores via TCP.
+
+- **Sensores:**
+  - Descobrem o gateway automaticamente ouvindo o multicast.
+  - Registram-se no gateway via TCP.
+  - Enviam periodicamente dados sensoriados (ex: temperatura, umidade) via UDP para o gateway.
+  - Podem receber comandos do gateway para alterar frequência de envio ou entrar em modo IDLE (pausa do envio de dados).
+
+- **Atuadores:**
+  - Descobrem o gateway automaticamente ouvindo o multicast.
+  - Registram-se no gateway via TCP.
+  - Enviam periodicamente seu status via UDP para o gateway.
+  - Recebem comandos do gateway via TCP (ex: ligar/desligar relé) e respondem com o status atualizado.
+
+- **Clientes (CLI e Web):**
+  - Permitem ao usuário consultar o estado dos dispositivos e enviar comandos.
+  - O cliente CLI se conecta diretamente ao gateway via TCP.
+  - O front-end web se comunica com a API REST, que traduz as requisições para o gateway.
+
+## Fluxo de Comunicação
+
+1. **Descoberta:** Gateway envia DiscoveryRequest via UDP multicast. Dispositivos escutam e descobrem o IP/porta do gateway.
+2. **Registro:** Dispositivos enviam DeviceInfo via TCP para o gateway.
+3. **Status/Dados:** Dispositivos enviam DeviceUpdate via UDP periodicamente para o gateway.
+4. **Comandos:** Gateway pode enviar comandos via TCP para dispositivos, que respondem com DeviceUpdate via TCP.
+
+Esse modelo permite fácil expansão, gerenciamento centralizado e controle dinâmico dos dispositivos na rede.
 
 ## Arquitetura
 
