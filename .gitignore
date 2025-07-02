@@ -41,3 +41,9 @@ yarn-error.log*src/proto/smart_city_pb2.py
 
 # Ignorar arquivos gerados pelo Protobuf
 src/proto/*.py
+
+# Ignorar arquivos gerados pelo protoc/nanopb (ESP8266)
+*.pb.c
+*.pb.h
+esp8266-projects/*/smart_city*.pb.c
+esp8266-projects/*/smart_city*.pb.h

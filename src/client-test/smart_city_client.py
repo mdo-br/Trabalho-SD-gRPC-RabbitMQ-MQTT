@@ -45,7 +45,7 @@ except ImportError as e:
     sys.exit(1)
 
 # --- Configurações de Conexão com o Gateway ---
-GATEWAY_IP = '192.168.3.121'  # IP do gateway - altere conforme necessário
+GATEWAY_IP = '192.168.1.101'  # IP do gateway - altere conforme necessário
 GATEWAY_TCP_PORT = 12345     # Porta TCP do gateway
 
 def _read_varint(sock):
@@ -300,8 +300,8 @@ class SmartCityClient:
                 logger.info(f"  Tensão: {dev_status.current_sensor.voltage}V")
                 logger.info(f"  Potência: {dev_status.current_sensor.power}W")
             # Exibe frequência de envio se presente
-            if hasattr(dev_status, 'which_data') and dev_status.which_data == 21:  # frequency_ms = 21
-                logger.info(f"  Frequência de envio: {dev_status.data.frequency_ms} ms")
+            if hasattr(dev_status, 'frequency_ms') and dev_status.frequency_ms > 0:
+                logger.info(f"  Frequência de envio: {dev_status.frequency_ms} ms")
             logger.info("--------------------------------")
         elif response:
             logger.error(f"Erro ao obter status do dispositivo: {response.message}")

@@ -5,7 +5,7 @@ package smartcity_devices;
 
 option go_package = "./smartcitypb";
 
-// import "nanopb.proto";  // Removido para versão gateway
+import "nanopb.proto";
 
 // =====================================================================
 // ENUMS
@@ -115,9 +115,9 @@ message DeviceCommand {
   string device_id = 1;             // ID do dispositivo alvo
   DeviceType type = 2;              // Tipo do dispositivo alvo
   // Tipos de comando (e.g., "TURN_ON", "TURN_OFF", "SET_RESOLUTION", "SET_TRAFFIC_LIGHT_TIMER")
-  string command_type = 3;  // [(nanopb).max_length = 32] - removido para versão gateway
+  string command_type = 3 [(nanopb).max_length = 32];
   // Valores do comando (e.g., "ON", "OFF", "FullHD", "15s"). Pode ser uma string para acomodar vários tipos de valores.
-  string command_value = 4;  // [(nanopb).max_length = 32] - removido para versão gateway
+  string command_value = 4 [(nanopb).max_length = 32];
 }
 
 // =====================================================================
@@ -175,4 +175,4 @@ message SmartCityMessage {
     DeviceInfo device_info = 5;
     DiscoveryRequest discovery_request = 6;
   }
-}
+} 

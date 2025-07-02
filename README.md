@@ -245,8 +245,11 @@ mvn clean package
 ### 3. Gerar Código Protocol Buffers
 
     ```bash
-# Gerar código Python
+# Gerar código Python para gateway/cliente (versão simplificada)
 protoc --python_out=src/proto/ src/proto/smart_city.proto
+
+# Gerar código Python para dispositivos (versão completa com nanopb)
+protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --python_out=. src/proto/smart_city_devices.proto
 
 # Gerar código Java (se necessário)
 protoc --java_out=src/proto/ src/proto/smart_city.proto
@@ -408,18 +411,20 @@ Sempre que modificar o arquivo `smart_city.proto`, é necessário regenerar os a
 Execute no diretório `src/proto/`:
 
 ```bash
-protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --python_out=. smart_city.proto
-protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --python_out=. ../../nanopb-0.4.9.1-linux-x86/generator/proto/nanopb.proto
+# Versão simplificada para gateway/cliente (sem nanopb)
+protoc --python_out=. smart_city.proto
 ```
 
-Isso irá gerar/atualizar os arquivos `smart_city_pb2.py` e `nanopb_pb2.py`.
+Isso irá gerar/atualizar o arquivo `smart_city_pb2.py`.
+
+**Nota:** Para dispositivos ESP8266, use o arquivo `smart_city_devices.proto` completo com nanopb.
 
 ### 2. Gerar arquivos nanopb para ESP8266 (C/C++)
 
 Ainda no diretório `src/proto/`, execute:
 
 ```bash
-protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --nanopb_out=. smart_city.proto
+protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --nanopb_out=. smart_city_devices.proto
 ```
 
 Copie os arquivos `.pb.h` e `.pb.c` gerados para os diretórios dos firmwares ESP8266:

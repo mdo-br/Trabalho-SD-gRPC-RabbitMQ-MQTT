@@ -289,15 +289,19 @@ def handle_client_request(req, conn, addr):
                     resp_envelope = read_delimited_message_bytes(sock_file)
                     if resp_envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
                         update = resp_envelope.device_update
-                        logger.info(f"[GATEWAY] Status atualizado recebido do relé: {update.device_id} -> {smart_city_pb2.DeviceStatus.Name(update.current_status)}")
+                        logger.info(f"[GATEWAY] Status atualizado recebido do dispositivo: {update.device_id} -> {smart_city_pb2.DeviceStatus.Name(update.current_status)}")
                         with device_lock:
                             if update.device_id in connected_devices:
                                 dev2 = connected_devices[update.device_id]
                                 dev2['status'] = update.current_status
                                 dev2['last_seen'] = time.time()
                                 # Armazena frequência se presente (dentro do oneof data)
-                                if update.which_data == 21:  # frequency_ms = 21
-                                    dev2['sensor_data']['frequency_ms'] = update.data.frequency_ms
+                                try:
+                                    if update.HasField('frequency_ms'):
+                                        dev2['sensor_data']['frequency_ms'] = update.frequency_ms
+                                        logger.info(f"[GATEWAY] Frequência armazenada: {update.frequency_ms} ms")
+                                except Exception as e:
+                                    logger.error(f"[GATEWAY] Erro ao processar frequência: {e}")
                         resp.command_status = "SUCCESS"
                         resp.message = f"Comando enviado e status atualizado: {smart_city_pb2.DeviceStatus.Name(update.current_status)}"
                     else:
@@ -330,8 +334,7 @@ def handle_client_request(req, conn, addr):
                 update.temperature_humidity.humidity = dev['sensor_data'].get('humidity', 0.0)
                 # Adiciona frequência se disponível
                 if 'frequency_ms' in dev['sensor_data']:
-                    update.which_data = 21  # frequency_ms = 21
-                    update.data.frequency_ms = dev['sensor_data']['frequency_ms']
+                    update.frequency_ms = dev['sensor_data']['frequency_ms']
                     logger.info(f"[DEBUG] Frequência adicionada ao DeviceUpdate: {dev['sensor_data']['frequency_ms']} ms")
                 else:
                     logger.info(f"[DEBUG] Frequência NÃO encontrada em sensor_data para {dev_id}")
@@ -408,11 +411,11 @@ def listen_udp_sensored_data():
                             dev['sensor_data']['temperature'] = update.temperature_humidity.temperature
                             dev['sensor_data']['humidity'] = update.temperature_humidity.humidity
                         # Armazena frequência se presente (dentro do oneof data)
-                        if update.which_data == 21:  # frequency_ms = 21
-                            dev['sensor_data']['frequency_ms'] = update.data.frequency_ms
-                            logger.info(f"[UDP] Frequência armazenada para {update.device_id}: {update.data.frequency_ms} ms")
+                        if update.HasField('frequency_ms'):
+                            dev['sensor_data']['frequency_ms'] = update.frequency_ms
+                            logger.info(f"[UDP] Frequência armazenada para {update.device_id}: {update.frequency_ms} ms")
                         else:
-                            logger.info(f"[UDP] Frequência NÃO encontrada no DeviceUpdate UDP para {update.device_id} (which_data={update.which_data})")
+                            logger.info(f"[UDP] Frequência NÃO encontrada no DeviceUpdate UDP para {update.device_id}")
                     logger.info(f"Atualização de status de {update.device_id}: {smart_city_pb2.DeviceStatus.Name(update.current_status)} (armazenado em dev['status'])")
                 else:
                     logger.warning(f"Atualização UDP ignorada. Dispositivo desconhecido: {update.device_id}")

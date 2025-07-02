@@ -51,7 +51,7 @@ const int localUDPPort = 8890;          // Porta UDP local (diferente de outros 
 const int localTCPPort = 5000;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
-const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
+const String ID_PCB = "001001001";      // ID único da placa - MODIFICAR SE NECESSÁRIO
 const String deviceID = "temp_board_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
