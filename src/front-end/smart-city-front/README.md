@@ -25,10 +25,14 @@ npm start
 O app abrirá no navegador em: http://localhost:3000
 
 ## Funcionalidades
-- Ligar/desligar dispositivos (botão ON/OFF)
-- Alterar intervalo de captura dos sensores (campo numérico)
-- Mostrar detalhes do sensor (temperatura, umidade, status customizado)
-- Para alarmes, mostra som "BEEP, BEEP, BEEP..." somente quando ligado
+- Nos atuadores temos o botão ligar, que liga a lâmpada. Com a lâmpada ligada aparecer o botão desligar, que a desliga.
+- Nos sensores, temos as seguintes opções:
+Atualizar a frequência de envio definindo o intervalo e em seguida atualizar frequência. 
+Pausar o envio de dados de um sensor, e quando estiver pausado é possível reativar.
+Mostrar detalhes, que retorna a temperatura, umidade, frequência e o status.
+
+
+
 
 
 
