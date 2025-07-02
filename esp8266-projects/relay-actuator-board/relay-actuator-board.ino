@@ -165,10 +165,9 @@ void mantemConexoes() {
     conectaWiFi();
   }
 
-  // Tenta descoberta ativa do gateway se ainda não encontrado
+  // Aguardando descoberta do gateway via multicast
   if (!gatewayDiscovered && (millis() - lastDiscoveryAttempt >= discoveryInterval)) {
-    Serial.println("Tentando descoberta ativa do gateway...");
-    sendDiscoveryRequest();
+    Serial.println("Aguardando descoberta do gateway via multicast...");
     lastDiscoveryAttempt = millis();
   }
 }
