@@ -111,7 +111,8 @@ public class RelayActuator {
     }
 
     private void handleTcpCommand(Socket clientSocket) {
-        try (InputStream input = clientSocket.getInputStream()) {
+        try (InputStream input = clientSocket.getInputStream();
+             OutputStream output = clientSocket.getOutputStream()) {
             SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.parseDelimitedFrom(input);
             if (envelope != null && envelope.hasClientRequest() && envelope.getClientRequest().hasCommand()) {
                 SmartCity.DeviceCommand command = envelope.getClientRequest().getCommand();
@@ -127,6 +128,20 @@ public class RelayActuator {
                 if (currentStatus != oldStatus) {
                     sendStatusUpdate();
                 }
+                
+                // Envia resposta TCP confirmando a execução do comando
+                SmartCity.DeviceUpdate statusUpdate = SmartCity.DeviceUpdate.newBuilder()
+                        .setDeviceId(deviceId)
+                        .setType(SmartCity.DeviceType.RELAY)
+                        .setCurrentStatus(currentStatus)
+                        .build();
+                SmartCity.SmartCityMessage responseEnvelope = SmartCity.SmartCityMessage.newBuilder()
+                        .setMessageType(SmartCity.MessageType.DEVICE_UPDATE)
+                        .setDeviceUpdate(statusUpdate)
+                        .build();
+                responseEnvelope.writeDelimitedTo(output);
+                output.flush();
+                LOGGER.info("Relé Atuador " + deviceId + " enviou resposta TCP confirmando comando: " + command.getCommandType());
             } else {
                 LOGGER.warning("Envelope SmartCityMessage inválido ou sem comando recebido para o relé atuador " + deviceId);
             }
