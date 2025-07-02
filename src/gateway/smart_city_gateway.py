@@ -259,14 +259,17 @@ def handle_client_request(req, conn, addr):
     # Lista todos os dispositivos conectados
     if req.type == smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES:
         resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST)
+        now = time.time()
         with device_lock:
             for dev_id, dev in connected_devices.items():
-                info = smart_city_pb2.DeviceInfo(
-                    device_id=dev_id, type=dev['type'], ip_address=dev['ip'],
-                    port=dev['port'], initial_state=dev['status'],
-                    is_actuator=dev['is_actuator'], is_sensor=dev['is_sensor']
-                )
-                resp.devices.append(info)
+                # Considera "ligado" se enviou atualização nos últimos 40 segundos
+                if now - dev['last_seen'] <= 40:
+                    info = smart_city_pb2.DeviceInfo(
+                        device_id=dev_id, type=dev['type'], ip_address=dev['ip'],
+                        port=dev['port'], initial_state=dev['status'],
+                        is_actuator=dev['is_actuator'], is_sensor=dev['is_sensor']
+                    )
+                    resp.devices.append(info)
         write_delimited_message(conn, resp)
 
     # Envia comando para um dispositivo específico
