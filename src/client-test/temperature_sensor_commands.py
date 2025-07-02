@@ -6,8 +6,8 @@ Este script demonstra como usar o cliente SmartCity para enviar comandos
 para o sensor de temperatura ESP8266, incluindo:
 
 - SET_FREQ: Alterar frequência de envio de dados
-- ACTIVE: Ativar envio de dados sensoriados
-- IDLE: Pausar envio de dados sensoriados
+- TURN_IDLE: Pausar envio de dados sensoriados
+- TURN_ACTIVE: Ativar envio de dados sensoriados
 
 Uso:
     python3 src/client-test/temperature_sensor_commands.py
@@ -61,9 +61,9 @@ def main():
     client.send_device_command(sensor_id, "SET_FREQ", "10000")
     print()
     
-    # 4. Pausa o envio de dados (IDLE)
+    # 4. Pausa o envio de dados (TURN_IDLE)
     print("4. Pausando envio de dados sensoriados...")
-    client.send_device_command(sensor_id, "IDLE")
+    client.send_device_command(sensor_id, "TURN_IDLE")
     print()
     
     # 5. Consulta status após pausar
@@ -71,9 +71,9 @@ def main():
     client.get_device_status(sensor_id)
     print()
     
-    # 6. Reativa o envio de dados (ACTIVE)
+    # 6. Reativa o envio de dados (TURN_ACTIVE)
     print("6. Reativando envio de dados sensoriados...")
-    client.send_device_command(sensor_id, "ACTIVE")
+    client.send_device_command(sensor_id, "TURN_ACTIVE")
     print()
     
     # 7. Define frequência de envio para 2 segundos (mais rápido)
@@ -89,8 +89,8 @@ def main():
     print("=== Demonstração Concluída ===")
     print("Comandos disponíveis para o sensor de temperatura:")
     print("- SET_FREQ <valor_ms>: Define frequência de envio (1000-60000 ms)")
-    print("- ACTIVE: Ativa envio de dados sensoriados")
-    print("- IDLE: Pausa envio de dados sensoriados")
+    print("- TURN_IDLE: Pausa envio de dados sensoriados")
+    print("- TURN_ACTIVE: Ativa envio de dados sensoriados")
 
 if __name__ == "__main__":
     main() 

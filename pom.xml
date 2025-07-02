@@ -38,6 +38,7 @@
                 <version>${os-maven-plugin.version}</version>
             </extension>
         </extensions>
+
         <plugins>
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
@@ -93,17 +94,17 @@
                     </execution>
 
                     <execution>
-                        <id>make-alarm-actuator-assembly</id>
+                        <id>make-relay-actuator-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
                         <configuration>
-                            <finalName>alarm-actuator</finalName>
+                            <finalName>relay-actuator</finalName>
                             <appendAssemblyId>false</appendAssemblyId>
                             <archive>
                                 <manifest>
-                                    <mainClass>com.smartcity.actuators.AlarmActuator</mainClass>
+                                    <mainClass>com.smartcity.actuators.RelayActuator</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>
@@ -114,13 +115,11 @@
                 </executions>
             </plugin>
 
-            <!-- Plugin para gerar JARs separados para cada componente -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
                 <executions>
-                    <!-- JAR para TemperatureHumiditySensor -->
                     <execution>
                         <id>temperature-humidity-sensor-jar</id>
                         <phase>package</phase>
@@ -141,22 +140,21 @@
                         </configuration>
                     </execution>
 
-                    <!-- JAR para AlarmActuator -->
                     <execution>
-                        <id>alarm-actuator-jar</id>
+                        <id>relay-actuator-jar</id>
                         <phase>package</phase>
                         <goals>
                             <goal>jar</goal>
                         </goals>
                         <configuration>
-                            <classifier>alarm-actuator</classifier>
+                            <classifier>relay-actuator</classifier>
                             <archive>
                                 <manifest>
-                                    <mainClass>com.smartcity.actuators.AlarmActuator</mainClass>
+                                    <mainClass>com.smartcity.actuators.RelayActuator</mainClass>
                                 </manifest>
                             </archive>
                             <includes>
-                                <include>com/smartcity/actuators/AlarmActuator.class</include>
+                                <include>com/smartcity/actuators/RelayActuator.class</include>
                                 <include>smartcity/devices/SmartCity*.class</include>
                             </includes>
                         </configuration>

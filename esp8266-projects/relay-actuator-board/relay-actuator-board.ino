@@ -39,8 +39,8 @@ long msgInterval = 30000;            // Intervalo para envio de status (30 segun
 String lampStatus = "OFF";           // Status atual do relé
 
 // --- Configurações de Rede WiFi ---
-const char* SSID = "SSID";           // Nome da rede WiFi - CONFIGURAR
-const char* PASSWORD = "PASSWORD";   // Senha da rede WiFi - CONFIGURAR
+const char* SSID = "ATLab";           // Nome da rede WiFi - CONFIGURAR
+const char* PASSWORD = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
@@ -50,7 +50,7 @@ const int localUDPPort = 8891;          // Porta UDP local (diferente de outros 
 const int localTCPPort = 8891;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
-const String ID_PCB = "001001001";      // ID único da placa - MODIFICAR SE NECESSÁRIO
+const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
 const String deviceID = "relay_board_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
@@ -62,7 +62,7 @@ WiFiServer tcpServer(localTCPPort);    // Servidor TCP para comandos
 String gatewayIP = "";                 // IP do gateway descoberto
 bool gatewayDiscovered = false;        // Flag indicando se o gateway foi encontrado
 unsigned long lastDiscoveryAttempt = 0; // Última tentativa de descoberta
-const unsigned long discoveryInterval = 30000; // Intervalo entre tentativas (30s)
+const unsigned long discoveryInterval = 10000; // 10 segundos
 String deviceIP = "";                  // IP local do dispositivo
 
 // --- Variáveis para registro TCP periódico ---
@@ -350,14 +350,7 @@ void sendStatusUpdate() {
 }
 
 // --- Solicitação de Descoberta (Broadcast) ---
-void sendDiscoveryRequest() {
-  // Envia mensagem de descoberta em broadcast
-  String discoveryMsg = "DEVICE_DISCOVERY;ID:" + deviceID + ";TYPE:RELAY_ACTUATOR;IP:" + WiFi.localIP().toString();
-  udp.beginPacket("255.255.255.255", multicastPort);
-  udp.write((uint8_t*)discoveryMsg.c_str(), discoveryMsg.length());
-  udp.endPacket();
-  Serial.println("Solicitação de descoberta enviada");
-}
+// Função sendDiscoveryRequest removida pois não é mais utilizada
 
 // --- Resposta ao Gateway com DeviceInfo (TCP) ---
 void sendDiscoveryResponse() {

@@ -194,3 +194,32 @@ Esses comandos são importantes para economia de energia, controle dinâmico da 
   - Atuadores enviam status (`DeviceUpdate`) via UDP para o gateway a cada **30 segundos** (valor padrão).
 
 Essas frequências podem ser ajustadas conforme a necessidade do sistema e comandos enviados pelo gateway. 
+
+---
+
+## 10. Envio de Comandos (DeviceCommand) via SmartCityMessage
+
+Comandos enviados do gateway para sensores ou atuadores são sempre encapsulados em um envelope `SmartCityMessage`, dentro do campo `client_request`, que por sua vez contém o campo `command` do tipo `DeviceCommand`.
+
+### Exemplo de envio de comando para alterar a frequência de um sensor
+
+```json
+{
+  "message_type": "CLIENT_REQUEST",
+  "client_request": {
+    "type": "SEND_DEVICE_COMMAND",
+    "target_device_id": "esp8266_temp_01",
+    "command": {
+      "command_type": "SET_FREQ",
+      "custom_config": "60000"  // nova frequência em ms (ex: 60 segundos)
+    }
+  }
+}
+```
+
+- O campo `message_type` indica que é um comando de cliente.
+- O campo `target_device_id` define o dispositivo de destino.
+- O campo `command_type` define o tipo de comando (ex: `SET_FREQ`, `IDLE`, `TURN_ON`, etc).
+- O campo `custom_config` pode conter parâmetros adicionais, como a nova frequência.
+
+O dispositivo faz o parsing do envelope, extrai o comando e executa a ação correspondente. 

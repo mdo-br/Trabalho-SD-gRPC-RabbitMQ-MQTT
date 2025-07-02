@@ -2,7 +2,7 @@
 package com.smartcity.sensors;
 
 // Importar smartcity.devices.SmartCity
-import smartcity.devices.SmartCity;
+import smartcity_devices.SmartCity;
 import com.google.protobuf.ByteString;
 
 import java.io.IOException;
@@ -111,22 +111,22 @@ public class TemperatureHumiditySensor {
     private void sendDeviceInfo(String gatewayHost, int gatewayPort) {
         try (Socket socket = new Socket(gatewayHost, gatewayPort)) {
             OutputStream output = socket.getOutputStream();
-
-            // Constrói a mensagem DeviceInfo com os dados do sensor 
             SmartCity.DeviceInfo deviceInfo = SmartCity.DeviceInfo.newBuilder()
                     .setDeviceId(deviceId)
-                    .setType(SmartCity.DeviceType.TEMPERATURE_SENSOR) // Tipo do sensor
-                    .setIpAddress(getLocalIpAddress()) // IP local do sensor
-                    .setPort(SENSOR_TCP_PORT) // Porta TCP do sensor para comandos
-                    .setInitialState(currentStatus) // Estado inicial do sensor
-                    .setIsActuator(false) // Este é um sensor, não um atuador primário 
-                    .setIsSensor(true)    // Este é um sensor 
+                    .setType(SmartCity.DeviceType.TEMPERATURE_SENSOR)
+                    .setIpAddress(getLocalIpAddress())
+                    .setPort(SENSOR_TCP_PORT)
+                    .setInitialState(currentStatus)
+                    .setIsActuator(false)
+                    .setIsSensor(true)
                     .build();
-
-            // Serializa e envia a mensagem para o Gateway via TCP 
-            deviceInfo.writeDelimitedTo(output); // Usa writeDelimitedTo para prefixar o tamanho da mensagem
+            SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.newBuilder()
+                    .setMessageType(SmartCity.MessageType.DEVICE_INFO)
+                    .setDeviceInfo(deviceInfo)
+                    .build();
+            envelope.writeDelimitedTo(output);
             output.flush();
-            LOGGER.info("Sensor " + deviceId + " enviou DeviceInfo para o Gateway em " + gatewayHost + ":" + gatewayPort);
+            LOGGER.info("Sensor " + deviceId + " enviou DeviceInfo (envelope) para o Gateway em " + gatewayHost + ":" + gatewayPort);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Erro ao enviar DeviceInfo para o Gateway (" + gatewayHost + ":" + gatewayPort + "): " + e.getMessage(), e);
         }
@@ -155,50 +155,41 @@ public class TemperatureHumiditySensor {
 
     private void handleTcpCommand(Socket clientSocket) {
         try (InputStream input = clientSocket.getInputStream()) {
-            // Desserializa o comando recebido do Gateway
-            SmartCity.DeviceCommand command = SmartCity.DeviceCommand.parseDelimitedFrom(input);
-            if (command != null) {
+            SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.parseDelimitedFrom(input);
+            if (envelope != null && envelope.hasClientRequest() && envelope.getClientRequest().hasCommand()) {
+                SmartCity.DeviceCommand command = envelope.getClientRequest().getCommand();
                 LOGGER.info("Sensor " + deviceId + " recebeu comando TCP: " + command.getCommandType() + " com valor " + command.getCommandValue());
-
-                // Lógica para processar comandos: 
-                if (command.getCommandType().equals("TURN_OFF")) {
-                    currentStatus = SmartCity.DeviceStatus.OFF;
-                    LOGGER.info("Sensor " + deviceId + " DESLIGADO por comando.");
+                if (command.getCommandType().equals("TURN_OFF") || command.getCommandType().equals("TURN_IDLE")) {
+                    currentStatus = SmartCity.DeviceStatus.IDLE;
+                    LOGGER.info("Sensor " + deviceId + " em modo IDLE por comando.");
                     if (scheduler != null && !scheduler.isShutdown()) {
-                        scheduler.shutdownNow(); // Para o envio de dados
+                        scheduler.shutdownNow();
                         LOGGER.info("Envio de dados do sensor " + deviceId + " interrompido.");
                     }
-                } else if (command.getCommandType().equals("TURN_ON")) {
+                } else if (command.getCommandType().equals("TURN_ON") || command.getCommandType().equals("TURN_ACTIVE")) {
                     currentStatus = SmartCity.DeviceStatus.ACTIVE;
-                    LOGGER.info("Sensor " + deviceId + " LIGADO por comando.");
-                    startSensorDataScheduler(); // Reinicia o envio de dados
-
+                    LOGGER.info("Sensor " + deviceId + " em modo ACTIVE por comando.");
+                    startSensorDataScheduler();
                 } else if (command.getCommandType().equals("SET_DEVICE_ID")) {
                     String oldId = this.deviceId;
                     this.deviceId = command.getCommandValue();
                     LOGGER.info("Sensor alterou ID de " + oldId + " para " + this.deviceId);
-                    sendDeviceInfo(gatewayIp, gatewayTcpPort); // Envia novamente o DeviceInfo com o novo ID
-                
-                } else if (command.getCommandType().equals("SET_SAMPLING_RATE")) {
+                    sendDeviceInfo(gatewayIp, gatewayTcpPort);
+                } else if (command.getCommandType().equals("SET_SAMPLING_RATE") || command.getCommandType().equals("SET_FREQ")) {
                     try {
-                        // Tenta converter o valor do comando de String para int
-
-                        System.out.println(command.getCommandValue());
                         int newInterval = Integer.parseInt(command.getCommandValue());
-
-                        // long newInterval = Long.parseLong(command.getCommandValue());
-                        captureIntervalSeconds = newInterval;
-                        LOGGER.info("Sensor " + deviceId + " alterou intervalo de captura para " + newInterval + " segundos.");
-                        startSensorDataScheduler(); // Reinicia o agendamento com o novo intervalo
+                        captureIntervalSeconds = newInterval / 1000;
+                        LOGGER.info("Sensor " + deviceId + " alterou frequência de envio para " + newInterval + " ms.");
+                        startSensorDataScheduler();
                     } catch (NumberFormatException e) {
                         LOGGER.warning("Valor inválido para SET_SAMPLING_RATE: " + command.getCommandValue());
                     }
-
                 } else {
                     LOGGER.warning("Comando desconhecido recebido para o sensor " + deviceId + ": " + command.getCommandType());
                 }
+            } else {
+                LOGGER.warning("Envelope SmartCityMessage inválido ou sem comando recebido para o sensor " + deviceId);
             }
-
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Erro ao lidar com comando TCP para o sensor " + deviceId + ": " + e.getMessage(), e);
         } finally {
@@ -213,21 +204,16 @@ public class TemperatureHumiditySensor {
     }
 
     private void sendSensorData() {
-        // Só envia dados se o Gateway foi descoberto e o sensor estiver ativo 
-        if (gatewayIp == null || currentStatus == SmartCity.DeviceStatus.OFF) {
+        if (gatewayIp == null || currentStatus == SmartCity.DeviceStatus.IDLE) {
             if (gatewayIp == null) {
                 LOGGER.fine("Sensor " + deviceId + ": Gateway ainda não descoberto, não enviando dados.");
             } else {
-                LOGGER.fine("Sensor " + deviceId + ": Desligado, não enviando dados.");
+                LOGGER.fine("Sensor " + deviceId + ": Em modo IDLE, não enviando dados.");
             }
             return;
         }
-
-        // Simula leituras de temperatura e umidade com alguma variação 
-        double temperature = 20.0 + random.nextGaussian() * 5.0; // Ex: 20°C +/- 5°C
-        double humidity = 50.0 + random.nextGaussian() * 10.0; // Ex: 50% +/- 10%
-
-        // Constrói a mensagem DeviceUpdate com os dados sensoriados 
+        double temperature = 20.0 + random.nextGaussian() * 5.0;
+        double humidity = 50.0 + random.nextGaussian() * 10.0;
         SmartCity.DeviceUpdate sensorUpdate = SmartCity.DeviceUpdate.newBuilder()
                 .setDeviceId(deviceId)
                 .setType(SmartCity.DeviceType.TEMPERATURE_SENSOR)
@@ -239,14 +225,17 @@ public class TemperatureHumiditySensor {
                         .build()
                 )
                 .build();
-
+        SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.newBuilder()
+                .setMessageType(SmartCity.MessageType.DEVICE_UPDATE)
+                .setDeviceUpdate(sensorUpdate)
+                .build();
         try {
-            byte[] data = sensorUpdate.toByteArray(); // Serializa a mensagem para bytes
+            byte[] data = envelope.toByteArray();
             DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName(gatewayIp), gatewayUdpPort);
-            udpSocket.send(packet); // Envia a mensagem via UDP para o Gateway 
-            LOGGER.info(String.format("Sensor %s enviou dados UDP: Temp=%.2f°C, Hum=%.2f%%", deviceId, temperature, humidity));
+            udpSocket.send(packet);
+            LOGGER.info(String.format("Sensor %s enviou DeviceUpdate UDP (envelope): Temp=%.2f°C, Hum=%.2f%%", deviceId, temperature, humidity));
         } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Erro ao enviar dados sensoriados via UDP para " + gatewayIp + ":" + gatewayUdpPort + ": " + e.getMessage(), e);
+            LOGGER.log(Level.WARNING, "Erro ao enviar DeviceUpdate via UDP para " + gatewayIp + ":" + gatewayUdpPort + ": " + e.getMessage(), e);
         }
     }
 

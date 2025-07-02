@@ -40,8 +40,8 @@
 DHT dht(DHTPIN, DHTTYPE);            // Objeto do sensor DHT
 
 // --- Configurações de Rede WiFi ---
-const char* ssid = "SSID";           // Nome da rede WiFi - CONFIGURAR
-const char* password = "PASSWORD";   // Senha da rede WiFi - CONFIGURAR
+const char* ssid = "ATLab";           // Nome da rede WiFi - CONFIGURAR
+const char* password = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
@@ -51,7 +51,7 @@ const int localUDPPort = 8890;          // Porta UDP local (diferente de outros 
 const int localTCPPort = 5000;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
-const String ID_PCB = "001001001";      // ID único da placa - MODIFICAR SE NECESSÁRIO
+const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
 const String deviceID = "temp_board_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
@@ -71,7 +71,7 @@ unsigned long sensorInterval = 5000;   // Intervalo entre leituras (5 segundos) 
 String gatewayIP = "";                 // IP do gateway descoberto
 bool gatewayDiscovered = false;        // Flag indicando se o gateway foi encontrado
 unsigned long lastDiscoveryAttempt = 0; // Última tentativa de descoberta
-const unsigned long discoveryInterval = 30000; // Intervalo entre tentativas (30s)
+const unsigned long discoveryInterval = 10000; // 10 segundos
 String deviceIP = "";                  // IP local do dispositivo
 bool deviceRegistered = false;         // Flag para evitar registro repetido
 bool sensorActive = true;              // Estado do sensor (ACTIVE/IDLE)
@@ -162,8 +162,12 @@ void loop() {
   
   // Tenta descoberta ativa se ainda não encontrou o gateway
   if (!gatewayDiscovered && (currentTime - lastDiscoveryAttempt >= discoveryInterval)) {
-    sendDiscoveryRequest();
-    lastDiscoveryAttempt = currentTime;
+    // Log a cada 10 segundos quando sensor está pausado
+    static unsigned long lastPauseLog = 0;
+    if (currentTime - lastPauseLog >= 10000) {
+      Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
+      lastPauseLog = currentTime;
+    }
   }
   
   // Lê sensor periodicamente se gateway foi descoberto e sensor está ativo
@@ -358,16 +362,6 @@ void processCommand(String commandType, String commandValue) {
   
   Serial.printf("Status final: %s\n", sensorActive ? "ACTIVE" : "IDLE");
   Serial.println("--- FIM DO COMANDO ---\n");
-}
-
-// --- Solicitação de Descoberta (Broadcast) ---
-void sendDiscoveryRequest() {
-  // Envia mensagem de descoberta em broadcast
-  String discoveryMsg = "DEVICE_DISCOVERY;ID:" + deviceID + ";TYPE:TEMPERATURE_SENSOR;IP:" + WiFi.localIP().toString();
-  udp.beginPacket("255.255.255.255", multicastPort);
-  udp.write((uint8_t*)discoveryMsg.c_str(), discoveryMsg.length());
-  udp.endPacket();
-  Serial.println("Solicitação de descoberta enviada");
 }
 
 // --- Leitura do Sensor DHT11 ---
