@@ -40,8 +40,8 @@
 DHT dht(DHTPIN, DHTTYPE);            // Objeto do sensor DHT
 
 // --- Configurações de Rede WiFi ---
-const char* ssid = "ATLab";           // Nome da rede WiFi - CONFIGURAR
-const char* password = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
+const char* ssid = "SSID";           // Nome da rede WiFi - CONFIGURAR
+const char* password = "PASSWORD";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
@@ -51,7 +51,7 @@ const int localUDPPort = 8890;          // Porta UDP local (diferente de outros 
 const int localTCPPort = 5000;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
-const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
+const String ID_PCB = "001001001";      // ID único da placa - MODIFICAR SE NECESSÁRIO
 const String deviceID = "temp_board_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
@@ -78,7 +78,7 @@ bool sensorActive = true;              // Estado do sensor (ACTIVE/IDLE)
 
 // --- Variáveis para registro TCP periódico ---
 unsigned long lastRegisterAttempt = 0;
-const unsigned long registerInterval = 5000; // 30 segundos
+const unsigned long registerInterval = 5000; // 5 segundos
 
 // --- Funções auxiliares para Protocol Buffers ---
 
@@ -192,7 +192,7 @@ void loop() {
     lastRegisterAttempt = currentTime;
   }
   
-  delay(20);  // Pequena pausa para não sobrecarregar o processador
+  delay(20);  // pausa para não sobrecarregar o processador
 }
 
 // --- Conexão WiFi ---
@@ -341,7 +341,9 @@ void processCommand(String commandType, String commandValue) {
     if (newInterval >= 1000 && newInterval <= 60000) {  // Entre 1s e 60s
       sensorInterval = newInterval;
       Serial.printf("SUCESSO: Frequência alterada para %d ms\n", sensorInterval);
-      sendStatusUpdate();  // Envia confirmação do status
+      sendFrequencyUpdate();  // Envia a frequência atualizada
+      sendSensorData();       // Força envio imediato de temperatura/umidade
+      sendStatusUpdate();     // Envia confirmação do status
     } else {
       Serial.printf("ERRO: Frequência inválida %d. Deve estar entre 1000 e 60000 ms.\n", newInterval);
     }
@@ -376,11 +378,8 @@ void readSensor() {
   // Verifica se os valores são válidos (não NaN)
   if (!isnan(temperature) && !isnan(humidity)) {
     Serial.printf("[DEBUG] Leitura DHT11: Temperatura = %.1f °C | Umidade = %.1f %%\n", temperature, humidity);
-    // Envia dados apenas se houve mudança (otimização de rede)
-    if (temperature != temperatureAnt || humidity != humidityAnt) {
-      Serial.println("[DEBUG] Mudança detectada, enviando dados para o gateway...");
-      sendSensorData();  // Envia dados para o gateway
-    }
+    // Envia dados para o gateway em toda leitura válida
+    sendSensorData();
   } else {
     Serial.println("[ERRO] Falha na leitura do sensor DHT!");
   }
@@ -398,30 +397,7 @@ void sendSensorData() {
   msg.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
   msg.data.temperature_humidity.temperature = temperature;
   msg.data.temperature_humidity.humidity = humidity;
-  // Preenche também a frequência de envio (oneof frequency_ms)
-  // (Opcional: pode enviar em outro DeviceUpdate, mas aqui é útil para debug)
-  // msg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
-  // msg.data.frequency_ms = sensorInterval;
-  
-  // Envia também a frequência atual em uma mensagem separada
-  // (isso garante que o gateway sempre tenha a frequência atualizada)
-  smartcity_devices_DeviceUpdate freqMsg = smartcity_devices_DeviceUpdate_init_zero;
-  freqMsg.device_id.funcs.encode = &encode_device_id;
-  freqMsg.device_id.arg = (void*)deviceID.c_str();
-  freqMsg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-  freqMsg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-  freqMsg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
-  freqMsg.data.frequency_ms = sensorInterval;
-  
-  // Serializa e envia a mensagem de frequência via UDP
-  uint8_t freqBuffer[128];
-  pb_ostream_t freqStream = pb_ostream_from_buffer(freqBuffer, sizeof(freqBuffer));
-  if (pb_encode(&freqStream, smartcity_devices_DeviceUpdate_fields, &freqMsg)) {
-    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
-    udp.write(freqBuffer, freqStream.bytes_written);
-    udp.endPacket();
-    Serial.printf("[DEBUG] Frequência enviada via UDP: %d ms (%d bytes)\n", sensorInterval, freqStream.bytes_written);
-  }
+
   // Serializa e envia via UDP
   uint8_t buffer[128];
   pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
@@ -442,8 +418,10 @@ void sendStatusUpdate() {
   update.device_id.arg = (void*)deviceID.c_str();
   update.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
   update.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-  update.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
-  update.data.frequency_ms = sensorInterval;
+  // Envia temperatura e umidade no status
+  update.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
+  update.data.temperature_humidity.temperature = temperature;
+  update.data.temperature_humidity.humidity = humidity;
   // Cria envelope SmartCityMessage
   smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
   envelope.message_type = smartcity_devices_MessageType_DEVICE_UPDATE;
@@ -456,7 +434,7 @@ void sendStatusUpdate() {
     udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
     udp.write(buffer, stream.bytes_written);
     udp.endPacket();
-    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes)\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
+    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes) [T=%.1f°C, U=%.1f%%]\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written, temperature, humidity);
   }
 }
 
@@ -503,5 +481,25 @@ void sendDiscoveryResponse() {
       client.stop();
       Serial.printf("DeviceInfo (envelope) enviado para gateway (%d bytes)\n", (int)stream.bytes_written);
     }
+  }
+}
+
+// Envia a frequência apenas quando alterada ou no registro inicial
+void sendFrequencyUpdate() {
+  smartcity_devices_DeviceUpdate freqMsg = smartcity_devices_DeviceUpdate_init_zero;
+  freqMsg.device_id.funcs.encode = &encode_device_id;
+  freqMsg.device_id.arg = (void*)deviceID.c_str();
+  freqMsg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+  freqMsg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
+  freqMsg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
+  freqMsg.data.frequency_ms = sensorInterval;
+
+  uint8_t freqBuffer[128];
+  pb_ostream_t freqStream = pb_ostream_from_buffer(freqBuffer, sizeof(freqBuffer));
+  if (pb_encode(&freqStream, smartcity_devices_DeviceUpdate_fields, &freqMsg)) {
+    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
+    udp.write(freqBuffer, freqStream.bytes_written);
+    udp.endPacket();
+    Serial.printf("[DEBUG] Frequência enviada via UDP: %d ms (%d bytes)\n", sensorInterval, freqStream.bytes_written);
   }
 }
