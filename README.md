@@ -42,7 +42,7 @@ Esse modelo permite fácil expansão, gerenciamento centralizado e controle din�
 
 ## Arquitetura
 
-A arquitetura do sistema foi projetada para ser modular e escalável, separando as responsabilidades em componentes distintos. O diagrama abaixo ilustra os principais componentes e os fluxos de comunicação entre eles.
+A arquitetura do sistema foi projetada para ser modular, separando as responsabilidades em componentes distintos. O diagrama abaixo ilustra os principais componentes e os fluxos de comunicação entre eles.
 
 ```mermaid
 flowchart TB
@@ -84,7 +84,7 @@ flowchart TB
 
 ### Descrição dos Componentes
 
-  * **Dispositivos Inteligentes**: Simulam os equipamentos da cidade e são implementados como processos separados.
+  * **Dispositivos Inteligentes**: Simulam os equipamentos da cidade inteligente e são implementados como processos separados.
 
       * **Sensores**: Enviam dados de forma periódica para o Gateway via UDP. Ex: Sensor de Temperatura (Java) e ESP8266 (real).
       * **Atuadores**: Recebem comandos do Gateway via TCP para alterar seu estado (ex: ligar/desligar um alarme) e reportam seu estado atual. Ex: Alarme Java.

@@ -35,7 +35,7 @@
 // --- Configurações de Hardware ---
 #define pinRELE 3                    // Pino digital conectado ao módulo relé
 unsigned long prevTime = millis();   // Controle de tempo para envio periódico
-long msgInterval = 30000;            // Intervalo para envio de status (30 segundos)
+long msgInterval = 5000;            // Intervalo para envio de status (30 segundos)
 String lampStatus = "OFF";           // Status atual do relé
 
 // --- Configurações de Rede WiFi ---
@@ -67,7 +67,7 @@ String deviceIP = "";                  // IP local do dispositivo
 
 // --- Variáveis para registro TCP periódico ---
 unsigned long lastRegisterAttempt = 0;
-const unsigned long registerInterval = 30000; // 30 segundos
+const unsigned long registerInterval = 5000; // 30 segundos
 
 // --- Buffer global para comando recebido ---
 #define CMD_BUFFER_SIZE 32
@@ -192,8 +192,7 @@ void conectaWiFi() {
 void processDiscoveryMessages() {
   int packetSize = multicastUdp.parsePacket();
   if (packetSize) {
-    Serial.printf("[DEBUG] Pacote UDP recebido! Tamanho: %d bytes, de %s:%d\n",
-                  packetSize, multicastUdp.remoteIP().toString().c_str(), multicastUdp.remotePort());
+    Serial.printf("[DEBUG] Pacote UDP recebido! Tamanho: %d bytes, de %s:%d\n", packetSize, multicastUdp.remoteIP().toString().c_str(), multicastUdp.remotePort());
     uint8_t incomingPacket[255];
     int len = multicastUdp.read(incomingPacket, 255);
     Serial.print("[DEBUG] Conteúdo (hex): ");
@@ -217,8 +216,13 @@ void processTCPCommands() {
   WiFiClient client = tcpServer.available();
   if (client) {
     Serial.printf("Comando TCP recebido de %s\n", client.remoteIP().toString().c_str());
-    // Aguarda até ter pelo menos 1 byte para leitura
-    while (!client.available()) delay(1);
+    // Aguarda até ter pelo menos 1 byte para leitura, com timeout
+    unsigned long start = millis();
+    while (!client.available() && millis() - start < 100) delay(1);
+    if (!client.available()) {
+      client.stop();
+      return; // Timeout, não processa
+    }
     // --- Leitura do Varint (Tamanho da Mensagem) ---
     uint8_t varint[5];
     int varint_len = 0;
@@ -232,8 +236,13 @@ void processTCPCommands() {
     for (int i = 0; i <= varint_len; i++) {
       msg_len |= (varint[i] & 0x7F) << (7 * i);
     }
-    // Aguarda até o payload completo estar disponível
-    while (client.available() < msg_len) delay(1);
+    // Aguarda até o payload completo estar disponível, com timeout
+    start = millis();
+    while (client.available() < msg_len && millis() - start < 100) delay(1);
+    if (client.available() < msg_len) {
+      client.stop();
+      return; // Timeout, não processa
+    }
     // --- Leitura do Payload Protocol Buffers ---
     uint8_t buffer[128] = {0};
     int bytes_read = client.readBytes(buffer, msg_len);
@@ -304,7 +313,6 @@ void processCommand(String msg) {
     // Liga o relé (HIGH = relé ativado)
     digitalWrite(pinRELE, HIGH);
     lampStatus = "ON";
-    //sendStatusUpdate();  // Não envia mais status via UDP após comando
     Serial.println("RELÉ LIGADO - Status: ON");
     Serial.print("[DEBUG] digitalWrite(pinRELE, HIGH) executado. Valor lido no pino: ");
     Serial.println(digitalRead(pinRELE));
@@ -312,7 +320,6 @@ void processCommand(String msg) {
     // Desliga o relé (LOW = relé desativado)
     digitalWrite(pinRELE, LOW);
     lampStatus = "OFF";
-    //sendStatusUpdate();  // Não envia mais status via UDP após comando
     Serial.println("RELÉ DESLIGADO - Status: OFF");
     Serial.print("[DEBUG] digitalWrite(pinRELE, LOW) executado. Valor lido no pino: ");
     Serial.println(digitalRead(pinRELE));
@@ -343,8 +350,7 @@ void sendStatusUpdate() {
     udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
     udp.write(buffer, stream.bytes_written);
     udp.endPacket();
-    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes)\n", 
-                  gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
+    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes)\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
   }
 }
 

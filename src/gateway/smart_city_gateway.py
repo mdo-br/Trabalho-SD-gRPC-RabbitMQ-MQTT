@@ -347,6 +347,8 @@ def handle_client_request(req, conn, addr):
             resp.message = "Dispositivo não encontrado."
         write_delimited_message(conn, resp)
 
+    print("DEBUG DeviceUpdate recebido:", dev)
+
 def handle_tcp_connection(conn, addr):
     """
     Gerencia uma conexão TCP individual.

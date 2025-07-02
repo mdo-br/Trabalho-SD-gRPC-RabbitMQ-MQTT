@@ -1,0 +1,6 @@
+Dispositivo,Ação,Comando (command_type),Valor (command_value),Exemplo de chamada Python,Menu Interativo
+Relé/Atuador,Ligar relé,TURN_ON,,client.send_device_command(relay_id, "TURN_ON"),1. Ligar Relé (TURN_ON)
+Relé/Atuador,Desligar relé,TURN_OFF,,client.send_device_command(relay_id, "TURN_OFF"),2. Desligar Relé (TURN_OFF)
+Sensor Temperatura,Ativar envio de dados,TURN_ACTIVE,,client.send_device_command(sensor_id, "TURN_ACTIVE"),1. Ativar Sensor (TURN_ACTIVE)
+Sensor Temperatura,Pausar envio de dados,TURN_IDLE,,client.send_device_command(sensor_id, "TURN_IDLE"),2. Pausar Sensor (TURN_IDLE)
+Sensor Temperatura,Alterar frequência de envio,SET_FREQ,valor em ms,client.send_device_command(sensor_id, "SET_FREQ", "10000"),3. Alterar Frequência de Envio 

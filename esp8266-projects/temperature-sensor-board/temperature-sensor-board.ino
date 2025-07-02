@@ -78,7 +78,7 @@ bool sensorActive = true;              // Estado do sensor (ACTIVE/IDLE)
 
 // --- Variáveis para registro TCP periódico ---
 unsigned long lastRegisterAttempt = 0;
-const unsigned long registerInterval = 30000; // 30 segundos
+const unsigned long registerInterval = 5000; // 30 segundos
 
 // --- Funções auxiliares para Protocol Buffers ---
 
@@ -165,21 +165,20 @@ void loop() {
     // Log a cada 10 segundos quando sensor está pausado
     static unsigned long lastPauseLog = 0;
     if (currentTime - lastPauseLog >= 10000) {
-      Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
+      // Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
       lastPauseLog = currentTime;
     }
   }
   
-  // Lê sensor periodicamente se gateway foi descoberto e sensor está ativo
-  if (gatewayDiscovered && sensorActive && (currentTime - lastSensorRead >= sensorInterval)) {
-    Serial.printf("Lendo sensor (ativo, intervalo: %d ms)\n", sensorInterval);
+  // Lê sensor periodicamente se gateway foi descoberto, sensor está ativo e JÁ REGISTROU via TCP
+  if (gatewayDiscovered && deviceRegistered && sensorActive && (currentTime - lastSensorRead >= sensorInterval)) {
     readSensor();
     lastSensorRead = currentTime;
   } else if (gatewayDiscovered && !sensorActive && (currentTime - lastSensorRead >= 10000)) {
     // Log a cada 10 segundos quando sensor está pausado
     static unsigned long lastPauseLog = 0;
     if (currentTime - lastPauseLog >= 10000) {
-      Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
+      // Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
       lastPauseLog = currentTime;
     }
   }
@@ -193,7 +192,7 @@ void loop() {
     lastRegisterAttempt = currentTime;
   }
   
-  delay(100);  // Pequena pausa para não sobrecarregar o processador
+  delay(20);  // Pequena pausa para não sobrecarregar o processador
 }
 
 // --- Conexão WiFi ---
@@ -376,14 +375,14 @@ void readSensor() {
 
   // Verifica se os valores são válidos (não NaN)
   if (!isnan(temperature) && !isnan(humidity)) {
-    Serial.printf("Temperatura = %.1f °C | Umidade = %.1f %%\n", temperature, humidity);
-    
+    Serial.printf("[DEBUG] Leitura DHT11: Temperatura = %.1f °C | Umidade = %.1f %%\n", temperature, humidity);
     // Envia dados apenas se houve mudança (otimização de rede)
     if (temperature != temperatureAnt || humidity != humidityAnt) {
+      Serial.println("[DEBUG] Mudança detectada, enviando dados para o gateway...");
       sendSensorData();  // Envia dados para o gateway
     }
   } else {
-    Serial.println("Falha na leitura do sensor DHT!");
+    Serial.println("[ERRO] Falha na leitura do sensor DHT!");
   }
 }
 
@@ -421,7 +420,7 @@ void sendSensorData() {
     udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
     udp.write(freqBuffer, freqStream.bytes_written);
     udp.endPacket();
-    Serial.printf("Frequência enviada via UDP: %d ms (%d bytes)\n", sensorInterval, freqStream.bytes_written);
+    Serial.printf("[DEBUG] Frequência enviada via UDP: %d ms (%d bytes)\n", sensorInterval, freqStream.bytes_written);
   }
   // Serializa e envia via UDP
   uint8_t buffer[128];
@@ -430,9 +429,9 @@ void sendSensorData() {
     udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
     udp.write(buffer, stream.bytes_written);
     udp.endPacket();
-    Serial.printf("DeviceUpdate enviado via UDP (%d bytes)\n", stream.bytes_written);
+    Serial.printf("[DEBUG] DeviceUpdate enviado via UDP: T=%.1f°C, U=%.1f%% (%d bytes)\n", temperature, humidity, stream.bytes_written);
   } else {
-    Serial.println("Erro ao codificar com nanopb!");
+    Serial.println("[ERRO] Erro ao codificar DeviceUpdate com nanopb!");
   }
 }
 

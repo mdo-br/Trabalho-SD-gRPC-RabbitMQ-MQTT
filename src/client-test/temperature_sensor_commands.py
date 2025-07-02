@@ -39,7 +39,7 @@ def main():
     client = SmartCityClient(GATEWAY_IP, GATEWAY_TCP_PORT)
     
     # ID do sensor de temperatura (ajuste conforme necessário)
-    sensor_id = "temp_board_001001001"
+    sensor_id = "temp_board_001001002"
     
     print("=== Comandos para Sensor de Temperatura ===")
     print(f"Sensor ID: {sensor_id}")
