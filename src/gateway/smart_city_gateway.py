@@ -204,7 +204,7 @@ def handle_device_registration(device_info, addr):
 
 def write_delimited_message(conn, message):
     """
-    Envia uma mensagem Protocol Buffers com delimitador de tamanho, agora usando SmartCityMessage como envelope.
+    Envia uma mensagem Protocol Buffers com delimitador de tamanho, usando SmartCityMessage como envelope.
     """
     envelope = smart_city_pb2.SmartCityMessage()
     # Detecta o tipo da mensagem e encapsula
@@ -230,7 +230,7 @@ def write_delimited_message(conn, message):
 
 def read_delimited_message_bytes(reader):
     """
-    Lê uma mensagem Protocol Buffers com delimitador de tamanho, agora esperando sempre SmartCityMessage.
+    Lê uma mensagem Protocol Buffers com delimitador de tamanho, esperando sempre SmartCityMessage.
     """
     length = _read_varint(reader)
     data = reader.read(length)
@@ -262,7 +262,7 @@ def handle_client_request(req, conn, addr):
         now = time.time()
         with device_lock:
             for dev_id, dev in connected_devices.items():
-                # Considera "ligado" se enviou atualização nos últimos 15 segundos
+                # Considera "ligado" se enviou atualização nos últimos 30 segundos
                 if now - dev['last_seen'] <= 30:
                     info = smart_city_pb2.DeviceInfo(
                         device_id=dev_id, type=dev['type'], ip_address=dev['ip'],
