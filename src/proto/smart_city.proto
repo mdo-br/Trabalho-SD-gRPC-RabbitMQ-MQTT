@@ -3,6 +3,8 @@ syntax = "proto3";
 // Pacote Protocol Buffers para organizar as mensagens
 package smartcity_devices;
 
+option java_package = "smartcity.devices";
+option java_outer_classname = "SmartCity";
 option go_package = "./smartcitypb";
 
 // import "nanopb.proto";  // Removido para versão gateway

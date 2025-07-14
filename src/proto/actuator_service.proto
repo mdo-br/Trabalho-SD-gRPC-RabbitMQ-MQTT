@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package actuator;
+
+option java_package = "actuator";
+option java_outer_classname = "ActuatorService";
+
+// Serviço gRPC para controle de atuadores
+service AtuadorService {
+  rpc LigarDispositivo(DeviceRequest) returns (StatusResponse);
+  rpc DesligarDispositivo(DeviceRequest) returns (StatusResponse);
+  rpc ConsultarEstado(DeviceRequest) returns (StatusResponse);
+}
+
+// Mensagem de requisição para dispositivos
+message DeviceRequest {
+  string device_id = 1;
+  string ip = 2;
+  int32 port = 3;
+}
+
+// Resposta de status do dispositivo
+message StatusResponse {
+  string status = 1;
+  string message = 2;
+}

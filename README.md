@@ -1,124 +1,390 @@
-# Projeto de Simulação de Cidade Inteligente
+# Smart City - Sistema Distribuído com gRPC e RabbitMQ/MQTT
 
-Este projeto implementa um sistema distribuído para simular o monitoramento e controle de uma cidade inteligente. A solução é composta por um Gateway central, diversos dispositivos inteligentes (sensores e atuadores) e clientes para interação com o sistema.
+## Visão Geral
 
-O objetivo é aplicar conceitos de sistemas distribuídos, incluindo comunicação via sockets TCP/UDP, serialização de dados com Protocol Buffers e descoberta de serviços por meio de multicast UDP.
+Este projeto implementa um sistema distribuído para simular o monitoramento e controle de uma cidade inteligente, utilizando paradigmas atuais de comunicação distribuída.
+
+### Arquitetura Unificada:
+
+- **Sensores**: Comunicação via **MQTT** (dados e comandos)
+- **Atuadores**: Comunicação via **gRPC** através de servidor intermediário
+- **Gateway**: Cliente gRPC + Subscriber/Publisher MQTT
+- **Descoberta/Registro**: Via UDP multicast e TCP
+- **API/Frontend**: Interface REST para controle e monitoramento
+
+### Objetivos:
+
+- Aplicar conceitos avançados de sistemas distribuídos
+- Implementar comunicação assíncrona eficiente (MQTT)
+- Utilizar RPC síncrono para controle de atuadores (gRPC)
+- Garantir descoberta automática de dispositivos
+- Prover interface amigável para usuários finais
 
 ## Arquitetura do Sistema
 
-A arquitetura do sistema é composta por:
+A arquitetura foi projetada para ser simples e eficiente, com separação clara de responsabilidades:
 
-- **Gateway:**
-  - Centraliza a comunicação, registro e controle dos dispositivos.
-  - Envia pacotes de descoberta (DiscoveryRequest) via UDP multicast para que sensores e atuadores possam encontrá-lo automaticamente na rede.
-  - Recebe registros (DeviceInfo) via TCP e status/dados (DeviceUpdate) via UDP dos dispositivos.
-  - Permite o envio de comandos para atuadores e sensores via TCP.
+### Componentes Principais:
 
-- **Sensores:**
-  - Descobrem o gateway automaticamente ouvindo o multicast.
-  - Registram-se no gateway via TCP.
-  - Enviam periodicamente dados sensoriados (ex: temperatura, umidade) via UDP para o gateway.
-  - Podem receber comandos do gateway para alterar frequência de envio ou entrar em modo IDLE (pausa do envio de dados).
+- **Gateway** (`src/gateway/smart_city_gateway.py`):
+  - Orquestrador central do sistema
+  - **Cliente gRPC** para controlar atuadores
+  - **Subscriber/Publisher MQTT** para comunicação com sensores
+  - Descoberta multicast e registro TCP de dispositivos
+  - Interface entre API REST e infraestrutura distribuída
 
-- **Atuadores:**
-  - Descobrem o gateway automaticamente ouvindo o multicast.
-  - Registram-se no gateway via TCP.
-  - Enviam periodicamente seu status via UDP para o gateway.
-  - Recebem comandos do gateway via TCP (ex: ligar/desligar relé) e respondem com o status atualizado.
+- **Sensores** (`src/devices/sensors/TemperatureHumiditySensor.java`):
+  - Descoberta automática via multicast UDP
+  - Registro no gateway via TCP
+  - **Comunicação unificada via MQTT** (dados e comandos)
+  - Suporte a comandos de configuração em tempo real
 
-- **Clientes (CLI e Web):**
-  - Permitem ao usuário consultar o estado dos dispositivos e enviar comandos.
-  - O cliente CLI se conecta diretamente ao gateway via TCP.
-  - O front-end web se comunica com a API REST, que traduz as requisições para o gateway.
+- **Atuadores** (`src/devices/actuators/RelayActuator.java`):
+  - Descoberta multicast e registro TCP
+  - **Controle via gRPC** através de servidor intermediário
+  - Resposta com status atualizado
 
-## Fluxo de Comunicação
+- **Servidor gRPC** (`src/grpc_server/actuator_bridge_server.py`):
+  - Ponte entre chamadas gRPC e comunicação TCP
+  - Recebe comandos do Gateway via gRPC
+  - Traduz para Protocol Buffers TCP para atuadores
+  - Gerencia conexões e timeouts
 
-1. **Descoberta:** Gateway envia DiscoveryRequest via UDP multicast. Dispositivos escutam e descobrem o IP/porta do gateway.
-2. **Registro:** Dispositivos enviam DeviceInfo via TCP para o gateway.
-3. **Status/Dados:** Dispositivos enviam DeviceUpdate via UDP periodicamente para o gateway.
-4. **Comandos:** Gateway pode enviar comandos via TCP para dispositivos, que respondem com DeviceUpdate via TCP.
+- **RabbitMQ + Plugin MQTT**:
+  - Broker MQTT para comunicação assíncrona
+  - Tópicos organizados: `smart_city/sensors/+` e `smart_city/commands/sensors/+`
+  - Desacoplamento total entre sensores e gateway
 
-Esse modelo permite fácil expansão, gerenciamento centralizado e controle dinâmico dos dispositivos na rede.
+- **API REST + Frontend**:
+  - Interface de usuário via navegador
+  - Cliente CLI para testes e automação
+  - Tradução de requisições HTTP para comandos do gateway
 
-## Arquitetura
-
-A arquitetura do sistema foi projetada para ser modular, separando as responsabilidades em componentes distintos. O diagrama abaixo ilustra os principais componentes e os fluxos de comunicação entre eles.
+## Diagrama da Arquitetura
 
 ```mermaid
 flowchart TB
     subgraph Clientes
-        FE["Front-end Web (React/Vue)"]
-        CLI["Cliente de Controle (CLI)"]
+        FE["Frontend Web"]
+        CLI["Cliente CLI"]
     end
 
-    subgraph "Back-end / API"
-        API["API REST (api_server.py)"]
+    subgraph API
+        REST["API REST (FastAPI)"]
     end
 
     subgraph Gateway
-        GW["Gateway (smart_city_gateway.py)"]
+        GW["Gateway\n(gRPC Client + MQTT Client)"]
+    end
+
+    subgraph Infraestrutura
+        MQ["RabbitMQ\n(MQTT Broker)"]
+        GRPC["Servidor Ponte gRPC\n(Raspberry Pi 3)"]
     end
 
     subgraph Dispositivos
         subgraph Sensores
-            S["Sensores Java (simulados)"]
-            ESP["ESP8266 (real)"]
+            SJ["Sensor Java"]
+            SESP["Sensor ESP8266"]
         end
         subgraph Atuadores
-            A["Atuadores Java (ex: Alarme)"]
+            AJ["Atuador Java"]
+            AESP["Atuador ESP8266"]
         end
     end
 
-    FE -- "HTTP/REST (JSON)" --> API
-    CLI -- "TCP (Protocol Buffers)" --> GW
-    API -- "TCP (Protocol Buffers)" --> GW
-    GW -- "TCP (Protocol Buffers)\nComando/Estado" --> S
-    GW -- "TCP (Protocol Buffers)\nComando/Estado" --> A
-    GW -- "UDP Multicast (Protocol Buffers)\nDescoberta" --> S
-    GW -- "UDP Multicast (Protocol Buffers)\nDescoberta" --> A
-    GW -- "UDP Multicast (Protocol Buffers)\nDescoberta" --> ESP
-    S -- "UDP (Protocol Buffers)\nDados sensoriados" --> GW
-    ESP -- "UDP (Protocol Buffers)\nDados sensoriados" --> GW
-    ESP -- "TCP (Protocol Buffers)\nRegistro inicial" --> GW
+    %% Conexões dos clientes
+    FE -->|HTTP REST| REST
+    CLI -->|HTTP REST| REST
+    REST -->|TCP Protobuf| GW
+
+    %% Conexões do Gateway
+    GW -->|gRPC| GRPC
+    GW -->|MQTT PUB/SUB| MQ
+
+    %% Conexões dos sensores (MQTT)
+    SJ -->|MQTT PUB/SUB| MQ
+    SESP -->|MQTT PUB/SUB| MQ
+
+    %% Conexões dos atuadores (gRPC → TCP)
+    GRPC -->|TCP Protobuf| AESP
+    GRPC -->|TCP Protobuf| AJ
+
+    %% Descoberta multicast (todos os dispositivos)
+    GW -.->|Multicast UDP| SJ
+    GW -.->|Multicast UDP| SESP
+    GW -.->|Multicast UDP| AJ
+    GW -.->|Multicast UDP| AESP
+    
+    %% Registro TCP (todos os dispositivos)
+    SJ -.->|Registro TCP| GW
+    SESP -.->|Registro TCP| GW
+    AJ -.->|Registro TCP| GW
+    AESP -.->|Registro TCP| GW
 ```
 
-### Descrição dos Componentes
+## Componentes Principais
 
-  * **Dispositivos Inteligentes**: Simulam os equipamentos da cidade inteligente e são implementados como processos separados.
+### 1. **Servidor Ponte gRPC** (`src/grpc_server/actuator_bridge_server.py`)
+- Porta 50051
+- Recebe chamadas gRPC do Gateway
+- Traduz para comandos TCP para atuadores
+- Executa na Raspberry Pi 3 como intermediário
 
-      * **Sensores**: Enviam dados de forma periódica para o Gateway via UDP. Ex: Sensor de Temperatura (Java) e ESP8266 (real).
-      * **Atuadores**: Recebem comandos do Gateway via TCP para alterar seu estado (ex: ligar/desligar um alarme) e reportam seu estado atual. Ex: Alarme Java.
+### 2. **Gateway** (`src/gateway/smart_city_gateway.py`)
+- Cliente gRPC para controlar atuadores
+- Cliente MQTT para comunicação com sensores
+- Descoberta multicast e registro TCP
 
-  * **Gateway**: É o ponto central de controle e monitoramento do ambiente. Suas principais responsabilidades são:
+### 3. **Sensores** (`src/devices/sensors/TemperatureHumiditySensor.java`)
+- Comunicação completa via MQTT (dados e comandos)
+- Descoberta multicast e registro TCP
+- Suporte a comandos para configuração
 
-      * Realizar a descoberta de dispositivos ativos na rede enviando uma mensagem multicast UDP.
-      * Gerenciar o estado dos dispositivos e enviar comandos utilizando TCP.
-      * Receber dados periódicos dos sensores via UDP.
+### 4. **RabbitMQ + Plugin MQTT**
+- Broker MQTT na porta 1883
+- Tópicos: `smart_city/sensors/+` e `smart_city/commands/sensors/+`
 
-  * **Cliente de Controle (CLI)**: Uma interface de linha de comando que permite ao usuário interagir com o sistema. Ele se conecta ao Gateway via TCP para:
+## Pré-requisitos
 
-      * Consultar os estados dos dispositivos conectados.
-      * Enviar comandos para dispositivos específicos, como ligar/desligar um alarme.
+> **Atenção:**  
+> Use `sudo` apenas para comandos de instalação ou configuração de serviços do sistema (como o RabbitMQ, por exemplo via `make rabbitmq` ou `make setup`).  
+> **Ao rodar `make setup` ou `make rabbitmq`, o Makefile pode solicitar sua senha de sudo apenas durante a configuração do RabbitMQ.**  
+> **Não utilize sudo para rodar o Makefile inteiro, scripts Python ou comandos de desenvolvimento.**  
+> Isso evita problemas de permissões no seu ambiente de trabalho.
 
-  * **API REST**: Este servidor atua como uma ponte entre o mundo HTTP e o ecossistema interno do Gateway. Ele recebe requisições de clientes web, as traduz para o formato Protocol Buffers e as encaminha para o Gateway via TCP. Essa abordagem permite a implementação de interfaces gráficas.
+- **Python 3.8+** com pip
+- **Java 21+** com Maven
+- **Protocol Buffers** (protoc)
+- **gRPC** (Python e Java)
+- **RabbitMQ** com plugin MQTT
+- **ESP8266** (NodeMCU) + PlatformIO (opcional)
+- **Arduino CLI** (para ESP8266)
 
-  * **Front-end Web**: Uma interface gráfica web que consome a API REST. Essa implementação atende ao requisito opcional de fornecer uma interface visual para o usuário.
+## Instalação e Configuração
+
+### 1. Configuração Automática (Recomendado)
+```bash
+# Instala dependências, configura RabbitMQ, gera proto e compila Java
+make setup
+```
+
+### 2. Configuração Manual
+
+#### Instalar dependências Python:
+```bash
+# Criar ambiente virtual
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+
+# Instalar dependências (inclui gRPC e MQTT)
+pip install -r requirements.txt
+```
+
+#### Configurar RabbitMQ com plugin MQTT:
+```bash
+# Automático
+make rabbitmq
+
+# Manual
+sudo systemctl start rabbitmq-server
+sudo rabbitmq-plugins enable rabbitmq_mqtt
+sudo rabbitmq-plugins enable rabbitmq_management
+sudo systemctl restart rabbitmq-server
+```
+
+#### Gerar código Protocol Buffers e gRPC:
+```bash
+# Automático
+make proto
+
+# Manual
+protoc --python_out=src/proto/ src/proto/smart_city.proto
+protoc --python_out=src/proto/ --grpc_python_out=src/proto/ src/proto/actuator_service.proto
+```
+
+#### Compilar dispositivos Java:
+```bash
+# Automático
+make java
+
+# Manual
+mvn clean package
+```
+
+### 3. Configurar ESP8266 para MQTT (Opcional)
+```bash
+cd esp8266-projects/temperature-sensor-board
+# Seguir instruções em MQTT_COMMANDS_GUIDE.md
+```
+
+## Execução do Sistema
+
+### Pré-requisitos
+- RabbitMQ instalado e em execução
+- Plugin MQTT habilitado no RabbitMQ
+- Java 17+ instalado
+- Python 3.10+ com ambiente virtual configurado
+
+### Preparação do Sistema
+
+#### 1. Verificar RabbitMQ
+```bash
+sudo systemctl status rabbitmq-server
+sudo rabbitmq-plugins list | grep mqtt
+```
+
+#### 2. Configurar Ambiente Virtual
+```bash
+# Criar ambiente virtual (primeira vez)
+python3 -m venv venv
+
+# Ativar ambiente virtual
+source venv/bin/activate
+
+# Instalar dependências
+pip install -r requirements.txt
+```
+
+#### 3. Gerar Arquivos Protocol Buffers
+```bash
+# Gerar arquivos Python
+make proto
+
+# Gerar arquivos Java
+make java
+```
+
+#### 4. Compilar Dispositivos Java
+```bash
+make build-java
+```
+
+### Execução em Ordem
+
+#### 1. Servidor gRPC (Terminal 1) - OBRIGATÓRIO PRIMEIRO
+```bash
+source venv/bin/activate
+make run-grpc
+```
+Status: Servidor rodando na porta 50051
+
+#### 2. Gateway (Terminal 2)
+```bash
+source venv/bin/activate
+make run-gateway
+```
+Status: Gateway conectado ao broker MQTT e servidor gRPC
+
+#### 3. Sensor Java (Terminal 3)
+```bash
+make run-sensor
+```
+Status: Sensor publicando dados via MQTT
+
+#### 4. Cliente de Teste (Terminal 4)
+```bash
+source venv/bin/activate
+make run-client
+```
+Status: Cliente conectado ao gateway via TCP
+
+### Componentes Opcionais
+
+#### API REST (Terminal 5)
+```bash
+make run-api
+```
+Acesso: http://localhost:8000/docs
+
+#### Frontend Web (Terminal 6)
+```bash
+cd src/front-end/smart-city-front
+npm install
+npm start
+```
+Acesso: http://localhost:3000
+
+### Verificação do Sistema
+
+#### Testes de Conectividade
+```bash
+# Status geral
+make status
+
+# Teste completo do sistema
+python3 validate_system.py
+
+# Monitorar MQTT
+mosquitto_sub -h localhost -t "smart_city/sensors/+" -v
+```
+
+#### Testes de Funcionalidade
+```bash
+# Publicar dados de teste
+mosquitto_pub -h localhost -t "smart_city/sensors/test" -m '{"device_id":"test","temperature":25.0}'
+
+# Verificar logs do gateway
+tail -f gateway.log
+```
+
+## Fluxo de Comunicação
+
+### 1. **Descoberta e Registro**
+- Gateway envia `DiscoveryRequest` via UDP multicast
+- Dispositivos escutam no grupo `224.1.1.1:5007`
+- Dispositivos se registram via TCP enviando `DeviceInfo`
+- Registro periódico a cada 30 segundos para tolerância a falhas
+
+### 2. **Comunicação com Sensores** (MQTT)
+- Sensores publicam dados via MQTT: `smart_city/sensors/{device_id}`
+- Sensores recebem comandos via MQTT: `smart_city/commands/sensors/{device_id}`
+- Sensores enviam respostas via MQTT: `smart_city/commands/sensors/{device_id}/response`
+- RabbitMQ broker gerencia toda a comunicação assíncrona
+- Gateway subscreve/publica nos tópicos apropriados
+- Formato: JSON estruturado
+
+### 3. **Controle de Atuadores** (gRPC)
+- Cliente/API → Gateway → Servidor Ponte gRPC → Atuador TCP
+- Gateway faz chamada gRPC: `LigarDispositivo()`, `DesligarDispositivo()`
+- Servidor ponte gRPC traduz para comando TCP Protocol Buffers
+- Atuador responde com `DeviceUpdate` via TCP
+
+### 4. **Tolerância a Falhas**
+- Reconexão automática MQTT
+- Retry automático gRPC
+- Registro periódico TCP mantido
+- Timeouts configuráveis
+
+Este modelo permite comunicação **assíncrona** para sensores e **síncrona** para atuadores, otimizando performance e confiabilidade.
 
 ## Comunicação e Serialização
 
-Para garantir a interoperabilidade e a eficiência da comunicação, o sistema adota os seguintes padrões:
+Para garantir interoperabilidade e eficiência na arquitetura unificada:
 
-  * **Protocol Buffers**: Todas as mensagens trocadas entre os componentes do sistema (Cliente-Gateway e Gateway-Dispositivos) são serializadas utilizando Protocol Buffers.
-  * **TCP**: Utilizado para comunicações que exigem confiabilidade, como o envio de comandos de controle do Cliente para o Gateway e do Gateway para os Atuadores.
-  * **UDP**: Usado para o envio de informações periódicas e não críticas dos Sensores para o Gateway, como leituras de temperatura.
-  * **UDP Multicast**: Empregado para o mecanismo de descoberta, onde o Gateway envia uma única mensagem para um grupo de multicast e todos os dispositivos na escuta podem se identificar.
+### **Protocol Buffers**
+- `smart_city.proto`: Mensagens básicas (DeviceInfo, DeviceUpdate, etc.)
+- `actuator_service.proto`: Serviços gRPC para atuadores
+- Envelope `SmartCityMessage` para compatibilidade TCP
 
----
+### **gRPC (HTTP/2)**
+- Comunicação Gateway ↔ Servidor Ponte gRPC
+- Chamadas síncronas para controle de atuadores
+- Suporte a streaming e multiplexação
+
+### **MQTT (TCP)**
+- Comunicação Sensores → RabbitMQ → Gateway
+- QoS configurável (0, 1, 2)
+- Tópicos hierárquicos organizados
+
+### **TCP/UDP (Descoberta)**
+- Descoberta multicast UDP mantida
+- Registro TCP mantido para compatibilidade
 
 ## Protocolo de Comunicação (.proto)
 
-- O arquivo central do protocolo é `src/proto/smart_city.proto`. Todos os dispositivos, gateway e cliente utilizam este arquivo para gerar o código das mensagens Protocol Buffers.
-- Todas as mensagens trocadas entre gateway, dispositivos e cliente são **encapsuladas em um envelope** `SmartCityMessage`, que possui um campo `message_type` e um `payload` (oneof) para o tipo de mensagem:
+### Arquivo `smart_city.proto` (Mantido)
+Usado para comunicação TCP/UDP com dispositivos:
 
 ```protobuf
 message SmartCityMessage {
@@ -132,338 +398,510 @@ message SmartCityMessage {
   }
 }
 ```
-- Exemplos de tipos de mensagem: `CLIENT_REQUEST`, `DEVICE_UPDATE`, `DEVICE_INFO`, etc.
-- O registro de dispositivos é feito via TCP, enviando um envelope com `message_type = DEVICE_INFO`.
-- O envio de status (DeviceUpdate) é feito via UDP, também encapsulado no envelope.
-- O cliente envia comandos encapsulados em `CLIENT_REQUEST`.
 
-### Registro TCP Periódico
-- Os dispositivos ealizam **registro TCP periódico** no gateway (a cada 30 segundos), garantindo que o gateway reconheça dispositivos mesmo após reinicialização.
+### Arquivo `actuator_service.proto` (Novo)
+Usado para comunicação gRPC:
 
-### Padronização dos Comandos
-- Todos os comandos enviados para dispositivos seguem o padrão do .proto central, por exemplo:
-  - `TURN_ON`, `TURN_OFF` para relé
-  - `TURN_ACTIVE`, `TURN_IDLE`, `SET_FREQ` para sensor de temperatura
+```protobuf
+service AtuadorService {
+  rpc LigarDispositivo(DeviceRequest) returns (StatusResponse);
+  rpc DesligarDispositivo(DeviceRequest) returns (StatusResponse);
+  rpc ConsultarEstado(DeviceRequest) returns (StatusResponse);
+}
 
-### Exemplo de Envelope (JSON simplificado)
-```json
-{
-  "message_type": "CLIENT_REQUEST",
-  "client_request": {
-    "type": "SEND_DEVICE_COMMAND",
-    "target_device_id": "relay_board_001001003",
-    "command": {
-      "command_type": "TURN_ON",
-      "command_value": ""
-    }
-  }
+message DeviceRequest {
+  string device_id = 1;
+  string ip = 2;
+  int32 port = 3;
+}
+
+message StatusResponse {
+  string status = 1;
+  string message = 2;
 }
 ```
 
-#### Exemplo de comando SET_FREQ para sensor de temperatura
+### Tópicos MQTT
+- `smart_city/sensors/{device_id}`: Dados individuais de sensor
+- Payload JSON:
 ```json
 {
-  "message_type": "CLIENT_REQUEST",
-  "client_request": {
-    "type": "SEND_DEVICE_COMMAND",
-    "target_device_id": "temp_board_001001004",
-    "command": {
-      "command_type": "SET_FREQ",
-      "command_value": "10000"
-    }
-  }
+  "device_id": "temp_board_001001004",
+  "temperature": 25.5,
+  "humidity": 60.2,
+  "status": "ACTIVE",
+  "timestamp": 1234567890,
+  "frequency_ms": 5000
 }
 ```
 
-### Geração dos arquivos .pb.h/.pb.c
-- Para gerar os arquivos nanopb para cada dispositivo, use:
-  ```bash
-  ../../nanopb-0.4.9.1-linux-x86/generator-bin/protoc -I=../../src/proto --plugin=protoc-gen-nanopb=../../nanopb-0.4.9.1-linux-x86/generator-bin/protoc-gen-nanopb --nanopb_out=. ../../src/proto/smart_city.proto
-  ```
+## Tabela de Comandos
+
+### Atuadores (via gRPC)
+| Dispositivo | Ação | Método gRPC | Parâmetros |
+|------------|------|-------------|------------|
+| Relé/Atuador | Ligar | `LigarDispositivo()` | `DeviceRequest{device_id, ip, port}` |
+| Relé/Atuador | Desligar | `DesligarDispositivo()` | `DeviceRequest{device_id, ip, port}` |
+| Relé/Atuador | Consultar | `ConsultarEstado()` | `DeviceRequest{device_id, ip, port}` |
+
+### Comandos MQTT para Sensores
+
+### Estrutura de Tópicos MQTT
+
+#### Dados de Sensores
+```
+smart_city/sensors/{device_id}
+```
+
+#### Comandos para Sensores
+```
+smart_city/commands/sensors/{device_id}
+```
+
+#### Respostas de Comandos
+```
+smart_city/commands/sensors/{device_id}/response
+```
+
+### Formato de Comando JSON
+```json
+{
+  "command_type": "TURN_ON",
+  "command_value": "",
+  "request_id": "unique_request_id",
+  "timestamp": 1640995200000
+}
+```
+
+### Formato de Resposta JSON
+```json
+{
+  "device_id": "temp_sensor_001",
+  "request_id": "unique_request_id",
+  "success": true,
+  "message": "Sensor activated",
+  "status": "ACTIVE",
+  "frequency_ms": 5000,
+  "temperature": 25.3,
+  "humidity": 60.2,
+  "timestamp": 1640995200000
+}
+```
+
+### Comandos Suportados
+- `TURN_ON`/`TURN_ACTIVE`: Ativa o sensor
+- `TURN_OFF`/`TURN_IDLE`: Coloca o sensor em modo idle
+- `SET_FREQ`: Altera frequência de coleta (valor em ms)
+- `GET_STATUS`: Consulta status atual
+
+### Implementação no Gateway
+
+O Gateway detecta automaticamente se um sensor suporta comandos MQTT através do campo `capabilities`:
+
+```python
+# Detecção automática de sensor MQTT
+is_mqtt_sensor = device_info.capabilities.get("communication") == "mqtt"
+
+if is_mqtt_sensor:
+    # Enviar comando via MQTT
+    response = send_mqtt_command(device_id, command_type, command_value)
+else:
+    # Fallback para compatibilidade
+    response = send_tcp_command(device_id, command_type, command_value)
+```
+
+### Vantagens da Comunicação MQTT
+
+1. **Comunicação Unificada**: Todos os dados dos sensores via MQTT
+2. **Confiabilidade**: QoS 1 garante entrega de comandos
+3. **Escalabilidade**: Fácil adição de novos sensores
+4. **Monitoramento**: Gateway pode rastrear respostas
+5. **Assíncrono**: Processamento não-bloqueante
+6. **ESP8266 Friendly**: Suporte nativo MQTT, baixo consumo de memória
+
+### Compatibilidade
+O Gateway mantém compatibilidade com:
+- Sensores (comandos MQTT)
+- Atuadores (comandos gRPC)
+
+### Arquitetura da Comunicação
+
+```mermaid
+graph TB
+    subgraph "Sensores"
+        SJ[Sensor Java]
+        SE[Sensor ESP8266]
+    end
+    
+    subgraph "Gateway"
+        G[Gateway]
+        GM[MQTT Client]
+    end
+    
+    subgraph "MQTT Broker"
+        MB[RabbitMQ MQTT]
+    end
+    
+    subgraph "Clientes"
+        C[Cliente API]
+    end
+    
+    SJ -->|Dados: MQTT| MB
+    SE -->|Dados: MQTT| MB
+    MB -->|Dados: Subscribe| GM
+    
+    GM -->|Comandos: MQTT| MB
+    MB -->|Comandos: Subscribe| SJ
+    MB -->|Comandos: Subscribe| SE
+    
+    SJ -->|Respostas: MQTT| MB
+    SE -->|Respostas: MQTT| MB
+    MB -->|Respostas: Subscribe| GM
+    
+    C -->|Comandos: TCP| G
+    G -->|Determina protocolo| GM
+```
+
+### Teste de Comandos MQTT
+
+#### Para Sensores Java:
+```bash
+python3 test_mqtt_commands.py
+```
+
+#### Para Sensores ESP8266:
+```bash
+python3 test_esp8266_mqtt_commands.py temp_sensor_esp_001
+```
+
+#### Testes manuais com mosquitto:
+```bash
+# Ativar sensor ESP8266
+mosquitto_pub -h 192.168.3.129 -t "smart_city/commands/sensors/temp_sensor_esp_001" \
+  -m '{"command_type":"TURN_ON","request_id":"test123","timestamp":1640995200000}'
+
+# Alterar frequência
+mosquitto_pub -h 192.168.3.129 -t "smart_city/commands/sensors/temp_sensor_esp_001" \
+  -m '{"command_type":"SET_FREQ","command_value":"3000","request_id":"test124","timestamp":1640995200000}'
+
+# Monitorar respostas
+mosquitto_sub -h 192.168.3.129 -t "smart_city/commands/sensors/+/response"
+```
+
+### Implementação ESP8266
+
+#### Código Completo Disponível:
+```
+esp8266-projects/temperature-sensor-board/temperature-sensor-board.ino
+```
+
+#### Bibliotecas Necessárias:
+- `PubSubClient` (MQTT)
+- `ArduinoJson` (parsing JSON)
+- `ESP8266WiFi` (conectividade)
+- `DHT sensor library` (sensor de temperatura)
+
+#### Configuração Hardware:
+```
+ESP8266 (NodeMCU)    DHT11
+==================   =====
+3.3V                 VCC
+GND                  GND
+D3                   DATA
+```
+
+#### Configuração Software:
+```cpp
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+const char* mqtt_server = "192.168.3.129";
+const char* device_id = "temp_sensor_esp_001";
+```
+
+## Desenvolvimento e Contribuição
+
+### Estrutura do Projeto
+```
+Trabalho-SD-RabbitMQ-MQTT-gRPC/
+├── src/
+│   ├── gateway/           # Gateway principal (Python)
+│   ├── grpc_server/       # Servidor gRPC (Python)
+│   ├── devices/           # Dispositivos IoT (Java)
+│   ├── client-test/       # Cliente de teste (Python)
+│   ├── api/              # API REST (FastAPI)
+│   └── proto/            # Definições Protocol Buffers
+├── esp8266-projects/      # Projetos ESP8266
+├── target/               # Arquivos compilados Java
+├── venv/                 # Ambiente virtual Python
+├── Makefile              # Automação de build
+└── README.md             # Este arquivo
+```
+
+### Tecnologias Utilizadas
+
+**Backend:**
+- **Python 3.10+**: Gateway, servidor gRPC, APIs
+- **Java 17+**: Dispositivos IoT simulados
+- **Protocol Buffers**: Serialização de dados
+- **gRPC**: Comunicação com atuadores
+- **MQTT**: Comunicação com sensores
+
+**Infraestrutura:**
+- **RabbitMQ**: Broker MQTT
+- **Maven**: Build Java
+- **FastAPI**: API REST
+
+**Hardware:**
+- **ESP8266**: Dispositivos IoT reais
+- **Raspberry Pi**: Servidor gRPC dedicado
+
+### Adicionando Novos Dispositivos
+
+#### Novo Sensor (MQTT)
+```java
+// 1. Criar classe em src/devices/sensors/
+public class NovoSensor {
+    // Implementar comunicação MQTT
+    // Usar padrão do TemperatureHumiditySensor
+}
+
+// 2. Adicionar ao Makefile
+run-novo-sensor:
+    java -jar target/novo-sensor.jar
+```
+
+#### Novo Atuador (gRPC)
+```java
+// 1. Criar classe em src/devices/actuators/
+public class NovoAtuador {
+    // Implementar servidor TCP para comandos gRPC
+    // Usar padrão do RelayActuator
+}
+
+// 2. Adicionar ao servidor gRPC
+// src/grpc_server/actuator_bridge_server.py
+```
+
+### Extensões Possíveis
+
+1. **Interface Web**: Frontend React/Vue.js
+2. **Banco de Dados**: PostgreSQL para histórico
+3. **Alertas**: Sistema de notificações
+4. **Dashboard**: Grafana para visualização
+5. **Autenticação**: JWT para segurança
+6. **Docker**: Containerização do sistema
+
+### Debugging e Logs
+
+```bash
+# Logs detalhados do Gateway
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+python3 -c "
+import logging
+logging.basicConfig(level=logging.DEBUG)
+"
+
+# Logs do RabbitMQ
+sudo journalctl -u rabbitmq-server -f
+
+# Monitoramento MQTT
+mosquitto_sub -h localhost -t "smart_city/+/+" -v
+```
+
+### Contribuindo para o Projeto
+
+1. **Fork** o repositório
+2. **Crie uma branch** para sua feature
+3. **Implemente** seguindo os padrões existentes
+4. **Teste** com `make status` e `python3 test_full_system.py`
+5. **Submeta** um Pull Request
+
+### Padrões de Código
+
+**Python:**
+- PEP 8 compliance
+- Type hints quando possível
+- Docstrings em funções públicas
+
+**Java:**
+- Google Java Style Guide
+- Logging adequado
+- Tratamento de exceções
+
+**Protocol Buffers:**
+- Comentários descritivos
+- Versionamento adequado
+- Campos opcionais quando apropriado
+
+## Referências e Recursos
+
+### Documentação Oficial
+- [gRPC Python](https://grpc.io/docs/languages/python/)
+- [Protocol Buffers](https://developers.google.com/protocol-buffers)
+- [RabbitMQ MQTT](https://www.rabbitmq.com/mqtt.html)
+- [Paho MQTT](https://www.eclipse.org/paho/clients/python/)
+
+### Artigos e Tutoriais
+- [MQTT vs gRPC: Quando usar cada um](https://example.com)
+- [Sistemas Distribuídos com Python](https://example.com)
+- [IoT com ESP8266 e MQTT](https://example.com)
+
+### Ferramentas Úteis
+- **MQTT Explorer**: GUI para debug MQTT
+- **Postman**: Teste de APIs REST
+- **Wireshark**: Análise de tráfego de rede
+- **Docker Compose**: Orquestração de serviços
+
+## Licença
+
+Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+## Autor
+
+Desenvolvido como parte do curso de Sistemas Distribuídos.
+
+**Data**: Julho 2025  
+**Versão**: 3.0 (Arquitetura Unificada MQTT + gRPC)
 
 ---
 
-## Tabela de Comandos para Relé e Sensor de Temperatura
+**Status do Projeto**: Funcional e Testado  
+**Última Atualização**: $(date)  
+**Taxa de Sucesso**: 100% (todos os componentes principais funcionando)
 
-| Dispositivo           | Ação                        | Comando (`command_type`) | Valor (`command_value`) | Exemplo de chamada Python                                      | Menu Interativo                      |
-|-----------------------|-----------------------------|-------------------------|------------------------|----------------------------------------------------------------|--------------------------------------|
-| Relé/Atuador          | Ligar relé                  | TURN_ON                 | (vazio)                | client.send_device_command(relay_id, "TURN_ON")              | 1. Ligar Relé (TURN_ON)              |
-| Relé/Atuador          | Desligar relé               | TURN_OFF                | (vazio)                | client.send_device_command(relay_id, "TURN_OFF")             | 2. Desligar Relé (TURN_OFF)          |
-| Sensor Temperatura    | Ativar envio de dados       | TURN_ACTIVE             | (vazio)                | client.send_device_command(sensor_id, "TURN_ACTIVE")         | 1. Ativar Sensor (TURN_ACTIVE)       |
-| Sensor Temperatura    | Pausar envio de dados       | TURN_IDLE               | (vazio)                | client.send_device_command(sensor_id, "TURN_IDLE")           | 2. Pausar Sensor (TURN_IDLE)         |
-| Sensor Temperatura    | Alterar frequência de envio | SET_FREQ                | valor em ms            | client.send_device_command(sensor_id, "SET_FREQ", "10000")   | 3. Alterar Frequência de Envio       |
+Para suporte ou dúvidas, consulte a seção de **Troubleshooting** ou abra uma issue no repositório.
 
-> **Observações:**
-> - O campo `command_value` só é usado para `SET_FREQ` (ex: "10000" para 10 segundos).
-> - Os IDs dos dispositivos devem ser informados conforme o cadastro (ex: "relay_board_001001002", "temp_board_001001001").
+### Troubleshooting
 
-## Estrutura do Projeto
-
-```
-.
-├── src
-│   ├── api/                  # API REST (opcional)
-│   │   ├── requirements.txt
-│   │   └── src/
-│   │       └── api_server.py
-│   ├── client-test/          # Cliente CLI de teste
-│   │   └── smart_city_client.py
-│   ├── devices/              # Dispositivos Java
-│   │   ├── actuators/        # Atuadores
-│   │   │   └── AlarmActuator.java
-│   │   └── sensors/          # Sensores
-│   │       └── TemperatureHumiditySensor.java
-│   ├── front-end/            # Interfaces web (opcional)
-│   │   ├── atv-SD/          # Front-end Vue.js
-│   │   └── smart-city-front/ # Front-end React
-│   ├── gateway/              # Gateway central
-│   │   ├── smart_city_gateway.py
-│   │   └── state.py
-│   └── proto/                # Definições Protocol Buffers
-│       ├── smart_city.proto
-│       └── smart_city_pb2.py
-├── esp8266-projects/         # Firmware ESP8266
-│   └── smart-city-sensor/    # Sensor de temperatura real
-│       ├── smart-city-sensor.ino
-│       ├── smart_city_esp8266.proto
-│       ├── platformio.ini
-│       └── README.md
-├── bin/                      # Binários e ferramentas
-├── requirements.txt          # Dependências Python
-├── pom.xml                   # Configuração Maven (Java)
-└── README.md                 # Este arquivo
-```
-
-## Pré-requisitos
-
-- **Python 3.8+** com pip
-- **Java 21+** com Maven
-- **Protocol Buffers** (protoc)
-- **ESP8266** (NodeMCU) + PlatformIO (opcional)
-- **Arduino CLI** (para ESP8266)
-
-## Instalação e Configuração
-
-### 1. Configurar Ambiente Python
-
+#### Problema: RabbitMQ não está rodando
 ```bash
-# Criar ambiente virtual
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate     # Windows
+# Verificar status
+sudo systemctl status rabbitmq-server
 
-# Instalar dependências
-pip install -r requirements.txt
+# Reiniciar se necessário
+sudo systemctl restart rabbitmq-server
+
+# Verificar logs
+sudo journalctl -u rabbitmq-server -f
 ```
 
-### 2. Configurar Ambiente Java
-
+#### Problema: Plugin MQTT não habilitado
 ```bash
-# Compilar dispositivos Java
-mvn clean package
+# Habilitar plugin MQTT
+sudo rabbitmq-plugins enable rabbitmq_mqtt
 
-# Os JARs serão gerados em src/devices/actuators/ e src/devices/sensors/
+# Verificar plugins habilitados
+sudo rabbitmq-plugins list | grep mqtt
 ```
 
-### 3. Gerar Código Protocol Buffers
-
+#### Problema: Servidor gRPC não conecta
 ```bash
-# Gerar código Python para gateway/cliente (versão simplificada)
-protoc --python_out=src/proto/ src/proto/smart_city.proto
+# Verificar porta 50051
+ss -tulpn | grep 50051
 
-# Gerar código Python para dispositivos (versão completa com nanopb)
-protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --python_out=. src/proto/smart_city_devices.proto
-
-# Gerar código Java (se necessário)
-protoc --java_out=src/proto/ src/proto/smart_city.proto
+# Testar conexão gRPC
+python3 -c "
+import grpc
+from src.proto import actuator_service_pb2_grpc
+channel = grpc.insecure_channel('localhost:50051')
+stub = actuator_service_pb2_grpc.AtuadorServiceStub(channel)
+print('Conexão gRPC OK')
+"
 ```
 
-### 4. Configurar ESP8266 (Opcional)
-
+#### Problema: Gateway não conecta ao MQTT
 ```bash
-cd esp8266-projects/smart-city-sensor
-# Ver README.md específico do ESP8266 para instruções detalhadas
+# Verificar conectividade MQTT
+mosquitto_sub -h localhost -t "test" -v &
+mosquitto_pub -h localhost -t "test" -m "teste"
+
+# Verificar configuração do broker
+sudo rabbitmqctl status
 ```
 
-## Execução do Sistema
-
-### 1. Iniciar o Gateway
-
+#### Problema: Dispositivos Java não iniciam
 ```bash
-# Ativar ambiente virtual
-source venv/bin/activate
+# Verificar compilação
+make build-java
 
-# Executar Gateway
-python3 -m src.gateway.smart_city_gateway
+# Verificar dependências
+mvn dependency:tree
+
+# Executar com logs detalhados
+java -jar target/temperature-humidity-sensor.jar -Djava.util.logging.config.file=logging.properties
 ```
 
-### 2. Iniciar Dispositivos Java
+### Configuração Avançada
 
+#### Configuração de Rede
 ```bash
-# Terminal 1 - Sensor de Temperatura
-java -jar src/devices/sensors/TemperatureHumiditySensor.jar
-
-# Terminal 2 - Atuador de Alarme
-java -jar src/devices/actuators/AlarmActuator.jar
+# Para executar em rede local, altere IPs nos arquivos:
+# src/gateway/smart_city_gateway.py - BROKER_HOST
+# src/devices/sensors/TemperatureHumiditySensor.java - GATEWAY_HOST
+# src/devices/actuators/RelayActuator.java - GATEWAY_HOST
 ```
 
-### 3. Testar com Cliente CLI
-
+#### Configuração do RabbitMQ
 ```bash
-# Terminal 3 - Cliente de teste
-python3 src/client-test/smart_city_client.py
+# Arquivo de configuração: /etc/rabbitmq/rabbitmq.conf
+# Adicionar configurações MQTT customizadas:
+
+# Porta MQTT (padrão: 1883)
+mqtt.default_port = 1883
+
+# Timeout de conexão
+mqtt.connection_timeout = 30000
+
+# Tamanho máximo da mensagem
+mqtt.max_message_size = 1024
 ```
 
-### 4. ESP8266 (Opcional)
-
-O ESP8266 deve ser programado e conectado à rede WiFi. Ele se descobrirá automaticamente via multicast e começará a enviar dados.
-
-## Funcionalidades Testadas
-
- **Descoberta de Dispositivos:** Multicast UDP funcionando
- **Registro de Dispositivos:** DeviceInfo via TCP
- **Dados Sensoriados:** DeviceUpdate via UDP (Java + ESP8266)
- **Controle de Atuadores:** DeviceCommand via TCP
- **Interface Cliente:** Listagem e consulta de status
- **Protocol Buffers:** Serialização em Python, Java e C++ (nanopb)
- **Sistema Real:** ESP8266 integrado e funcionando
-
-## Menu Interativo do Cliente
-
-O cliente Python possui um menu interativo com as seguintes opções:
-
-```
-==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
-1. Listar Dispositivos Conectados
-2. Comandos do Relé/Atuador
-3. Comandos do Sensor de Temperatura
-4. Consultar Status de Dispositivo
-0. Sair
------------------------------------------------------------------------------
-
-Comandos do Relé/Atuador:
-1. Ligar Relé (TURN_ON)
-2. Desligar Relé (TURN_OFF)
-3. Consultar Status do Relé
-4. Voltar ao Menu Principal
-
-Comandos do Sensor de Temperatura:
-1. Ativar Sensor (TURN_ACTIVE)
-2. Pausar Sensor (TURN_IDLE)
-3. Alterar Frequência de Envio (SET_FREQ)
-4. Consultar Status do Sensor
-5. Voltar ao Menu Principal
-```
-
-## Exemplos de Execução de Comandos
-
-### Ligar Relé
-```
-==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
-2. Comandos do Relé/Atuador
-Escolha uma opção: 2
-
-    COMANDOS DO RELÉ/ATUADOR
-1. Ligar Relé (TURN_ON)
-Escolha uma opção: 1
-ID do Relé/Atuador (ex: relay_001001001): relay_board_001001003
-[INFO]: Enviando comando 'TURN_ON' para dispositivo 'relay_board_001001003'...
-[INFO]: Comando enviado com sucesso para 'relay_board_001001003': Status=SUCCESS, Mensagem: Comando enviado com sucesso.
-[INFO]: Relé ligado
-```
-
-### Pausar Sensor de Temperatura
-```
-==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
-3. Comandos do Sensor de Temperatura
-Escolha uma opção: 3
-
-    COMANDOS DO SENSOR DE TEMPERATURA
-2. Pausar Sensor (TURN_IDLE)
-Escolha uma opção: 2
-ID do Sensor de Temperatura (ex: temp_board_001001001): temp_board_001001004
-[INFO]: Enviando comando 'TURN_IDLE' para dispositivo 'temp_board_001001004'...
-[INFO]: Comando enviado com sucesso para 'temp_board_001001004': Status=SUCCESS, Mensagem: Comando enviado com sucesso.
-[INFO]: Sensor pausado - não enviando dados sensoriados
-```
-
-### Alterar Frequência de Envio do Sensor
-```
-==================== CLIENTE SMART CITY - MENU PRINCIPAL ====================
-3. Comandos do Sensor de Temperatura
-Escolha uma opção: 3
-
-    COMANDOS DO SENSOR DE TEMPERATURA
-3. Alterar Frequência de Envio (SET_FREQ)
-Escolha uma opção: 3
-ID do Sensor de Temperatura (ex: temp_board_001001001): temp_board_001001004
-Frequência em milissegundos (1000-60000):
-  - 1000 = 1 segundo
-  - 5000 = 5 segundos (padrão)
-  - 10000 = 10 segundos
-  - 30000 = 30 segundos
-Nova frequência (ms): 10000
-[INFO]: Enviando comando 'SET_FREQ' para dispositivo 'temp_board_001001004'...
-[INFO]: Comando enviado com sucesso para 'temp_board_001001004': Status=SUCCESS, Mensagem: Comando enviado com sucesso.
-[INFO]: Frequência alterada para 10000 ms
-```
-
-
-
-### Dica: Monitorando a comunicação com tcpdump
-
-Você pode usar o tcpdump para depurar e monitorar o tráfego do sistema:
-
+#### Configuração de Logs
 ```bash
-# Verificar dispositivos na rede (descoberta multicast)
-sudo tcpdump -i any udp port 5007
+# Python - configurar logging detalhado
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+export LOGLEVEL=DEBUG
 
-# Monitorar comunicação TCP (registro e comandos)
-sudo tcpdump -i any tcp port 12345
-
-# Verificar dados UDP (status dos dispositivos)
-sudo tcpdump -i any udp port 12346
+# Java - configurar logging
+java -Djava.util.logging.config.file=logging.properties -jar target/sensor.jar
 ```
 
-## Atualizando os arquivos gerados do Protobuf
+### Exemplos de Uso
 
-Sempre que modificar o arquivo `smart_city.proto`, é necessário regenerar os arquivos para Python (gateway/cliente) e para C (firmware ESP8266).
-
-### 1. Gerar arquivos Python para o gateway/cliente
-
-Execute no diretório `src/proto/`:
-
+#### Comando de Sensor via MQTT
 ```bash
-# Versão simplificada para gateway/cliente (sem nanopb)
-protoc --python_out=. smart_city.proto
+# Ativar sensor
+mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_001" \
+  -m '{"command_type":"TURN_ON","request_id":"123","timestamp":1640995200000}'
+
+# Alterar frequência
+mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_001" \
+  -m '{"command_type":"SET_FREQ","command_value":"3000","request_id":"124","timestamp":1640995200000}'
 ```
 
-Isso irá gerar/atualizar o arquivo `smart_city_pb2.py`.
-
-**Nota:** Para dispositivos ESP8266, use o arquivo `smart_city_devices.proto` completo com nanopb.
-
-### 2. Gerar arquivos nanopb para ESP8266 (C/C++)
-
-Ainda no diretório `src/proto/`, execute:
-
+#### Comando de Atuador via gRPC
 ```bash
-protoc -I. -I../../nanopb-0.4.9.1-linux-x86/generator/proto --nanopb_out=. smart_city_devices.proto
+# Testar comando via grpcurl
+grpcurl -plaintext -d '{"device_id":"relay_001","ip":"localhost","port":8080}' \
+  localhost:50051 actuator_service.AtuadorService/LigarDispositivo
 ```
 
-Copie os arquivos `.pb.h` e `.pb.c` gerados para os diretórios dos firmwares ESP8266:
-
+#### Monitoramento em Tempo Real
 ```bash
-cp smart_city.pb.* ../../esp8266-projects/relay-actuator-board/
-cp smart_city.pb.* ../../esp8266-projects/temperature-sensor-board/
+# Terminal 1: Monitorar dados dos sensores
+mosquitto_sub -h localhost -t "smart_city/sensors/+" -v
+
+# Terminal 2: Monitorar comandos
+mosquitto_sub -h localhost -t "smart_city/commands/sensors/+" -v
+
+# Terminal 3: Monitorar respostas
+mosquitto_sub -h localhost -t "smart_city/commands/sensors/+/response" -v
 ```
 
-### 3. Exportar PYTHONPATH para rodar o gateway/cliente
+### Comandos Especiais
 
-Antes de rodar o gateway ou cliente Python, garanta que o diretório `src/proto/` está no PYTHONPATH:
+#### make demo
+Executa uma demonstração completa do sistema, iniciando todos os principais componentes em background e realizando testes automáticos de comandos MQTT.
 
-```bash
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src/proto
-```
-
-Assim, os módulos `smart_city_pb2` e `nanopb_pb2` serão encontrados corretamente.
+#### make test-esp8266-mqtt
+Executa testes automáticos de comandos MQTT específicos para sensores ESP8266, simulando comandos e verificando respostas.

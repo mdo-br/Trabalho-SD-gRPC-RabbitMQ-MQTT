@@ -1,7 +1,7 @@
 package com.smartcity.actuators;
 
 // Arquivo renomeado de AlarmActuator para RelayActuator
-import smartcity_devices.SmartCity;
+import smartcity.devices.SmartCity;
 import com.google.protobuf.ByteString;
 
 import java.io.IOException;
@@ -12,6 +12,8 @@ import java.util.Enumeration;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import actuator.ActuatorService;
+import actuator.AtuadorServiceGrpc;
 
 public class RelayActuator {
 
@@ -19,7 +21,6 @@ public class RelayActuator {
 
     private static final String MULTICAST_GROUP = "224.1.1.1";
     private static final int MULTICAST_PORT = 5007;
-    private static final int ACTUATOR_TCP_PORT = 6002;
 
     private String deviceId;
     private SmartCity.DeviceStatus currentStatus;
@@ -27,17 +28,24 @@ public class RelayActuator {
     private int gatewayTcpPort;
     private int gatewayUdpPort;
 
+    private int tcpPort; // Porta TCP do próprio relé (atuador)
     private ServerSocket tcpServerSocket;
 
-    public RelayActuator(String id) {
+    public RelayActuator(String id, int tcpPort) {
         this.deviceId = id;
         this.currentStatus = SmartCity.DeviceStatus.OFF;
-        LOGGER.info("Relé Atuador " + deviceId + " inicializado com estado: " + currentStatus);
+        this.tcpPort = tcpPort;
+        LOGGER.info("Relé Atuador " + deviceId + " inicializado com estado: " + currentStatus + " | TCP Port: " + tcpPort);
+    }
+
+    // Mantenha o construtor antigo para compatibilidade:
+    public RelayActuator(String id) {
+        this(id, 6002);
     }
 
     public void start() {
         try {
-            tcpServerSocket = new ServerSocket(ACTUATOR_TCP_PORT);
+            tcpServerSocket = new ServerSocket(tcpPort);
 
             new Thread(this::listenForDiscoveryRequests, "DiscoveryListener-" + deviceId).start();
             new Thread(this::listenForTcpCommands, "CommandListener-" + deviceId).start();
@@ -81,7 +89,7 @@ public class RelayActuator {
                     .setDeviceId(deviceId)
                     .setType(SmartCity.DeviceType.RELAY)
                     .setIpAddress(getLocalIpAddress())
-                    .setPort(ACTUATOR_TCP_PORT)
+                    .setPort(tcpPort) // Corrigido: usa a porta configurada do relé
                     .setInitialState(currentStatus)
                     .setIsActuator(true)
                     .setIsSensor(false)
@@ -114,36 +122,42 @@ public class RelayActuator {
         try (InputStream input = clientSocket.getInputStream();
              OutputStream output = clientSocket.getOutputStream()) {
             SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.parseDelimitedFrom(input);
-            if (envelope != null && envelope.hasClientRequest() && envelope.getClientRequest().hasCommand()) {
-                SmartCity.DeviceCommand command = envelope.getClientRequest().getCommand();
-                LOGGER.info("Relé Atuador " + deviceId + " recebeu comando TCP: " + command.getCommandType());
-                SmartCity.DeviceStatus oldStatus = currentStatus;
-                if (command.getCommandType().equals("TURN_ON") && currentStatus == SmartCity.DeviceStatus.OFF) {
-                    currentStatus = SmartCity.DeviceStatus.ON;
-                    LOGGER.info("RELÉ " + deviceId + " LIGADO!");
-                } else if (command.getCommandType().equals("TURN_OFF") && currentStatus == SmartCity.DeviceStatus.ON) {
-                    currentStatus = SmartCity.DeviceStatus.OFF;
-                    LOGGER.info("RELÉ " + deviceId + " DESLIGADO.");
+            boolean responded = false;
+            if (envelope != null && envelope.hasClientRequest()) {
+                SmartCity.ClientRequest req = envelope.getClientRequest();
+                if (req.hasCommand()) {
+                    SmartCity.DeviceCommand command = req.getCommand();
+                    LOGGER.info("Relé Atuador " + deviceId + " recebeu comando TCP: " + command.getCommandType());
+                    SmartCity.DeviceStatus oldStatus = currentStatus;
+                    if (command.getCommandType().equals("TURN_ON") && currentStatus == SmartCity.DeviceStatus.OFF) {
+                        currentStatus = SmartCity.DeviceStatus.ON;
+                        LOGGER.info("RELÉ " + deviceId + " LIGADO!");
+                    } else if (command.getCommandType().equals("TURN_OFF") && currentStatus == SmartCity.DeviceStatus.ON) {
+                        currentStatus = SmartCity.DeviceStatus.OFF;
+                        LOGGER.info("RELÉ " + deviceId + " DESLIGADO.");
+                    }
+                    if (currentStatus != oldStatus) {
+                        sendStatusUpdate();
+                    }
+                    responded = true;
                 }
-                if (currentStatus != oldStatus) {
-                    sendStatusUpdate();
+                // Sempre responde com DeviceUpdate, seja comando ou GET_DEVICE_STATUS
+                if (responded || req.getType() == SmartCity.ClientRequest.RequestType.GET_DEVICE_STATUS) {
+                    SmartCity.DeviceUpdate statusUpdate = SmartCity.DeviceUpdate.newBuilder()
+                            .setDeviceId(deviceId)
+                            .setType(SmartCity.DeviceType.RELAY)
+                            .setCurrentStatus(currentStatus)
+                            .build();
+                    SmartCity.SmartCityMessage responseEnvelope = SmartCity.SmartCityMessage.newBuilder()
+                            .setMessageType(SmartCity.MessageType.DEVICE_UPDATE)
+                            .setDeviceUpdate(statusUpdate)
+                            .build();
+                    responseEnvelope.writeDelimitedTo(output);
+                    output.flush();
+                    LOGGER.info("Relé Atuador " + deviceId + " respondeu status via TCP.");
                 }
-                
-                // Envia resposta TCP confirmando a execução do comando
-                SmartCity.DeviceUpdate statusUpdate = SmartCity.DeviceUpdate.newBuilder()
-                        .setDeviceId(deviceId)
-                        .setType(SmartCity.DeviceType.RELAY)
-                        .setCurrentStatus(currentStatus)
-                        .build();
-                SmartCity.SmartCityMessage responseEnvelope = SmartCity.SmartCityMessage.newBuilder()
-                        .setMessageType(SmartCity.MessageType.DEVICE_UPDATE)
-                        .setDeviceUpdate(statusUpdate)
-                        .build();
-                responseEnvelope.writeDelimitedTo(output);
-                output.flush();
-                LOGGER.info("Relé Atuador " + deviceId + " enviou resposta TCP confirmando comando: " + command.getCommandType());
             } else {
-                LOGGER.warning("Envelope SmartCityMessage inválido ou sem comando recebido para o relé atuador " + deviceId);
+                LOGGER.warning("Envelope SmartCityMessage inválido ou sem client request recebido para o relé " + deviceId);
             }
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Erro ao lidar com comando TCP: " + e.getMessage(), e);
@@ -182,7 +196,7 @@ public class RelayActuator {
         new Thread(() -> {
             while (true) {
                 try {
-                    Thread.sleep(30000); // 30 segundos
+                    Thread.sleep(5000); // 30 segundos
                     sendStatusUpdate();
                 } catch (InterruptedException e) {
                     break;
@@ -214,7 +228,17 @@ public class RelayActuator {
 
     public static void main(String[] args) {
         String actuatorId = args.length > 0 ? args[0] : UUID.randomUUID().toString();
-        RelayActuator actuator = new RelayActuator(actuatorId);
+        int tcpPort = 6002; // padrão
+
+        if (args.length > 1) {
+            try {
+                tcpPort = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                System.err.println("Porta TCP inválida, usando padrão 6002.");
+            }
+        }
+
+        RelayActuator actuator = new RelayActuator(actuatorId, tcpPort);
         actuator.start();
 
         try {

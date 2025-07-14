@@ -45,7 +45,7 @@ except ImportError as e:
     sys.exit(1)
 
 # --- Configurações de Conexão com o Gateway ---
-GATEWAY_IP = '192.168.190.215'  # IP do gateway - altere conforme necessário
+GATEWAY_IP = 'localhost'  # IP do gateway - altere conforme necessário
 GATEWAY_TCP_PORT = 12345     # Porta TCP do gateway
 
 def _read_varint(sock):
@@ -161,8 +161,9 @@ class SmartCityClient:
         Agora usa SmartCityMessage como envelope.
         """
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.connect((self.gateway_ip, self.gateway_port))
+            # Usa socket.create_connection com timeout para evitar bloqueio se o gateway estiver offline
+            with socket.create_connection((self.gateway_ip, self.gateway_port), timeout=3) as sock:
+                sock.settimeout(3)  # timeout para operações de leitura/escrita
                 write_delimited_message(sock, request_proto)
                 logger.debug(f"Requisição enviada: {request_proto.DESCRIPTOR.full_name}")
                 envelope = read_delimited_message(sock)
@@ -174,6 +175,9 @@ class SmartCityClient:
                 else:
                     logger.error(f"Tipo de resposta inesperado: {envelope.message_type}")
                     return None
+        except (socket.timeout, ConnectionRefusedError) as e:
+            logger.error(f"Gateway offline ou sem resposta: {e}")
+            return None
         except socket.error as e:
             logger.error(f"Erro de socket ao comunicar com o Gateway: {e}")
             return None
@@ -235,6 +239,8 @@ class SmartCityClient:
             device_id (str): ID do dispositivo alvo
             command_type (str): Tipo do comando (ex: "TURN_ON", "TURN_OFF")
             command_value (str): Valor adicional do comando (opcional)
+        Returns:
+            bool: True se o comando foi aceito (status SUCCESS), False caso contrário.
         """
         # Cria o comando do dispositivo
         command_proto = smart_city_pb2.DeviceCommand(
@@ -255,11 +261,18 @@ class SmartCityClient:
 
         # Processa a resposta
         if response and response.type == smart_city_pb2.GatewayResponse.ResponseType.COMMAND_ACK:
-            logger.info(f"Comando enviado com sucesso para '{device_id}': Status={response.command_status}, Mensagem: {response.message}")
+            if response.command_status == "SUCCESS":
+                logger.info(f"Comando enviado para '{device_id}': Status={response.command_status}, Mensagem: {response.message}")
+                return True
+            else:
+                logger.error(f"Falha ao enviar comando para '{device_id}': Status={response.command_status}, Mensagem: {response.message}")
+                return False
         elif response:
-            logger.error(f"Falha ao enviar comando para '{device_id}': Status={response.command_status}, Mensagem: {response.message}")
+            logger.error(f"Falha ao enviar comando para '{device_id}': Status={getattr(response, 'command_status', 'N/A')}, Mensagem: {response.message}")
+            return False
         else:
             logger.error("Falha na comunicação ao enviar comando.")
+            return False
 
     def get_device_status(self, device_id):
         """
@@ -303,7 +316,7 @@ class SmartCityClient:
             if hasattr(dev_status, 'frequency_ms') and dev_status.frequency_ms > 0:
                 logger.info(f"  Frequência de envio: {dev_status.frequency_ms} ms")
             logger.info("--------------------------------")
-        elif response:
+        elif response and response.type == smart_city_pb2.GatewayResponse.ResponseType.ERROR:
             logger.error(f"Erro ao obter status do dispositivo: {response.message}")
         else:
             logger.error("Falha na comunicação ao obter status.")
@@ -378,7 +391,9 @@ def relay_menu(client):
         print("1. Ligar Relé (TURN_ON)")
         print("2. Desligar Relé (TURN_OFF)")
         print("3. Consultar Status do Relé")
-        print("4. Voltar ao Menu Principal")
+        print("4. Ligar TODOS os Atuadores")
+        print("5. Desligar TODOS os Atuadores")
+        print("6. Voltar ao Menu Principal")
         print("-"*50)
         
         choice = input("Escolha uma opção: ").strip()
@@ -387,8 +402,11 @@ def relay_menu(client):
             # Liga o relé
             relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
             if relay_id:
-                client.send_device_command(relay_id, "TURN_ON")
-                logger.info("Relé ligado")
+                result = client.send_device_command(relay_id, "TURN_ON")
+                if result:
+                    logger.info("Comando TURN_ON enviado com sucesso.")
+                else:
+                    logger.error("Falha ao enviar comando TURN_ON.")
             else:
                 logger.warning("ID do relé não pode ser vazio.")
                 
@@ -396,8 +414,11 @@ def relay_menu(client):
             # Desliga o relé
             relay_id = input("ID do Relé/Atuador (ex: relay_001001001): ").strip()
             if relay_id:
-                client.send_device_command(relay_id, "TURN_OFF")
-                logger.info("Relé desligado")
+                result = client.send_device_command(relay_id, "TURN_OFF")
+                if result:
+                    logger.info("Comando TURN_OFF enviado com sucesso.")
+                else:
+                    logger.error("Falha ao enviar comando TURN_OFF.")
             else:
                 logger.warning("ID do relé não pode ser vazio.")
                 
@@ -408,13 +429,52 @@ def relay_menu(client):
                 client.get_device_status(relay_id)
             else:
                 logger.warning("ID do relé não pode ser vazio.")
-                
+
         elif choice == '4':
+            # Ligar TODOS os atuadores
+            logger.info("Solicitando lista de dispositivos ao Gateway para ligar todos os atuadores...")
+            request = smart_city_pb2.ClientRequest(
+                type=smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES
+            )
+            response = client.send_request(request)
+            if response and response.type == smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST:
+                devices = response.devices
+                relays = [d for d in devices if d.type == smart_city_pb2.DeviceType.RELAY]
+                if not relays:
+                    logger.info("Nenhum atuador do tipo RELAY encontrado.")
+                else:
+                    for relay in relays:
+                        logger.info(f"Enviando TURN_ON para {relay.device_id}...")
+                        client.send_device_command(relay.device_id, "TURN_ON")
+                    logger.info(f"Comando TURN_ON enviado para {len(relays)} atuadores.")
+            else:
+                logger.error("Não foi possível obter a lista de dispositivos.")
+
+        elif choice == '5':
+            # Desligar TODOS os atuadores
+            logger.info("Solicitando lista de dispositivos ao Gateway para desligar todos os atuadores...")
+            request = smart_city_pb2.ClientRequest(
+                type=smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES
+            )
+            response = client.send_request(request)
+            if response and response.type == smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST:
+                devices = response.devices
+                relays = [d for d in devices if d.type == smart_city_pb2.DeviceType.RELAY]
+                if not relays:
+                    logger.info("Nenhum atuador do tipo RELAY encontrado.")
+                else:
+                    for relay in relays:
+                        logger.info(f"Enviando TURN_OFF para {relay.device_id}...")
+                        client.send_device_command(relay.device_id, "TURN_OFF")
+                    logger.info(f"Comando TURN_OFF enviado para {len(relays)} atuadores.")
+            else:
+                logger.error("Não foi possível obter a lista de dispositivos.")
+
+        elif choice == '6':
             # Volta ao menu principal
             break
         else:
             logger.warning("Opção inválida. Tente novamente.")
-
 
 def temperature_sensor_menu(client):
     """
@@ -442,8 +502,11 @@ def temperature_sensor_menu(client):
             # Ativa o sensor
             sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
             if sensor_id:
-                client.send_device_command(sensor_id, "TURN_ACTIVE")
-                logger.info("Sensor ativado - enviando dados sensoriados")
+                result = client.send_device_command(sensor_id, "TURN_ACTIVE")
+                if result:
+                    logger.info("Comando TURN_ACTIVE enviado com sucesso.")
+                else:
+                    logger.error("Falha ao enviar comando TURN_ACTIVE.")
             else:
                 logger.warning("ID do sensor não pode ser vazio.")
                 
@@ -451,8 +514,11 @@ def temperature_sensor_menu(client):
             # Pausa o sensor
             sensor_id = input("ID do Sensor de Temperatura (ex: temp_board_001001001): ").strip()
             if sensor_id:
-                client.send_device_command(sensor_id, "TURN_IDLE")
-                logger.info("Sensor pausado - não enviando dados sensoriados")
+                result = client.send_device_command(sensor_id, "TURN_IDLE")
+                if result:
+                    logger.info("Comando TURN_IDLE enviado com sucesso.")
+                else:
+                    logger.error("Falha ao enviar comando TURN_IDLE.")
             else:
                 logger.warning("ID do sensor não pode ser vazio.")
                 
@@ -469,8 +535,11 @@ def temperature_sensor_menu(client):
                 if freq_input.isdigit():
                     freq_ms = int(freq_input)
                     if 1000 <= freq_ms <= 60000:
-                        client.send_device_command(sensor_id, "SET_FREQ", str(freq_ms))
-                        logger.info(f"Frequência alterada para {freq_ms} ms")
+                        result = client.send_device_command(sensor_id, "SET_FREQ", str(freq_ms))
+                        if result:
+                            logger.info(f"Comando SET_FREQ enviado com sucesso para {freq_ms} ms.")
+                        else:
+                            logger.error("Falha ao enviar comando SET_FREQ.")
                     else:
                         logger.warning("Frequência deve estar entre 1000 e 60000 ms.")
                 else:

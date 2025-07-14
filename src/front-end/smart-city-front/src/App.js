@@ -2,7 +2,7 @@ import React from 'react';
 import axios from 'axios';
 import DevicesList from './components/DeviceList';
 
-const IP = '127.0.0.1'
+const IP = '192.168.3.121'
 
 export default function App() {
   const [devices, setDevices] = React.useState([]);

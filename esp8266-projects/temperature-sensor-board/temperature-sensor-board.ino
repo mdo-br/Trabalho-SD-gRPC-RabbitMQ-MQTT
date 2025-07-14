@@ -1,32 +1,37 @@
 /*
- * ESP8266 Temperature Sensor Board - Placa de Sensor de Temperatura e Umidade
+ * ESP8266 Temperature Sensor Board - MQTT Full Support
  * 
  * Este código implementa uma placa ESP8266 que funciona como sensor de temperatura
- * e umidade no sistema Smart City. A placa lê dados do sensor DHT11 e envia
- * periodicamente para o gateway.
+ * e umidade no sistema Smart City, com suporte completo a MQTT para dados e comandos.
  * 
  * Funcionalidades:
- * - Descoberta automática do gateway via multicast UDP
- * - Registro no gateway via TCP
+ * - Descoberta automática do gateway via multicast UDP (mantido)
+ * - Registro no gateway via TCP (mantido para compatibilidade)
  * - Leitura de temperatura e umidade do sensor DHT11
- * - Envio de dados sensoriados via UDP
+ * - Envio de dados via MQTT
+ * - Recebimento de comandos via MQTT
+ * - Envio de respostas via MQTT
  * - Detecção de mudanças nos valores para otimizar transmissão
- * - Recebimento de comandos TCP (SET_FREQ, ACTIVE, IDLE)
  * 
  * Protocolos:
- * - Protocol Buffers para serialização de mensagens
- * - TCP para registro no gateway e comandos
- * - UDP para dados sensoriados e descoberta multicast
+ * - Protocol Buffers para descoberta e registro (mantido)
+ * - MQTT para dados, comandos e respostas
+ * - TCP para registro inicial (mantido)
+ * - UDP para descoberta multicast (mantido)
  * 
  * Hardware:
  * - ESP8266 (NodeMCU, Wemos D1 Mini, etc.)
- * - Sensor DHT11 conectado ao pino 3
+ * - Sensor DHT11 conectado ao pino D3
  * - Biblioteca DHT para leitura do sensor
+ * - Biblioteca PubSubClient para MQTT
+ * - Biblioteca ArduinoJson para parsing JSON
  */
 
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <WiFiServer.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
 #include "pb_encode.h"
 #include "pb_decode.h"
 #include "smart_city.pb.h"
@@ -36,104 +41,74 @@
 
 // --- Configurações do Sensor DHT11 ---
 #define DHTTYPE DHT11                // Tipo do sensor (DHT11 ou DHT22)
-#define DHTPIN 3                     // Pino digital conectado ao sensor
+#define DHTPIN D3                    // Pino digital conectado ao sensor
 DHT dht(DHTPIN, DHTTYPE);            // Objeto do sensor DHT
 
 // --- Configurações de Rede WiFi ---
-const char* ssid = "SSID";           // Nome da rede WiFi - CONFIGURAR
-const char* password = "PASSWORD";   // Senha da rede WiFi - CONFIGURAR
+const char* ssid = "ATLab";           // Nome da rede WiFi - CONFIGURAR
+const char* password = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
+
+// --- Configurações MQTT ---
+const char* mqtt_server = "192.168.3.129";  // Endereço do broker MQTT
+const int mqtt_port = 1883;                 // Porta do broker MQTT
+const char* device_id = "temp_sensor_esp_001";  // ID único do dispositivo
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
 const int multicastPort = 5007;         // Porta multicast
 const int gatewayUDPPort = 12346;       // Porta UDP do gateway
-const int localUDPPort = 8890;          // Porta UDP local (diferente de outros dispositivos)
-const int localTCPPort = 5000;          // Porta TCP local para comandos
+const int localUDPPort = 8890;          // Porta UDP local
+const int localTCPPort = 6001;          // Porta TCP local para registro
 
-// --- Configurações do Dispositivo ---
-const String ID_PCB = "001001001";      // ID único da placa - MODIFICAR SE NECESSÁRIO
-const String deviceID = "temp_board_" + ID_PCB;  // ID completo do dispositivo
-
-// --- Objetos de Rede ---
-WiFiUDP udp;                           // Socket UDP para comunicação
-WiFiUDP multicastUdp;                  // Socket UDP multicast para descoberta
-WiFiServer tcpServer(localTCPPort);    // Servidor TCP para comandos
-
-// --- Variáveis de Dados do Sensor ---
-float temperature = 0.0;               // Temperatura atual em °C
-float humidity = 0.0;                  // Umidade atual em %
-float temperatureAnt = 0.0;            // Temperatura anterior (para detectar mudanças)
-float humidityAnt = 0.0;               // Umidade anterior (para detectar mudanças)
-unsigned long lastSensorRead = 0;      // Última leitura do sensor
-unsigned long sensorInterval = 5000;   // Intervalo entre leituras (5 segundos) - CONFIGURÁVEL
+// --- Tópicos MQTT ---
+String dataTopic = "smart_city/sensors/" + String(device_id);
+String commandTopic = "smart_city/commands/sensors/" + String(device_id);
+String responseTopic = "smart_city/commands/sensors/" + String(device_id) + "/response";
 
 // --- Variáveis de Estado ---
-String gatewayIP = "";                 // IP do gateway descoberto
-bool gatewayDiscovered = false;        // Flag indicando se o gateway foi encontrado
-unsigned long lastDiscoveryAttempt = 0; // Última tentativa de descoberta
-const unsigned long discoveryInterval = 5000; // 5 segundos
-String deviceIP = "";                  // IP local do dispositivo
-bool deviceRegistered = false;         // Flag para evitar registro repetido
-bool sensorActive = true;              // Estado do sensor (ACTIVE/IDLE)
+smartcity_devices_DeviceStatus currentStatus = smartcity_devices_DeviceStatus_IDLE;
+unsigned long captureIntervalMs = 5000;  // Intervalo de captura padrão: 5 segundos
+float lastTemperature = 0.0;
+float lastHumidity = 0.0;
+unsigned long lastSensorReading = 0;
+unsigned long lastDataSent = 0;
+bool gatewayFound = false;
+String gatewayIP = "";
+int gatewayTCPPort = 0;
 
-// --- Variáveis para registro TCP periódico ---
-unsigned long lastRegisterAttempt = 0;
-const unsigned long registerInterval = 5000; // 5 segundos
+// --- Objetos de Rede ---
+WiFiUDP multicastUdp;
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
 
-// --- Funções auxiliares para Protocol Buffers ---
-
-/**
- * Callback para codificar o campo device_id em mensagens Protocol Buffers
- * 
- * @param stream Stream de saída do nanopb
- * @param field Campo sendo codificado
- * @param arg Argumento contendo o device_id como string
- * @return true se codificação foi bem-sucedida
- */
-bool encode_device_id(pb_ostream_t *stream, const pb_field_t *field, void * const *arg) {
-  const char *device_id = (const char *)(*arg);
-  return pb_encode_tag_for_field(stream, field) &&
-         pb_encode_string(stream, (const uint8_t*)device_id, strlen(device_id));
-}
-
-/**
- * Callback para codificar o campo ip_address em mensagens Protocol Buffers
- * 
- * @param stream Stream de saída do nanopb
- * @param field Campo sendo codificado
- * @param arg Argumento contendo o IP como string
- * @return true se codificação foi bem-sucedida
- */
-bool encode_ip_address(pb_ostream_t *stream, const pb_field_t *field, void * const *arg) {
-  const char *ip_address = (const char *)(*arg);
-  return pb_encode_tag_for_field(stream, field) &&
-         pb_encode_string(stream, (const uint8_t*)ip_address, strlen(ip_address));
-}
-
-/**
- * Callback para decodificar strings em mensagens Protocol Buffers
- * 
- * @param stream Stream de entrada do nanopb
- * @param field Campo sendo decodificado
- * @param arg Buffer para armazenar a string decodificada
- * @return true se decodificação foi bem-sucedida
- */
-bool decode_string(pb_istream_t *stream, const pb_field_t *field, void **arg) {
-  char *buffer = (char *)(*arg);
-  size_t length = stream->bytes_left;
-  if (length >= 64) length = 63;  // Limita o tamanho para evitar overflow
-  bool status = pb_read(stream, (pb_byte_t*)buffer, length);
-  buffer[length] = '\0';  // Adiciona terminador de string
-  return status;
-}
+// --- Declarações de Funções ---
+void connectToWiFi();
+void connectToMQTT();
+void onMqttMessage(char* topic, byte* payload, unsigned int length);
+void processCommand(String jsonMessage);
+void sendCommandResponse(String requestId, bool success, String message);
+void discoverGateway();
+void registerWithGateway();
+void sendSensorDataMQTT();
+void readSensorData();
+String getStatusString();
+String getLocalIP();
+bool encode_ip_address(pb_ostream_t *stream, const pb_field_t *field, void * const *arg);
+bool decode_string(pb_istream_t *stream, const pb_field_t *field, void **arg);
 
 // --- Função de Inicialização ---
 void setup() {
   // Inicializa comunicação serial para debug
   Serial.begin(115200);
-  Serial.println("\n=== Temperature Sensor Board ESP8266 ===");
-  Serial.print("ID da Placa: ");
-  Serial.println(ID_PCB);
+  Serial.println("\n=== Temperature Sensor Board ESP8266 (MQTT) ===");
+  Serial.print("Device ID: ");
+  Serial.println(device_id);
+  Serial.print("Data Topic: ");
+  Serial.println(dataTopic);
+  Serial.print("Command Topic: ");
+  Serial.println(commandTopic);
+  Serial.print("Response Topic: ");
+  Serial.println(responseTopic);
   
   // Conecta ao WiFi
   connectToWiFi();
@@ -141,365 +116,374 @@ void setup() {
   // Inicializa o sensor DHT11
   dht.begin();
   
-  // Inicializa sockets de rede
-  udp.begin(localUDPPort);
+  // Configura cliente MQTT
+  mqttClient.setServer(mqtt_server, mqtt_port);
+  mqttClient.setCallback(onMqttMessage);
+  
+  // Conecta ao MQTT
+  connectToMQTT();
+  
+  // Inicializa descoberta multicast
   multicastUdp.beginMulticast(WiFi.localIP(), IPAddress(224,1,1,1), multicastPort);
-  tcpServer.begin();
   
   Serial.println("Aguardando descoberta do gateway via multicast...");
+  
+  // Configurar status inicial
+  currentStatus = smartcity_devices_DeviceStatus_IDLE;
+  
+  Serial.println("Sensor ESP8266 inicializado com sucesso!");
 }
 
 // --- Loop Principal ---
 void loop() {
-  unsigned long currentTime = millis();
-  // Reconecta WiFi se necessário
-  if (WiFi.status() != WL_CONNECTED) {
-    connectToWiFi();
+  // Manter conexão MQTT
+  if (!mqttClient.connected()) {
+    connectToMQTT();
+  }
+  mqttClient.loop();
+  
+  // Descobrir gateway se ainda não encontrado
+  if (!gatewayFound) {
+    discoverGateway();
   }
   
-  // Processa mensagens de descoberta multicast
-  processDiscoveryMessages();
+  // Ler dados do sensor periodicamente
+  if (millis() - lastSensorReading >= 2000) {  // Lê sensor a cada 2 segundos
+    readSensorData();
+    lastSensorReading = millis();
+  }
   
-  // Tenta descoberta ativa se ainda não encontrou o gateway
-  if (!gatewayDiscovered && (currentTime - lastDiscoveryAttempt >= discoveryInterval)) {
-    // Log a cada 10 segundos quando sensor está pausado
-    static unsigned long lastPauseLog = 0;
-    if (currentTime - lastPauseLog >= 10000) {
-      // Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
-      lastPauseLog = currentTime;
+  // Enviar dados via MQTT se estiver ativo
+  if (currentStatus == smartcity_devices_DeviceStatus_ACTIVE) {
+    if (millis() - lastDataSent >= captureIntervalMs) {
+      sendSensorDataMQTT();
+      lastDataSent = millis();
     }
   }
   
-  // Lê sensor periodicamente se gateway foi descoberto, sensor está ativo e JÁ REGISTROU via TCP
-  if (gatewayDiscovered && deviceRegistered && sensorActive && (currentTime - lastSensorRead >= sensorInterval)) {
-    readSensor();
-    lastSensorRead = currentTime;
-  } else if (gatewayDiscovered && !sensorActive && (currentTime - lastSensorRead >= 10000)) {
-    // Log a cada 10 segundos quando sensor está pausado
-    static unsigned long lastPauseLog = 0;
-    if (currentTime - lastPauseLog >= 10000) {
-      // Serial.println("Sensor PAUSADO - Não lendo/enviando dados");
-      lastPauseLog = currentTime;
-    }
-  }
-  
-  // Processa comandos TCP
-  processTCPCommands();
-  
-  // Registro TCP periódico
-  if (gatewayDiscovered && (currentTime - lastRegisterAttempt >= registerInterval)) {
-    sendDiscoveryResponse();
-    lastRegisterAttempt = currentTime;
-  }
-  
-  delay(20);  // pausa para não sobrecarregar o processador
+  delay(100);  // Pequeno delay para não sobrecarregar o loop
 }
 
-// --- Conexão WiFi ---
+// --- Implementação das Funções ---
+
 void connectToWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return;
-
-  Serial.println();
-  Serial.print("Conectando-se a ");
-  Serial.println(ssid);
-
+  Serial.print("Conectando ao WiFi ");
+  Serial.print(ssid);
   WiFi.begin(ssid, password);
   
-  // Aguarda conexão com indicador visual
   while (WiFi.status() != WL_CONNECTED) {
-    delay(100);
+    delay(500);
     Serial.print(".");
   }
-
-  Serial.println("\nWiFi conectado. IP: " + WiFi.localIP().toString());
+  
+  Serial.println();
+  Serial.println("WiFi conectado!");
+  Serial.print("Endereço IP: ");
+  Serial.println(WiFi.localIP());
 }
 
-// --- Processamento de Mensagens Multicast ---
-void processDiscoveryMessages() {
-  int packetSize = multicastUdp.parsePacket();
-  if (packetSize) {
-    uint8_t incomingPacket[255];
-    int len = multicastUdp.read(incomingPacket, 255);
-    IPAddress remoteIP = multicastUdp.remoteIP();
+void connectToMQTT() {
+  while (!mqttClient.connected()) {
+    Serial.print("Tentando conexão MQTT...");
     
-    // Verifica se a mensagem veio de um IP válido (não broadcast)
-    if (remoteIP[0] != 0 && remoteIP[0] != 255) {
-      gatewayIP = remoteIP.toString();
-      gatewayDiscovered = true;
-      Serial.printf("Gateway descoberto via multicast: %s\n", gatewayIP.c_str());
+    if (mqttClient.connect(device_id)) {
+      Serial.println("conectado!");
       
-      // Registra-se no gateway apenas uma vez
-      if (!deviceRegistered) {
-        sendDiscoveryResponse();
-        deviceRegistered = true;
-      }
-    }
-  }
-}
-
-// --- Processamento de Comandos TCP ---
-void processTCPCommands() {
-  WiFiClient client = tcpServer.available();
-  if (client) {
-    Serial.println("\n[INFO] Cliente TCP conectado para comando");
-    while (client.connected()) {
-      if (client.available()) {
-        // Lê o tamanho da mensagem (varint)
-        uint32_t len = 0;
-        uint8_t shift = 0;
-        while (true) {
-          int b = client.read();
-          if (b == -1) break;
-          len |= (b & 0x7F) << shift;
-          if (!(b & 0x80)) break;
-          shift += 7;
-        }
-        if (len == 0) {
-          Serial.println("[ERRO] Tamanho do envelope inválido");
-          break;
-        }
-        // Lê o buffer do envelope
-        uint8_t buffer[256];
-        size_t readBytes = client.read(buffer, len);
-        if (readBytes != len) {
-          Serial.println("[ERRO] Falha ao ler envelope completo");
-          break;
-        }
-        // Decodifica o envelope SmartCityMessage
-        smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
-        pb_istream_t istream = pb_istream_from_buffer(buffer, len);
-        if (!pb_decode(&istream, smartcity_devices_SmartCityMessage_fields, &envelope)) {
-          Serial.println("[ERRO] Falha ao decodificar envelope SmartCityMessage");
-          break;
-        }
-        // Verifica se é um comando para o dispositivo
-        if (envelope.message_type == smartcity_devices_MessageType_CLIENT_REQUEST && envelope.which_payload == smartcity_devices_SmartCityMessage_client_request_tag) {
-          smartcity_devices_ClientRequest* req = &envelope.payload.client_request;
-          if (req->has_command) {
-            smartcity_devices_DeviceCommand* cmd = &req->command;
-            Serial.print("[DEBUG] Comando recebido: ");
-            Serial.println(cmd->command_type);
-            processCommand(
-                String(cmd->command_type),
-                String(cmd->command_value)
-            );
-            // --- Envia status atualizado como resposta TCP ---
-            smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
-            msg.device_id.funcs.encode = &encode_device_id;
-            msg.device_id.arg = (void*)deviceID.c_str();
-            msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-            msg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-            msg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
-            msg.data.frequency_ms = sensorInterval;
-            // Cria envelope SmartCityMessage
-            smartcity_devices_SmartCityMessage resp_envelope = smartcity_devices_SmartCityMessage_init_zero;
-            resp_envelope.message_type = smartcity_devices_MessageType_DEVICE_UPDATE;
-            resp_envelope.which_payload = smartcity_devices_SmartCityMessage_device_update_tag;
-            resp_envelope.payload.device_update = msg;
-            // Serializa e envia via TCP
-            uint8_t resp_buffer[128];
-            pb_ostream_t resp_stream = pb_ostream_from_buffer(resp_buffer, sizeof(resp_buffer));
-            if (pb_encode(&resp_stream, smartcity_devices_SmartCityMessage_fields, &resp_envelope)) {
-              // Codifica o tamanho como varint
-              uint8_t resp_varint[5];
-              size_t resp_varint_len = 0;
-              size_t resp_len = resp_stream.bytes_written;
-              do {
-                uint8_t byte = resp_len & 0x7F;
-                resp_len >>= 7;
-                if (resp_len) byte |= 0x80;
-                resp_varint[resp_varint_len++] = byte;
-              } while (resp_len);
-              client.write(resp_varint, resp_varint_len);
-              client.write(resp_buffer, resp_stream.bytes_written);
-              Serial.printf("[DEBUG] Status (envelope) enviado via TCP para %s (%d bytes)\n", client.remoteIP().toString().c_str(), (int)resp_stream.bytes_written);
-            } else {
-              Serial.println("[ERRO] Falha ao serializar status para resposta TCP!");
-            }
-          }
-        } else {
-          Serial.println("[ERRO] Envelope recebido não é CLIENT_REQUEST");
-        }
-      }
-    }
-    client.stop();
-    Serial.println("[INFO] Cliente TCP desconectado");
-  }
-}
-
-// --- Processamento de Comandos ---
-void processCommand(String commandType, String commandValue) {
-  Serial.println("\n--- EXECUTANDO COMANDO ---");
-  Serial.printf("Tipo: '%s' | Valor: '%s'\n", commandType.c_str(), commandValue.c_str());
-  Serial.printf("Status atual antes: %s\n", sensorActive ? "ACTIVE" : "IDLE");
-
-  if (commandType == "SET_FREQ") {
-    // Define nova frequência de envio (em milissegundos)
-    int newInterval = commandValue.toInt();
-    Serial.printf("Tentando alterar frequência para: %d ms\n", newInterval);
-    
-    if (newInterval >= 1000 && newInterval <= 60000) {  // Entre 1s e 60s
-      sensorInterval = newInterval;
-      Serial.printf("SUCESSO: Frequência alterada para %d ms\n", sensorInterval);
-      sendFrequencyUpdate();  // Envia a frequência atualizada
-      sendSensorData();       // Força envio imediato de temperatura/umidade
-      sendStatusUpdate();     // Envia confirmação do status
+      // Inscrever no tópico de comandos
+      mqttClient.subscribe(commandTopic.c_str());
+      Serial.print("Inscrito no tópico: ");
+      Serial.println(commandTopic);
+      
     } else {
-      Serial.printf("ERRO: Frequência inválida %d. Deve estar entre 1000 e 60000 ms.\n", newInterval);
+      Serial.print("falhou, rc=");
+      Serial.print(mqttClient.state());
+      Serial.println(" tentando novamente em 5 segundos");
+      delay(5000);
     }
-  } else if (commandType == "TURN_ACTIVE") {
-    // Ativa o envio de dados sensoriados
-    sensorActive = true;
-    Serial.println("SUCESSO: Sensor ATIVADO (TURN_ACTIVE) - Enviando dados sensoriados");
-    sendStatusUpdate();  // Envia confirmação do status
-  } else if (commandType == "TURN_IDLE") {
-    // Pausa o envio de dados sensoriados
-    sensorActive = false;
-    Serial.println("SUCESSO: Sensor PAUSADO (TURN_IDLE) - Não enviando dados sensoriados");
-    sendStatusUpdate();  // Envia confirmação do status
-  } else {
-    Serial.printf("ERRO: Comando não reconhecido: '%s'\n", commandType.c_str());
+  }
+}
+
+void onMqttMessage(char* topic, byte* payload, unsigned int length) {
+  String message = "";
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
   }
   
-  Serial.printf("Status final: %s\n", sensorActive ? "ACTIVE" : "IDLE");
-  Serial.println("--- FIM DO COMANDO ---\n");
-}
-
-// --- Leitura do Sensor DHT11 ---
-void readSensor() {
-  // Armazena valores anteriores para detectar mudanças
-  temperatureAnt = temperature;
-  humidityAnt = humidity;
+  Serial.println("Mensagem MQTT recebida no tópico: " + String(topic));
+  Serial.println("Mensagem: " + message);
   
-  // Lê novos valores do sensor
-  temperature = dht.readTemperature();
-  humidity = dht.readHumidity();
+  // Verificar se é um comando
+  if (String(topic) == commandTopic) {
+    processCommand(message);
+  }
+}
 
-  // Verifica se os valores são válidos (não NaN)
-  if (!isnan(temperature) && !isnan(humidity)) {
-    Serial.printf("[DEBUG] Leitura DHT11: Temperatura = %.1f °C | Umidade = %.1f %%\n", temperature, humidity);
-    // Envia dados para o gateway em toda leitura válida
-    sendSensorData();
+void processCommand(String jsonMessage) {
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, jsonMessage);
+  
+  if (error) {
+    Serial.println("Erro ao fazer parse do JSON do comando");
+    sendCommandResponse("", false, "Formato JSON inválido");
+    return;
+  }
+  
+  // Extrair dados do comando
+  String commandType = doc["command_type"].as<String>();
+  String commandValue = doc["command_value"].as<String>();
+  String requestId = doc["request_id"].as<String>();
+  
+  Serial.println("Comando recebido: " + commandType + " " + commandValue);
+  
+  // Processar comando
+  bool success = true;
+  String responseMessage = "";
+  
+  if (commandType == "TURN_ON" || commandType == "TURN_ACTIVE") {
+    currentStatus = smartcity_devices_DeviceStatus_ACTIVE;
+    responseMessage = "Sensor ativado";
+    lastDataSent = 0;  // Forçar envio imediato
+    
+  } else if (commandType == "TURN_OFF" || commandType == "TURN_IDLE") {
+    currentStatus = smartcity_devices_DeviceStatus_IDLE;
+    responseMessage = "Sensor em modo idle";
+    
+  } else if (commandType == "SET_FREQ") {
+    int newFreqMs = commandValue.toInt();
+    if (newFreqMs > 0) {
+      captureIntervalMs = newFreqMs;
+      responseMessage = "Frequência alterada para " + String(captureIntervalMs) + "ms";
+    } else {
+      success = false;
+      responseMessage = "Valor de frequência inválido";
+    }
+    
+  } else if (commandType == "GET_STATUS") {
+    responseMessage = "Status atual: " + getStatusString();
+    
   } else {
-    Serial.println("[ERRO] Falha na leitura do sensor DHT!");
+    success = false;
+    responseMessage = "Comando desconhecido: " + commandType;
   }
+  
+  // Enviar resposta
+  sendCommandResponse(requestId, success, responseMessage);
 }
 
-// --- Envio de Dados Sensoriados (UDP) ---
-void sendSensorData() {
-  // Cria mensagem DeviceUpdate com dados do sensor
-  smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
-  msg.device_id.funcs.encode = &encode_device_id;
-  msg.device_id.arg = (void*)deviceID.c_str();
-  msg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-  msg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-  // Configura dados de temperatura e umidade usando oneof
-  msg.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
-  msg.data.temperature_humidity.temperature = temperature;
-  msg.data.temperature_humidity.humidity = humidity;
-
-  // Serializa e envia via UDP
-  uint8_t buffer[128];
-  pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-  if (pb_encode(&stream, smartcity_devices_DeviceUpdate_fields, &msg)) {
-    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
-    udp.write(buffer, stream.bytes_written);
-    udp.endPacket();
-    Serial.printf("[DEBUG] DeviceUpdate enviado via UDP: T=%.1f°C, U=%.1f%% (%d bytes)\n", temperature, humidity, stream.bytes_written);
+void sendCommandResponse(String requestId, bool success, String message) {
+  StaticJsonDocument<400> doc;
+  doc["device_id"] = device_id;
+  doc["request_id"] = requestId;
+  doc["success"] = success;
+  doc["message"] = message;
+  doc["status"] = getStatusString();
+  doc["frequency_ms"] = captureIntervalMs;
+  doc["timestamp"] = millis();
+  
+  // Adicionar dados atuais do sensor se disponíveis
+  if (lastTemperature > 0 && lastHumidity > 0) {
+    doc["temperature"] = lastTemperature;
+    doc["humidity"] = lastHumidity;
+  }
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  if (mqttClient.publish(responseTopic.c_str(), jsonString.c_str())) {
+    Serial.println("Resposta enviada: " + jsonString);
   } else {
-    Serial.println("[ERRO] Erro ao codificar DeviceUpdate com nanopb!");
+    Serial.println("Erro ao enviar resposta MQTT");
   }
 }
 
-// --- Envio de Atualização de Status (UDP) ---
-void sendStatusUpdate() {
-  smartcity_devices_DeviceUpdate update = smartcity_devices_DeviceUpdate_init_zero;
-  update.device_id.funcs.encode = &encode_device_id;
-  update.device_id.arg = (void*)deviceID.c_str();
-  update.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-  update.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-  // Envia temperatura e umidade no status
-  update.which_data = smartcity_devices_DeviceUpdate_temperature_humidity_tag;
-  update.data.temperature_humidity.temperature = temperature;
-  update.data.temperature_humidity.humidity = humidity;
-  // Cria envelope SmartCityMessage
-  smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
-  envelope.message_type = smartcity_devices_MessageType_DEVICE_UPDATE;
-  envelope.payload.device_update = update;
-  envelope.which_payload = smartcity_devices_SmartCityMessage_device_update_tag;
-  // Serializa e envia via UDP
-  uint8_t buffer[256];
-  pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-  if (pb_encode(&stream, smartcity_devices_SmartCityMessage_fields, &envelope) && gatewayDiscovered) {
-    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
-    udp.write(buffer, stream.bytes_written);
-    udp.endPacket();
-    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes) [T=%.1f°C, U=%.1f%%]\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written, temperature, humidity);
+void discoverGateway() {
+  int packetSize = multicastUdp.parsePacket();
+  if (packetSize > 0) {
+    Serial.print("Pacote multicast recebido de ");
+    Serial.print(multicastUdp.remoteIP());
+    Serial.print(":");
+    Serial.println(multicastUdp.remotePort());
+    
+    // Ler dados do pacote
+    uint8_t buffer[512];
+    int len = multicastUdp.read(buffer, sizeof(buffer));
+    
+    // Decodificar mensagem protobuf
+    pb_istream_t stream = pb_istream_from_buffer(buffer, len);
+    smartcity_devices_SmartCityMessage message = smartcity_devices_SmartCityMessage_init_zero;
+    
+    if (pb_decode(&stream, smartcity_devices_SmartCityMessage_fields, &message)) {
+      if (message.message_type == smartcity_devices_MessageType_DISCOVERY_REQUEST) {
+        // Extrair informações do gateway
+        char gateway_ip[64];
+        char *gateway_ip_ptr = gateway_ip;
+        message.discovery_request.gateway_ip.funcs.decode = decode_string;
+        message.discovery_request.gateway_ip.arg = &gateway_ip_ptr;
+        
+        // Reprocessar para obter o IP
+        stream = pb_istream_from_buffer(buffer, len);
+        if (pb_decode(&stream, smartcity_devices_SmartCityMessage_fields, &message)) {
+          gatewayIP = String(gateway_ip);
+          gatewayTCPPort = message.discovery_request.gateway_tcp_port;
+          gatewayFound = true;
+          
+          Serial.print("Gateway encontrado: ");
+          Serial.print(gatewayIP);
+          Serial.print(":");
+          Serial.println(gatewayTCPPort);
+          
+          // Registrar no gateway
+          registerWithGateway();
+        }
+      }
+    }
   }
 }
 
-// --- Resposta ao Gateway com DeviceInfo (TCP) ---
-void sendDiscoveryResponse() {
+void registerWithGateway() {
+  if (!gatewayFound) return;
+  
+  Serial.print("Registrando no gateway: ");
+  Serial.print(gatewayIP);
+  Serial.print(":");
+  Serial.println(gatewayTCPPort);
+  
   WiFiClient client;
-  if (client.connect(gatewayIP.c_str(), 12345)) {
-    deviceIP = WiFi.localIP().toString();
-
-    // Cria mensagem DeviceInfo para registro
-    smartcity_devices_DeviceInfo deviceInfo = smartcity_devices_DeviceInfo_init_zero;
-    deviceInfo.device_id.funcs.encode = &encode_device_id;
-    deviceInfo.device_id.arg = (void*)deviceID.c_str();
-    deviceInfo.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-    deviceInfo.ip_address.funcs.encode = &encode_ip_address;
-    deviceInfo.ip_address.arg = (void*)deviceIP.c_str();
-    deviceInfo.port = localTCPPort;
-    deviceInfo.initial_state = smartcity_devices_DeviceStatus_ACTIVE;
-    deviceInfo.is_actuator = false;
-    deviceInfo.is_sensor = true;
-
-    // Cria envelope SmartCityMessage
-    smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
-    envelope.message_type = smartcity_devices_MessageType_DEVICE_INFO;
-    envelope.payload.device_info = deviceInfo;
-    envelope.which_payload = smartcity_devices_SmartCityMessage_device_info_tag;
-
-    // Serializa a mensagem
-    uint8_t buffer[256];
+  if (client.connect(gatewayIP.c_str(), gatewayTCPPort)) {
+    // Criar mensagem de registro
+    smartcity_devices_SmartCityMessage message = smartcity_devices_SmartCityMessage_init_zero;
+    message.message_type = smartcity_devices_MessageType_DEVICE_INFO;
+    
+    // Configurar DeviceInfo
+    message.device_info.device_id.funcs.encode = encode_ip_address;
+    message.device_info.device_id.arg = (void*)device_id;
+    
+    message.device_info.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
+    
+    String localIP = getLocalIP();
+    message.device_info.ip_address.funcs.encode = encode_ip_address;
+    message.device_info.ip_address.arg = (void*)localIP.c_str();
+    
+    message.device_info.port = localTCPPort;
+    message.device_info.initial_state = currentStatus;
+    message.device_info.is_actuator = false;
+    message.device_info.is_sensor = true;
+    
+    // Indicar que é sensor MQTT
+    message.device_info.capabilities_count = 3;
+    
+    // Capability 1: communication = mqtt
+    message.device_info.capabilities[0].key.funcs.encode = encode_ip_address;
+    message.device_info.capabilities[0].key.arg = (void*)"communication";
+    message.device_info.capabilities[0].value.funcs.encode = encode_ip_address;
+    message.device_info.capabilities[0].value.arg = (void*)"mqtt";
+    
+    // Capability 2: command_topic
+    message.device_info.capabilities[1].key.funcs.encode = encode_ip_address;
+    message.device_info.capabilities[1].key.arg = (void*)"command_topic";
+    message.device_info.capabilities[1].value.funcs.encode = encode_ip_address;
+    message.device_info.capabilities[1].value.arg = (void*)commandTopic.c_str();
+    
+    // Capability 3: response_topic
+    message.device_info.capabilities[2].key.funcs.encode = encode_ip_address;
+    message.device_info.capabilities[2].key.arg = (void*)"response_topic";
+    message.device_info.capabilities[2].value.funcs.encode = encode_ip_address;
+    message.device_info.capabilities[2].value.arg = (void*)responseTopic.c_str();
+    
+    // Codificar e enviar
+    uint8_t buffer[512];
     pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-    if (pb_encode(&stream, smartcity_devices_SmartCityMessage_fields, &envelope)) {
-      // Codifica o tamanho como varint
-      uint8_t varint[5];
-      size_t varint_len = 0;
-      size_t len = stream.bytes_written;
-      do {
-        uint8_t byte = len & 0x7F;
-        len >>= 7;
-        if (len) byte |= 0x80;
-        varint[varint_len++] = byte;
-      } while (len);
-      client.write(varint, varint_len);
-      client.write(buffer, stream.bytes_written);
-      client.stop();
-      Serial.printf("DeviceInfo (envelope) enviado para gateway (%d bytes)\n", (int)stream.bytes_written);
+    
+    if (pb_encode(&stream, smartcity_devices_SmartCityMessage_fields, &message)) {
+      // Enviar com delimitador de tamanho
+      uint8_t size = stream.bytes_written;
+      client.write(&size, 1);
+      client.write(buffer, size);
+      client.flush();
+      
+      Serial.println("Registro enviado com sucesso!");
+    } else {
+      Serial.println("Erro ao codificar mensagem de registro");
+    }
+    
+    client.stop();
+  } else {
+    Serial.println("Erro ao conectar no gateway para registro");
+  }
+}
+
+void readSensorData() {
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  
+  if (!isnan(temperature) && !isnan(humidity)) {
+    lastTemperature = temperature;
+    lastHumidity = humidity;
+    
+    Serial.print("Sensor lido: ");
+    Serial.print(temperature);
+    Serial.print("°C, ");
+    Serial.print(humidity);
+    Serial.println("%");
+  } else {
+    Serial.println("Erro ao ler sensor DHT11");
+  }
+}
+
+void sendSensorDataMQTT() {
+  if (lastTemperature == 0.0 && lastHumidity == 0.0) {
+    readSensorData();  // Tentar ler novamente
+  }
+  
+  if (lastTemperature > 0.0 || lastHumidity > 0.0) {
+    StaticJsonDocument<300> doc;
+    doc["device_id"] = device_id;
+    doc["temperature"] = lastTemperature;
+    doc["humidity"] = lastHumidity;
+    doc["status"] = getStatusString();
+    doc["frequency_ms"] = captureIntervalMs;
+    doc["timestamp"] = millis();
+    doc["version"] = "mqtt";
+    
+    String jsonString;
+    serializeJson(doc, jsonString);
+    
+    if (mqttClient.publish(dataTopic.c_str(), jsonString.c_str())) {
+      Serial.println("Dados MQTT enviados: " + jsonString);
+    } else {
+      Serial.println("Erro ao enviar dados MQTT");
     }
   }
 }
 
-// Envia a frequência apenas quando alterada ou no registro inicial
-void sendFrequencyUpdate() {
-  smartcity_devices_DeviceUpdate freqMsg = smartcity_devices_DeviceUpdate_init_zero;
-  freqMsg.device_id.funcs.encode = &encode_device_id;
-  freqMsg.device_id.arg = (void*)deviceID.c_str();
-  freqMsg.type = smartcity_devices_DeviceType_TEMPERATURE_SENSOR;
-  freqMsg.current_status = sensorActive ? smartcity_devices_DeviceStatus_ACTIVE : smartcity_devices_DeviceStatus_IDLE;
-  freqMsg.which_data = smartcity_devices_DeviceUpdate_frequency_ms_tag;
-  freqMsg.data.frequency_ms = sensorInterval;
-
-  uint8_t freqBuffer[128];
-  pb_ostream_t freqStream = pb_ostream_from_buffer(freqBuffer, sizeof(freqBuffer));
-  if (pb_encode(&freqStream, smartcity_devices_DeviceUpdate_fields, &freqMsg)) {
-    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
-    udp.write(freqBuffer, freqStream.bytes_written);
-    udp.endPacket();
-    Serial.printf("[DEBUG] Frequência enviada via UDP: %d ms (%d bytes)\n", sensorInterval, freqStream.bytes_written);
+String getStatusString() {
+  switch (currentStatus) {
+    case smartcity_devices_DeviceStatus_ACTIVE:
+      return "ACTIVE";
+    case smartcity_devices_DeviceStatus_IDLE:
+      return "IDLE";
+    case smartcity_devices_DeviceStatus_OFF:
+      return "OFF";
+    default:
+      return "UNKNOWN";
   }
+}
+
+String getLocalIP() {
+  return WiFi.localIP().toString();
+}
+
+bool encode_ip_address(pb_ostream_t *stream, const pb_field_t *field, void * const *arg) {
+  const char *ip_address = (const char *)(*arg);
+  return pb_encode_tag_for_field(stream, field) &&
+         pb_encode_string(stream, (const uint8_t*)ip_address, strlen(ip_address));
+}
+
+bool decode_string(pb_istream_t *stream, const pb_field_t *field, void **arg) {
+  char *buffer = (char *)(*arg);
+  size_t length = stream->bytes_left;
+  if (length >= 64) length = 63;
+  bool status = pb_read(stream, (pb_byte_t*)buffer, length);
+  buffer[length] = '\0';
+  return status;
 }

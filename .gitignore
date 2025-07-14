@@ -37,10 +37,30 @@ build/
 # logs do npm
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*src/proto/smart_city_pb2.py
+yarn-error.log*
 
 # Ignorar arquivos gerados pelo Protobuf
 src/proto/*.py
+
+# Ignorar arquivos de build Python
+build/
+dist/
+*.egg-info/
+
+# Ignorar arquivos de lock de dependências
+Pipfile.lock
+poetry.lock
+
+# Ignorar arquivos de configuração do JetBrains (PyCharm/IntelliJ)
+.idea/
+
+# Ignorar arquivos de teste temporários
+test_*.log
+test_*.pyc
+
+# Ignorar arquivos de configuração do sistema operacional
+.DS_Store
+.Trash-*
 
 # Ignorar arquivos gerados pelo protoc/nanopb (ESP8266)
 *.pb.c

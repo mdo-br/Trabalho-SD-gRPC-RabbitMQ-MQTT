@@ -1,504 +1,535 @@
-"""
-Smart City Gateway - Sistema de Gerenciamento de Dispositivos IoT
-
-Este módulo implementa o gateway central que gerencia a comunicação entre dispositivos IoT
-(sensores e atuadores) e clientes. O gateway suporta:
-
-- Descoberta automática de dispositivos via multicast UDP
-- Registro de dispositivos via TCP
-- Recebimento de dados sensoriados via UDP
-- Processamento de comandos de clientes
-- API para consultas e controle
-
-Protocolos utilizados:
-- Protocol Buffers para serialização de mensagens
-- TCP para registro de dispositivos e comandos
-- UDP para dados sensoriados e descoberta multicast
-"""
+#!/usr/bin/env python3
+# src/gateway/smart_city_gateway.py - SMART CITY GATEWAY WITH MQTT AND GRPC
+# Unified gateway: MQTT for sensors, gRPC for actuators
 
 import socket
+import struct
 import threading
 import time
-import struct
+import json
 import logging
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Any, Optional
+import paho.mqtt.client as mqtt
+import grpc
+from grpc import StatusCode
+
+# Imports dos protocolos
 import sys
-from src.gateway.state import connected_devices, device_lock
-from src.proto import smart_city_pb2
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'proto'))
+import smart_city_pb2
+import actuator_service_pb2
+import actuator_service_pb2_grpc
 
-# --- Configurações de Rede ---
-MULTICAST_GROUP = '224.1.1.1'  # Endereço multicast para descoberta de dispositivos
-MULTICAST_PORT = 5007          # Porta multicast para descoberta
-GATEWAY_TCP_PORT = 12345       # Porta TCP para registro de dispositivos e comandos
-GATEWAY_UDP_PORT = 12346       # Porta UDP para recebimento de dados sensoriados
-API_TCP_PORT = 12347           # Porta TCP para API externa
-
-# --- Configuração de Logging ---
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
+# Configuração de logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- Variáveis Globais ---
-connected_devices = {}  # Dicionário com dispositivos conectados: {device_id: device_info}
-device_lock = threading.Lock()  # Lock para acesso thread-safe aos dispositivos
+# === CONFIGURAÇÕES ===
+MULTICAST_GROUP = "224.1.1.1"
+MULTICAST_PORT = 5007
+GATEWAY_TCP_PORT = 12345       # Porta TCP para registro de dispositivos
+GATEWAY_UDP_PORT = 12346       # Porta UDP para dados de sensores (legado)
+API_TCP_PORT = 12347           # Porta TCP para API externa
+GRPC_SERVER_HOST = "localhost"
+GRPC_SERVER_PORT = 50051
 
-def get_local_ip():
-    """
-    Obtém o endereço IP local da máquina.
-    
-    Tenta conectar a um endereço externo para determinar o IP local.
-    Se falhar, retorna localhost (127.0.0.1).
-    
-    Returns:
-        str: Endereço IP local da máquina
-    """
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(('8.8.8.8', 80))  # Conecta ao Google DNS
-        IP = s.getsockname()[0]
-    except Exception:
-        try:
-            s.connect(('10.255.255.255', 1))
-            IP = s.getsockname()[0]
-        except Exception:
-            IP = '127.0.0.1'
-    finally:
-        s.close()
-    return IP
+# Configurações MQTT
+MQTT_BROKER_HOST = "localhost"
+MQTT_BROKER_PORT = 1883
+MQTT_COMMAND_TOPIC_PREFIX = "smart_city/commands/sensors/"
+MQTT_RESPONSE_TOPIC_PREFIX = "smart_city/commands/sensors/"
+MQTT_SENSOR_DATA_TOPIC_PREFIX = "smart_city/sensors/"
 
-def _read_varint(stream):
-    """
-    Lê um varint (inteiro variável) de um stream.
-    
-    Varint é o formato usado pelo Protocol Buffers para codificar inteiros.
-    Cada byte contém 7 bits de dados e 1 bit indicando se há mais bytes.
-    
-    Args:
-        stream: Stream de bytes para leitura
-        
-    Returns:
-        int: Valor do varint lido
-        
-    Raises:
-        EOFError: Se o stream for fechado inesperadamente
-        ValueError: Se o varint for muito longo (corrupção de dados)
-    """
-    shift = 0
+# === ESTRUTURAS DE DADOS ===
+connected_devices: Dict[str, Dict[str, Any]] = {}
+device_lock = threading.Lock()
+mqtt_client = None
+mqtt_responses: Dict[str, Dict[str, Any]] = {}  # request_id -> response_data
+mqtt_response_lock = threading.Lock()
+
+# === FUNÇÕES AUXILIARES ===
+def encode_varint(value):
+    """Codifica um inteiro como varint protobuf"""
+    result = b''
+    while value >= 0x80:
+        result += bytes([value & 0x7F | 0x80])
+        value >>= 7
+    result += bytes([value])
+    return result
+
+def decode_varint(data, offset=0):
+    """Decodifica um varint protobuf"""
     result = 0
-    while True:
-        b = stream.read(1)
-        if not b:
-            raise EOFError("Stream fechado inesperadamente ao ler varint.")
-        b = ord(b)
-        result |= (b & 0x7f) << shift
-        if not (b & 0x80):
-            return result
+    shift = 0
+    i = offset
+    while i < len(data):
+        byte = data[i]
+        result |= (byte & 0x7F) << shift
+        if (byte & 0x80) == 0:
+            return result, i + 1
         shift += 7
-        if shift >= 64:
-            raise ValueError("Varint muito longo.")
+        i += 1
+    raise ValueError("Invalid varint")
 
-def log_device_info_periodic():
-    """
-    Thread que loga periodicamente o status dos dispositivos conectados.
+def read_delimited_message_bytes(sock_file):
+    """Lê uma mensagem protobuf com delimitador de tamanho"""
+    size_bytes = sock_file.read(1)
+    if not size_bytes:
+        return None
     
-    Executa a cada 30 segundos e mostra informações sobre todos os dispositivos
-    registrados no gateway, incluindo tipo, status, dados de sensor e última atividade.
-    """
-    while True:
-        time.sleep(30)
-        with device_lock:
-            if connected_devices:
-                logger.info("--- Status Atual dos Dispositivos Conectados ---")
-                for dev_id, dev_info in connected_devices.items():
-                    type_name = smart_city_pb2.DeviceType.Name(dev_info['type'])
-                    status_name = smart_city_pb2.DeviceStatus.Name(dev_info['status'])
-                    # Exibe dados de sensor e frequência, se disponíveis
-                    sensor_data = dev_info.get('sensor_data', {})
-                    freq_str = ''
-                    if 'frequency_ms' in sensor_data:
-                        freq_str = f", Freq: {sensor_data['frequency_ms']}ms"
-                    logger.info(f"  ID: {dev_id} (Tipo: {type_name}), IP: {dev_info['ip']}:{dev_info['port']}, Status: {status_name}, Sensor Data: {sensor_data}{freq_str}, Última Vista: {time.time() - dev_info['last_seen']:.2f}s atrás")
-                logger.info("---------------------------------------------")
+    size = size_bytes[0]
+    if size & 0x80:
+        # Varint de múltiplos bytes
+        size_data = size_bytes + sock_file.read(4)  # Lê até 4 bytes adicionais
+        size, _ = decode_varint(size_data)
+    
+    message_data = sock_file.read(size)
+    if len(message_data) != size:
+        raise ValueError(f"Expected {size} bytes, got {len(message_data)}")
+    
+    envelope = smart_city_pb2.SmartCityMessage()
+    envelope.ParseFromString(message_data)
+    return envelope
+
+# === MQTT HANDLERS ===
+def setup_mqtt():
+    """Configura cliente MQTT"""
+    global mqtt_client
+    
+    client_id = f"gateway_{int(time.time())}"
+    mqtt_client = mqtt.Client(client_id)
+    
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            logger.info(f"Gateway conectado ao broker MQTT: {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+            # Inscrever nos tópicos de dados de sensores
+            client.subscribe(f"{MQTT_SENSOR_DATA_TOPIC_PREFIX}+")
+            # Inscrever nos tópicos de resposta de comandos
+            client.subscribe(f"{MQTT_RESPONSE_TOPIC_PREFIX}+/response")
+            logger.info("Inscrito nos tópicos MQTT de sensores e respostas")
+        else:
+            logger.error(f"Falha ao conectar ao broker MQTT: {rc}")
+    
+    def on_message(client, userdata, msg):
+        topic = msg.topic
+        payload = msg.payload.decode('utf-8')
+        
+        try:
+            if "/response" in topic:
+                # Resposta de comando
+                handle_mqtt_command_response(topic, payload)
             else:
-                logger.info("Nenhum dispositivo conectado ainda.")
-
-def discover_devices():
-    """
-    Thread responsável pela descoberta de dispositivos via multicast UDP.
+                # Dados de sensor
+                handle_mqtt_sensor_data(topic, payload)
+        except Exception as e:
+            logger.error(f"Erro ao processar mensagem MQTT de {topic}: {e}")
     
-    Configura um socket multicast e envia periodicamente mensagens de descoberta
-    para que dispositivos na rede possam encontrar o gateway. As respostas UDP
-    são ignoradas, pois o registro real acontece via TCP.
-    """
-    # Configuração do socket multicast
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+    def on_disconnect(client, userdata, rc):
+        logger.warning(f"Desconectado do broker MQTT: {rc}")
+    
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+    mqtt_client.on_disconnect = on_disconnect
+    
+    # Conectar ao broker
+    try:
+        mqtt_client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, 60)
+        mqtt_client.loop_start()
+        return True
+    except Exception as e:
+        logger.error(f"Erro ao conectar ao broker MQTT: {e}")
+        return False
+
+def handle_mqtt_sensor_data(topic, payload):
+    """Processa dados de sensor recebidos via MQTT"""
+    try:
+        data = json.loads(payload)
+        device_id = data.get('device_id')
+        
+        if not device_id:
+            logger.warning(f"Dados MQTT sem device_id: {payload}")
+            return
+        
+        # Atualizar informações do dispositivo
+        with device_lock:
+            if device_id in connected_devices:
+                device = connected_devices[device_id]
+                device['last_seen'] = time.time()
+                device['last_data'] = data
+                
+                # Atualizar status se fornecido
+                if 'status' in data:
+                    try:
+                        status_name = data['status']
+                        if hasattr(smart_city_pb2.DeviceStatus, status_name):
+                            device['status'] = getattr(smart_city_pb2.DeviceStatus, status_name)
+                    except:
+                        pass
+                
+                logger.info(f"Dados MQTT atualizados para {device_id}: Temp={data.get('temperature', 'N/A')}, Hum={data.get('humidity', 'N/A')}")
+            else:
+                logger.warning(f"Recebidos dados MQTT de dispositivo não registrado: {device_id}")
+    
+    except json.JSONDecodeError as e:
+        logger.error(f"Erro ao decodificar JSON de {topic}: {e}")
+    except Exception as e:
+        logger.error(f"Erro ao processar dados MQTT: {e}")
+
+def handle_mqtt_command_response(topic, payload):
+    """Processa respostas de comandos MQTT"""
+    try:
+        data = json.loads(payload)
+        request_id = data.get('request_id')
+        
+        if request_id:
+            with mqtt_response_lock:
+                mqtt_responses[request_id] = data
+                logger.info(f"Resposta MQTT recebida para request_id {request_id}: {data.get('message', 'N/A')}")
+        else:
+            logger.warning(f"Resposta MQTT sem request_id: {payload}")
+    
+    except json.JSONDecodeError as e:
+        logger.error(f"Erro ao decodificar resposta MQTT: {e}")
+    except Exception as e:
+        logger.error(f"Erro ao processar resposta MQTT: {e}")
+
+def send_mqtt_command(device_id, command_type, command_value="", timeout=10):
+    """Envia comando via MQTT para sensor e aguarda resposta"""
+    request_id = str(uuid.uuid4())
+    
+    command_data = {
+        "command_type": command_type,
+        "command_value": command_value,
+        "request_id": request_id,
+        "timestamp": int(time.time() * 1000)
+    }
+    
+    topic = f"{MQTT_COMMAND_TOPIC_PREFIX}{device_id}"
+    
+    try:
+        # Enviar comando
+        result = mqtt_client.publish(topic, json.dumps(command_data), qos=1)
+        
+        if result.rc != mqtt.MQTT_ERR_SUCCESS:
+            logger.error(f"Erro ao publicar comando MQTT para {device_id}: {result.rc}")
+            return None
+        
+        logger.info(f"Comando MQTT enviado para {device_id}: {command_type} (request_id: {request_id})")
+        
+        # Aguardar resposta
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            with mqtt_response_lock:
+                if request_id in mqtt_responses:
+                    response = mqtt_responses.pop(request_id)
+                    return response
+            time.sleep(0.1)
+        
+        logger.warning(f"Timeout aguardando resposta MQTT de {device_id} (request_id: {request_id})")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Erro ao enviar comando MQTT para {device_id}: {e}")
+        return None
+
+# === MULTICAST DISCOVERY ===
+def multicast_discovery():
+    """Envia descoberta multicast periodicamente"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', MULTICAST_PORT))
-    mreq = struct.pack("4sl", socket.inet_aton(MULTICAST_GROUP), socket.INADDR_ANY)
-    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-
-    logger.info(f"Gateway enviando mensagens de descoberta multicast para {MULTICAST_GROUP}:{MULTICAST_PORT}...")
     
-    # Criação da mensagem de descoberta
-    request = smart_city_pb2.DiscoveryRequest(
-        gateway_ip=get_local_ip(),
+    # Configurar multicast
+    ttl = struct.pack('b', 1)
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+    
+    local_ip = socket.gethostbyname(socket.gethostname())
+    
+    discovery_request = smart_city_pb2.DiscoveryRequest(
+        gateway_ip=local_ip,
         gateway_tcp_port=GATEWAY_TCP_PORT,
         gateway_udp_port=GATEWAY_UDP_PORT
     )
-    payload = request.SerializeToString()
-
-    def periodic_discovery():
-        """Envia mensagens de descoberta a cada 5 segundos"""
-        while True:
-            try:
-                local_ip = get_local_ip()
-                logger.info(f"[DISCOVERY] Enviando pacote multicast: IP local={local_ip}, grupo={MULTICAST_GROUP}, porta={MULTICAST_PORT}, tamanho={len(payload)} bytes")
-                sock.sendto(payload, (MULTICAST_GROUP, MULTICAST_PORT))
-                logger.info(f"[DISCOVERY] Pacote multicast enviado para {MULTICAST_GROUP}:{MULTICAST_PORT} em {time.strftime('%H:%M:%S')}")
-            except Exception as e:
-                logger.error(f"[DISCOVERY][ERRO] Falha ao enviar multicast: {e}")
-            time.sleep(5)
-
-    threading.Thread(target=periodic_discovery, daemon=True).start()
-
-    # Loop principal - escuta por respostas (debug)
-    local_ip = get_local_ip()
+    
+    envelope = smart_city_pb2.SmartCityMessage(
+        message_type=smart_city_pb2.MessageType.DISCOVERY_REQUEST,
+        discovery_request=discovery_request
+    )
+    
+    message = envelope.SerializeToString()
+    
+    logger.info(f"Iniciando descoberta multicast no grupo {MULTICAST_GROUP}:{MULTICAST_PORT}")
+    
     while True:
         try:
-            data, addr = sock.recvfrom(4096)
-            if addr[0] != local_ip:
-                logger.info(f"[DISCOVERY][RECV] Pacote UDP recebido na porta {MULTICAST_PORT} de {addr[0]}:{addr[1]}, tamanho={len(data)} bytes")
+            sock.sendto(message, (MULTICAST_GROUP, MULTICAST_PORT))
+            logger.debug("Descoberta multicast enviada")
         except Exception as e:
-            logger.error(f"[DISCOVERY][ERRO] Falha ao receber UDP: {e}")
+            logger.error(f"Erro no multicast: {e}")
+        
+        time.sleep(10)  # Enviar a cada 10 segundos
 
-def handle_device_registration(device_info, addr):
-    """
-    Processa o registro de um dispositivo no gateway.
-    
-    Quando um dispositivo se conecta via TCP e envia uma mensagem DeviceInfo,
-    esta função registra ou atualiza as informações do dispositivo no dicionário
-    de dispositivos conectados.
-    
-    Args:
-        device_info: Objeto DeviceInfo do Protocol Buffers
-        addr: Endereço (IP, porta) do dispositivo
-    """
-    logger.info(f"Recebida DeviceInfo de {addr}: ID={device_info.device_id}, Tipo={smart_city_pb2.DeviceType.Name(device_info.type)}")
+# === REGISTRO DE DISPOSITIVOS ===
+def register_device(device_info):
+    """Registra ou atualiza um dispositivo"""
     with device_lock:
-        # Preserva dados existentes se o dispositivo já estiver registrado
-        previous = connected_devices.get(device_info.device_id, {})
-        connected_devices[device_info.device_id] = {
+        device_id = device_info.device_id
+        
+        # Todos os sensores usam MQTT
+        is_mqtt_sensor = device_info.is_sensor
+        
+        device_data = {
+            'id': device_id,
+            'type': device_info.type,
             'ip': device_info.ip_address,
             'port': device_info.port,
-            'type': device_info.type,
-            'status': previous.get('status', device_info.initial_state),
+            'status': device_info.initial_state,
             'is_actuator': device_info.is_actuator,
             'is_sensor': device_info.is_sensor,
             'last_seen': time.time(),
-            'sensor_data': previous.get('sensor_data', {}) if device_info.is_sensor else 'N/A'
+            'capabilities': dict(device_info.capabilities),
+            'is_mqtt_sensor': is_mqtt_sensor
         }
-        logger.info(f"Dispositivo {device_info.device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado via TCP.")
+        
+        if is_mqtt_sensor:
+            device_data['mqtt_command_topic'] = f"{MQTT_COMMAND_TOPIC_PREFIX}{device_id}"
+            device_data['mqtt_response_topic'] = f"{MQTT_COMMAND_TOPIC_PREFIX}{device_id}/response"
+            logger.info(f"Sensor MQTT registrado: {device_id}")
+        
+        connected_devices[device_id] = device_data
+        logger.info(f"Dispositivo {device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado.")
 
-def write_delimited_message(conn, message):
-    """
-    Envia uma mensagem Protocol Buffers com delimitador de tamanho, usando SmartCityMessage como envelope.
-    """
-    envelope = smart_city_pb2.SmartCityMessage()
-    # Detecta o tipo da mensagem e encapsula
-    if isinstance(message, smart_city_pb2.ClientRequest):
-        envelope.message_type = smart_city_pb2.MessageType.CLIENT_REQUEST
-        envelope.client_request.CopyFrom(message)
-    elif isinstance(message, smart_city_pb2.DeviceUpdate):
-        envelope.message_type = smart_city_pb2.MessageType.DEVICE_UPDATE
-        envelope.device_update.CopyFrom(message)
-    elif isinstance(message, smart_city_pb2.GatewayResponse):
-        envelope.message_type = smart_city_pb2.MessageType.GATEWAY_RESPONSE
-        envelope.gateway_response.CopyFrom(message)
-    elif isinstance(message, smart_city_pb2.DeviceInfo):
-        envelope.message_type = smart_city_pb2.MessageType.DEVICE_INFO
-        envelope.device_info.CopyFrom(message)
-    elif isinstance(message, smart_city_pb2.DiscoveryRequest):
-        envelope.message_type = smart_city_pb2.MessageType.DISCOVERY_REQUEST
-        envelope.discovery_request.CopyFrom(message)
+# === COMANDO PARA DISPOSITIVOS ===
+def send_command_to_device(dev_id, command_type, command_value=""):
+    """Envia comando para dispositivo (sensor ou atuador)"""
+    with device_lock:
+        if dev_id not in connected_devices:
+            return {"command_status": "FAILED", "message": f"Dispositivo {dev_id} não encontrado"}
+        
+        dev = connected_devices[dev_id]
+    
+    # Verificar se é sensor MQTT
+    if dev.get('is_sensor', False):
+        logger.info(f"[GATEWAY] Enviando comando MQTT para sensor {dev_id}")
+        
+        response = send_mqtt_command(dev_id, command_type, command_value)
+        
+        if response:
+            if response.get('success', False):
+                # Atualizar estado do dispositivo
+                with device_lock:
+                    if dev_id in connected_devices:
+                        device = connected_devices[dev_id]
+                        device['last_seen'] = time.time()
+                        
+                        # Atualizar status se fornecido
+                        if 'status' in response:
+                            try:
+                                status_name = response['status']
+                                if hasattr(smart_city_pb2.DeviceStatus, status_name):
+                                    device['status'] = getattr(smart_city_pb2.DeviceStatus, status_name)
+                            except:
+                                pass
+                
+                return {
+                    "command_status": "SUCCESS",
+                    "message": f"Comando MQTT enviado para sensor: {response.get('message', 'OK')}"
+                }
+            else:
+                return {
+                    "command_status": "FAILED", 
+                    "message": f"Erro no sensor: {response.get('message', 'Unknown error')}"
+                }
+        else:
+            return {"command_status": "FAILED", "message": "Timeout ou erro na comunicação MQTT"}
+    
+    # Lógica para atuadores gRPC
+    elif dev.get('is_actuator', False):
+        # ATUADOR: Usar gRPC
+        logger.info(f"[GATEWAY] Enviando comando gRPC para atuador {dev_id}")
+        return send_grpc_command(dev_id, command_type, command_value)
+    
     else:
-        raise ValueError("Tipo de mensagem não suportado para envelope!")
-    data = envelope.SerializeToString()
-    conn.sendall(encode_varint(len(data)) + data)
+        return {"command_status": "FAILED", "message": f"Tipo de dispositivo não suportado: {dev_id}"}
 
-def read_delimited_message_bytes(reader):
-    """
-    Lê uma mensagem Protocol Buffers com delimitador de tamanho, esperando sempre SmartCityMessage.
-    """
-    length = _read_varint(reader)
-    data = reader.read(length)
-    if len(data) != length:
-        raise EOFError("Stream fechado inesperadamente.")
-    envelope = smart_city_pb2.SmartCityMessage()
-    envelope.ParseFromString(data)
-    return envelope
-
-def handle_client_request(req, conn, addr):
-    """
-    Processa requisições de clientes.
-    
-    Clientes podem solicitar:
-    - LIST_DEVICES: Lista todos os dispositivos conectados
-    - SEND_DEVICE_COMMAND: Envia comando para um dispositivo específico
-    - GET_DEVICE_STATUS: Obtém status atual de um dispositivo
-    
-    Args:
-        req: Objeto ClientRequest do Protocol Buffers
-        conn: Conexão socket com o cliente
-        addr: Endereço do cliente
-    """
-    logger.info(f"Recebida ClientRequest de {addr}: tipo={req.type}")
-    
-    # Lista todos os dispositivos conectados
-    if req.type == smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES:
-        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST)
-        now = time.time()
-        with device_lock:
-            for dev_id, dev in connected_devices.items():
-                # Considera "ligado" se enviou atualização nos últimos 30 segundos
-                if now - dev['last_seen'] <= 30:
-                    info = smart_city_pb2.DeviceInfo(
-                        device_id=dev_id, type=dev['type'], ip_address=dev['ip'],
-                        port=dev['port'], initial_state=dev['status'],
-                        is_actuator=dev['is_actuator'], is_sensor=dev['is_sensor']
-                    )
-                    resp.devices.append(info)
-        write_delimited_message(conn, resp)
-
-    # Envia comando para um dispositivo específico
-    elif req.type == smart_city_pb2.ClientRequest.RequestType.SEND_DEVICE_COMMAND:
-        dev_id = req.target_device_id
-        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.COMMAND_ACK)
-        with device_lock:
-            dev = connected_devices.get(dev_id)
-        if dev:
-            try:
-                # Conecta ao dispositivo e envia o comando como envelope
-                with socket.create_connection((dev['ip'], dev['port']), timeout=5) as sock:
-                    envelope = smart_city_pb2.SmartCityMessage()
-                    envelope.message_type = smart_city_pb2.MessageType.CLIENT_REQUEST
-                    envelope.client_request.CopyFrom(req)
-                    data = envelope.SerializeToString()
-                    sock.sendall(encode_varint(len(data)) + data)
-                    # --- Lê resposta TCP (DeviceUpdate) ---
-                    sock_file = sock.makefile('rb')
-                    resp_envelope = read_delimited_message_bytes(sock_file)
-                    if resp_envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
-                        update = resp_envelope.device_update
-                        logger.info(f"[GATEWAY] Status atualizado recebido do dispositivo: {update.device_id} -> {smart_city_pb2.DeviceStatus.Name(update.current_status)}")
-                        with device_lock:
-                            if update.device_id in connected_devices:
-                                dev2 = connected_devices[update.device_id]
-                                dev2['status'] = update.current_status
-                                dev2['last_seen'] = time.time()
-                                # Armazena frequência se presente (dentro do oneof data)
-                                try:
-                                    if update.HasField('frequency_ms'):
-                                        dev2['sensor_data']['frequency_ms'] = update.frequency_ms
-                                        logger.info(f"[GATEWAY] Frequência armazenada: {update.frequency_ms} ms")
-                                except Exception as e:
-                                    logger.error(f"[GATEWAY] Erro ao processar frequência: {e}")
-                        resp.command_status = "SUCCESS"
-                        resp.message = f"Comando enviado e status atualizado: {smart_city_pb2.DeviceStatus.Name(update.current_status)}"
-                    else:
-                        logger.warning(f"[GATEWAY] Envelope inesperado na resposta TCP: {resp_envelope.message_type}")
-                        resp.command_status = "FAILED"
-                        resp.message = "Resposta inesperada do dispositivo."
-            except Exception as e:
-                resp.command_status = "FAILED"
-                resp.message = str(e)
-        else:
-            resp.command_status = "FAILED"
-            resp.message = "Dispositivo não encontrado."
-        write_delimited_message(conn, resp)
-
-    # Obtém status de um dispositivo específico
-    elif req.type == smart_city_pb2.ClientRequest.RequestType.GET_DEVICE_STATUS:
-        resp = smart_city_pb2.GatewayResponse(type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_STATUS_UPDATE)
-        dev_id = req.target_device_id
-        with device_lock:
-            dev = connected_devices.get(dev_id)
-        if dev:
-            # Cria DeviceUpdate com status atual
-            update = smart_city_pb2.DeviceUpdate(
-                device_id=dev_id, type=dev['type'], current_status=dev['status']
-            )
-            # Adiciona dados de sensor se disponíveis
-            if dev['is_sensor'] and isinstance(dev.get('sensor_data'), dict):
-                logger.info(f"[DEBUG] Sensor Data de {dev_id}: {dev['sensor_data']}")
-                update.temperature_humidity.temperature = dev['sensor_data'].get('temperature', 0.0)
-                update.temperature_humidity.humidity = dev['sensor_data'].get('humidity', 0.0)
-                # Adiciona frequência se disponível
-                if 'frequency_ms' in dev['sensor_data']:
-                    update.frequency_ms = dev['sensor_data']['frequency_ms']
-                    logger.info(f"[DEBUG] Frequência adicionada ao DeviceUpdate: {dev['sensor_data']['frequency_ms']} ms")
-                else:
-                    logger.info(f"[DEBUG] Frequência NÃO encontrada em sensor_data para {dev_id}")
-            resp.device_status.CopyFrom(update)
-            resp.message = "Status retornado."
-        else:
-            resp.message = "Dispositivo não encontrado."
-        write_delimited_message(conn, resp)
-
-    print("DEBUG DeviceUpdate recebido:", dev)
-
-def handle_tcp_connection(conn, addr):
-    """
-    Gerencia uma conexão TCP individual.
-    Agora espera sempre SmartCityMessage como envelope.
-    """
-    logger.info(f"Conexão TCP de {addr}")
+def send_grpc_command(dev_id, command_type, command_value=""):
+    """Envia comando via gRPC para atuador"""
     try:
-        reader = conn.makefile('rb')
-        envelope = read_delimited_message_bytes(reader)
-        # Desempacota e trata conforme o tipo
-        if envelope.message_type == smart_city_pb2.MessageType.CLIENT_REQUEST:
-            req = envelope.client_request
-            handle_client_request(req, conn, addr)
-        elif envelope.message_type == smart_city_pb2.MessageType.DEVICE_INFO:
-            info = envelope.device_info
-            if info.device_id:
-                handle_device_registration(info, addr)
-        else:
-            logger.warning("Mensagem desconhecida recebida no envelope.")
-    finally:
-        conn.close()
+        with grpc.insecure_channel(f'{GRPC_SERVER_HOST}:{GRPC_SERVER_PORT}') as channel:
+            stub = actuator_service_pb2_grpc.ActuatorServiceStub(channel)
+            
+            request = actuator_service_pb2.ActuatorCommandRequest(
+                device_id=dev_id,
+                command_type=command_type,
+                command_value=command_value
+            )
+            
+            response = stub.SendCommand(request)
+            
+            if response.success:
+                with device_lock:
+                    if dev_id in connected_devices:
+                        connected_devices[dev_id]['last_seen'] = time.time()
+                        connected_devices[dev_id]['status'] = response.device_status
+                
+                return {
+                    "command_status": "SUCCESS",
+                    "message": f"Comando gRPC enviado para atuador: {response.message}"
+                }
+            else:
+                return {
+                    "command_status": "FAILED",
+                    "message": f"Erro no atuador: {response.message}"
+                }
+                
+    except grpc.RpcError as e:
+        logger.error(f"Erro gRPC ao enviar comando para {dev_id}: {e}")
+        return {"command_status": "FAILED", "message": f"Erro gRPC: {e.details()}"}
+    except Exception as e:
+        logger.error(f"Erro ao enviar comando gRPC: {e}")
+        return {"command_status": "FAILED", "message": f"Erro interno: {str(e)}"}
+
+# === HANDLERS TCP ===
+def handle_tcp_connection(conn, addr):
+    """Gerencia uma conexão TCP individual"""
+    logger.info(f"Conexão TCP de {addr}")
+    
+    try:
+        with conn:
+            sock_file = conn.makefile('rb')
+            envelope = read_delimited_message_bytes(sock_file)
+            
+            if envelope:
+                if envelope.message_type == smart_city_pb2.MessageType.DEVICE_INFO:
+                    register_device(envelope.device_info)
+                    
+                elif envelope.message_type == smart_city_pb2.MessageType.CLIENT_REQUEST:
+                    response = handle_client_request(envelope.client_request)
+                    
+                    resp_envelope = smart_city_pb2.SmartCityMessage(
+                        message_type=smart_city_pb2.MessageType.GATEWAY_RESPONSE,
+                        gateway_response=response
+                    )
+                    
+                    data = resp_envelope.SerializeToString()
+                    conn.sendall(encode_varint(len(data)) + data)
+                    
+    except Exception as e:
+        logger.error(f"Erro na conexão TCP de {addr}: {e}")
+
+def handle_client_request(req):
+    """Processa requisição de cliente"""
+    if req.type == smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES:
+        with device_lock:
+            devices = []
+            for dev_id, dev_data in connected_devices.items():
+                device_info = smart_city_pb2.DeviceInfo(
+                    device_id=dev_id,
+                    type=dev_data['type'],
+                    ip_address=dev_data['ip'],
+                    port=dev_data['port'],
+                    initial_state=dev_data['status'],
+                    is_actuator=dev_data['is_actuator'],
+                    is_sensor=dev_data['is_sensor']
+                )
+                devices.append(device_info)
+            
+            return smart_city_pb2.GatewayResponse(
+                type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST,
+                message=f"Lista de {len(devices)} dispositivos",
+                devices=devices
+            )
+    
+    elif req.type == smart_city_pb2.ClientRequest.RequestType.SEND_DEVICE_COMMAND:
+        result = send_command_to_device(req.target_device_id, req.command.command_type, req.command.command_value)
+        
+        return smart_city_pb2.GatewayResponse(
+            type=smart_city_pb2.GatewayResponse.ResponseType.COMMAND_ACK,
+            message=result["message"],
+            command_status=result["command_status"]
+        )
+    
+    return smart_city_pb2.GatewayResponse(
+        type=smart_city_pb2.GatewayResponse.ResponseType.ERROR,
+        message="Tipo de requisição não suportada"
+    )
 
 def listen_tcp_connections():
-    """
-    Thread que escuta por conexões TCP.
+    """Thread que escuta por conexões TCP"""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(('0.0.0.0', GATEWAY_TCP_PORT))
+    server_socket.listen(5)
     
-    Aceita conexões TCP na porta GATEWAY_TCP_PORT e cria uma thread
-    para cada conexão para processar mensagens de registro de dispositivos
-    e requisições de clientes.
-    """
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(('', GATEWAY_TCP_PORT))
-    server.listen(5)
-    logger.info(f"Gateway ouvindo TCP na porta {GATEWAY_TCP_PORT}...")
-    while True:
-        conn, addr = server.accept()
-        threading.Thread(target=handle_tcp_connection, args=(conn, addr)).start()
-
-def listen_udp_sensored_data():
-    """
-    Thread que escuta por dados sensoriados via UDP.
-    Recebe mensagens DeviceUpdate de sensores via UDP na porta GATEWAY_UDP_PORT.
-    Atualiza o status e dados dos sensores no dicionário de dispositivos conectados.
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', GATEWAY_UDP_PORT))
-    logger.info(f"Gateway ouvindo UDP na porta {GATEWAY_UDP_PORT}...")
+    logger.info(f"Gateway TCP ouvindo na porta {GATEWAY_TCP_PORT}")
+    
     while True:
         try:
-            data, addr = sock.recvfrom(4096)
-            logger.info(f"[UDP] Pacote recebido de {addr}, {len(data)} bytes")
-            update = smart_city_pb2.DeviceUpdate()
-            update.ParseFromString(data)
-            logger.info(f"[UDP] DeviceUpdate: device_id={update.device_id}, type={update.type}, current_status={update.current_status}")
-            with device_lock:
-                if update.device_id in connected_devices:
-                    dev = connected_devices[update.device_id]
-                    dev['status'] = update.current_status
-                    dev['last_seen'] = time.time()
-                    # Atualiza dados de sensor se disponíveis
-                    if dev['is_sensor']:
-                        if update.HasField("temperature_humidity"):
-                            dev['sensor_data']['temperature'] = update.temperature_humidity.temperature
-                            dev['sensor_data']['humidity'] = update.temperature_humidity.humidity
-                        # Armazena frequência se presente (dentro do oneof data)
-                        if update.HasField('frequency_ms'):
-                            dev['sensor_data']['frequency_ms'] = update.frequency_ms
-                            logger.info(f"[UDP] Frequência armazenada para {update.device_id}: {update.frequency_ms} ms")
-                        else:
-                            logger.info(f"[UDP] Frequência NÃO encontrada no DeviceUpdate UDP para {update.device_id}")
-                    logger.info(f"Atualização de status de {update.device_id}: {smart_city_pb2.DeviceStatus.Name(update.current_status)} (armazenado em dev['status'])")
-                else:
-                    logger.warning(f"Atualização UDP ignorada. Dispositivo desconhecido: {update.device_id}")
+            conn, addr = server_socket.accept()
+            threading.Thread(target=handle_tcp_connection, args=(conn, addr), daemon=True).start()
         except Exception as e:
-            logger.error(f"Erro no recebimento UDP: {e}")
+            logger.error(f"Erro ao aceitar conexão TCP: {e}")
 
-def encode_varint(value):
-    """
-    Codifica um inteiro como varint (formato Protocol Buffers).
-    
-    Varint é um formato de codificação de inteiros onde cada byte contém
-    7 bits de dados e 1 bit indicando se há mais bytes.
-    
-    Args:
-        value: Inteiro a ser codificado
-        
-    Returns:
-        bytes: Representação varint do inteiro
-    """
-    result = b""
-    while True:
-        bits = value & 0x7F
-        value >>= 7
-        if value:
-            result += struct.pack("B", bits | 0x80)
-        else:
-            result += struct.pack("B", bits)
-            break
-    return result
-
-def listen_api():
-    """
-    Thread que escuta por conexões da API externa.
-    
-    Funciona de forma similar ao listen_tcp_connections(), mas na porta API_TCP_PORT.
-    Permite que aplicações externas se conectem ao gateway para consultas e controle.
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', API_TCP_PORT))
-    sock.listen(5)
-    logger.info(f"Gateway ouvindo API TCP na porta {API_TCP_PORT}...")
-    while True:
-        conn, addr = sock.accept()
-        threading.Thread(target=handle_tcp_connection, args=(conn, addr)).start()
-
+# === MAIN ===
 def main():
-    """
-    Função principal do gateway.
+    logger.info("=== SMART CITY GATEWAY (MQTT + gRPC) ===")
     
-    Inicia todas as threads necessárias para o funcionamento do gateway:
-    - Descoberta de dispositivos via multicast
-    - Escuta de conexões TCP (registro e comandos)
-    - Escuta de dados UDP (dados sensoriados)
-    - Log periódico de status
-    - API externa
+    # Configurar MQTT
+    if not setup_mqtt():
+        logger.error("Falha ao configurar MQTT, terminando...")
+        return
     
-    O gateway roda indefinidamente até ser interrompido por Ctrl+C.
-    """
-    # Determina e exibe o IP do gateway
-    gateway_ip = get_local_ip()
-    logger.info(f"Gateway iniciado com IP: {gateway_ip}")
-    logger.info(f"Portas: TCP={GATEWAY_TCP_PORT}, UDP={GATEWAY_UDP_PORT}, API={API_TCP_PORT}")
-    logger.info("=" * 50)
+    # Iniciar threads
+    multicast_thread = threading.Thread(target=multicast_discovery, daemon=True)
+    tcp_thread = threading.Thread(target=listen_tcp_connections, daemon=True)
     
-    # Inicia todas as threads de serviço
-    threading.Thread(target=discover_devices, daemon=True).start()
-    threading.Thread(target=listen_tcp_connections, daemon=True).start()
-    threading.Thread(target=listen_udp_sensored_data, daemon=True).start()
-    threading.Thread(target=log_device_info_periodic, daemon=True).start()
-    threading.Thread(target=listen_api, daemon=True).start()
+    multicast_thread.start()
+    tcp_thread.start()
     
-    # Loop principal - mantém o programa rodando
+    logger.info("Gateway iniciado com sucesso!")
+    logger.info(f"- Descoberta multicast: {MULTICAST_GROUP}:{MULTICAST_PORT}")
+    logger.info(f"- Registro TCP: porta {GATEWAY_TCP_PORT}")
+    logger.info(f"- MQTT Broker: {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+    logger.info("- Comandos para sensores: MQTT")
+    logger.info("- Comandos para atuadores: gRPC")
+    
     try:
         while True:
             time.sleep(1)
+            
+            # Limpeza periódica de dispositivos offline
+            current_time = time.time()
+            with device_lock:
+                offline_devices = [
+                    dev_id for dev_id, dev_data in connected_devices.items()
+                    if current_time - dev_data['last_seen'] > 60  # 60 segundos
+                ]
+                
+                for dev_id in offline_devices:
+                    logger.info(f"Removendo dispositivo offline: {dev_id}")
+                    del connected_devices[dev_id]
+            
+            # Limpeza de respostas MQTT antigas
+            with mqtt_response_lock:
+                old_responses = [
+                    req_id for req_id, resp_data in mqtt_responses.items()
+                    if current_time - resp_data.get('timestamp', 0) / 1000 > 30  # 30 segundos
+                ]
+                
+                for req_id in old_responses:
+                    del mqtt_responses[req_id]
+    
     except KeyboardInterrupt:
-        logger.info("Gateway encerrado por Ctrl+C")
+        logger.info("Gateway interrompido pelo usuário")
+    except Exception as e:
+        logger.error(f"Erro no Gateway: {e}")
+    finally:
+        if mqtt_client:
+            mqtt_client.loop_stop()
+            mqtt_client.disconnect()
+        logger.info("Gateway finalizado")
 
 if __name__ == "__main__":
     main()

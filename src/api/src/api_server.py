@@ -72,12 +72,13 @@ def send_protobuf_request(request_msg: smart_city_pb2.ClientRequest) -> smart_ci
 
             response_envelope = smart_city_pb2.SmartCityMessage()
             response_envelope.ParseFromString(data)
+            print(f"Recebido envelope: {response_envelope}")
 
             if response_envelope.message_type == smart_city_pb2.MessageType.GATEWAY_RESPONSE:
                 return response_envelope.gateway_response
             
-            elif response_envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
-                return response_envelope.device_update
+            #elif response_envelope.message_type == smart_city_pb2.MessageType.DEVICE_UPDATE:
+                #return response_envelope.device_update
             
             else:
                 raise HTTPException(status_code=500, detail=f"Tipo de mensagem inesperado: {response_envelope.message_type}")

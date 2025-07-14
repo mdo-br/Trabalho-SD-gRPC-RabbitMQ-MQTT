@@ -67,7 +67,7 @@ String deviceIP = "";                  // IP local do dispositivo
 
 // --- Variáveis para registro TCP periódico ---
 unsigned long lastRegisterAttempt = 0;
-const unsigned long registerInterval = 5000; // 30 segundos
+const unsigned long registerInterval = 5000; // 5 segundos
 
 // --- Buffer global para comando recebido ---
 #define CMD_BUFFER_SIZE 32
@@ -258,11 +258,16 @@ void processTCPCommands() {
     if (pb_decode(&istream, smartcity_devices_SmartCityMessage_fields, &envelope)) {
       if (envelope.message_type == smartcity_devices_MessageType_CLIENT_REQUEST && envelope.which_payload == smartcity_devices_SmartCityMessage_client_request_tag) {
         smartcity_devices_ClientRequest* req = &envelope.payload.client_request;
-        if (req->has_command) {
-          smartcity_devices_DeviceCommand* cmd = &req->command;
-          Serial.print("[DEBUG] Comando recebido: ");
-          Serial.println(cmd->command_type);
-          processCommand(String(cmd->command_type));  // Executa o comando
+        // Responde tanto a comandos quanto a GET_DEVICE_STATUS
+        if (req->has_command || req->type == smartcity_devices_ClientRequest_RequestType_GET_DEVICE_STATUS) {
+          smartcity_devices_DeviceCommand* cmd = req->has_command ? &req->command : nullptr;
+          if (cmd) {
+            Serial.print("[DEBUG] Comando recebido: ");
+            Serial.println(cmd->command_type);
+            processCommand(String(cmd->command_type));
+          } else {
+            Serial.println("[DEBUG] Solicitação GET_DEVICE_STATUS recebida (sem comando)");
+          }
           // --- Envia status atualizado como resposta TCP ---
           smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
           msg.device_id.funcs.encode = &encode_device_id;
@@ -354,8 +359,6 @@ void sendStatusUpdate() {
   }
 }
 
-// --- Solicitação de Descoberta (Broadcast) ---
-// Função sendDiscoveryRequest removida pois não é mais utilizada
 
 // --- Resposta ao Gateway com DeviceInfo (TCP) ---
 void sendDiscoveryResponse() {
