@@ -3,7 +3,7 @@ syntax = "proto3";
 package actuator;
 
 option java_package = "actuator";
-option java_outer_classname = "ActuatorService";
+option java_outer_classname = "ActuatorServiceProto";
 
 // Mensagem para identificar o dispositivo
 message DeviceId {

@@ -45,12 +45,14 @@ Apesar da maior parte do sistema utilizar descoberta automática de IPs e portas
 
 - Comandos de infraestrutura (RabbitMQ, servidor gRPC, setup completo) devem ser executados na Raspberry Pi 3 usando a variável `INFRA=1`.
 - Nos demais ambientes (gateway, API, frontend, clientes), execute os comandos normalmente, sem a variável.
+- **Plugin gRPC Java**: Necessário apenas na Raspberry Pi 3 para compilação de dispositivos Java com gRPC.
 
 ### Exemplos:
 
 **Na Raspberry Pi 3 (Infraestrutura):**
 ```bash
 make setup INFRA=1         # Instala tudo e configura RabbitMQ
+make install-grpc-plugin   # Instala plugin gRPC Java automaticamente
 make run-grpc INFRA=1      # Executa o servidor ponte gRPC
 make rabbitmq INFRA=1      # Configura RabbitMQ
 ```
@@ -242,6 +244,7 @@ flowchart TB
 - **Java 21+** com Maven
 - **Protocol Buffers** (protoc)
 - **gRPC** (Python e Java)
+- **Plugin gRPC Java** (protoc-gen-grpc-java-1.58.0, instalado automaticamente na Raspberry Pi 3)
 - **RabbitMQ** com plugin MQTT
 - **ESP8266** (NodeMCU) + PlatformIO (opcional)
 - **Arduino CLI** (para ESP8266)
@@ -286,6 +289,18 @@ sudo systemctl start rabbitmq-server
 sudo rabbitmq-plugins enable rabbitmq_mqtt
 sudo rabbitmq-plugins enable rabbitmq_management
 sudo systemctl restart rabbitmq-server
+```
+
+#### Instalar plugin gRPC Java (apenas Raspberry Pi 3):
+```bash
+# Automático (integrado ao setup-local INFRA=1)
+make install-grpc-plugin
+
+# Manual
+mkdir -p target/protoc-plugins
+wget -O target/protoc-plugins/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe \
+  https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.58.0/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe
+chmod +x target/protoc-plugins/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe
 ```
 
 #### Gerar código Protocol Buffers e gRPC:
@@ -944,6 +959,9 @@ sudo rabbitmqctl status
 
 #### Problema: Dispositivos Java não iniciam
 ```bash
+# Verificar se plugin gRPC Java está instalado (apenas Raspberry Pi 3)
+make install-grpc-plugin
+
 # Verificar compilação
 make build-java
 
@@ -952,6 +970,18 @@ mvn dependency:tree
 
 # Executar com logs detalhados
 java -jar target/temperature-humidity-sensor.jar -Djava.util.logging.config.file=logging.properties
+```
+
+#### Problema: Erro de compilação Protocol Buffers
+```bash
+# Instalar plugin gRPC Java (apenas na Raspberry Pi 3)
+make install-grpc-plugin
+
+# Regenerar arquivos proto
+make proto
+
+# Compilar novamente
+make java
 ```
 
 ### Configuração Avançada

@@ -34,6 +34,9 @@ make setup-local
 **Importante:** Use sempre `INFRA=1` para comandos de infraestrutura!
 
 ```bash
+# Instalar plugin gRPC Java
+make install-grpc-plugin
+
 # Configurar RabbitMQ com plugin MQTT
 make rabbitmq INFRA=1
 
@@ -125,6 +128,9 @@ make run-client
 ### Compilação
 
 ```bash
+# Instalar plugin gRPC Java (apenas na Raspberry Pi 3)
+make install-grpc-plugin
+
 # Gerar código Protocol Buffers
 make proto
 
@@ -257,6 +263,14 @@ make run-actuator ACTUATOR_ID=relay_003 ACTUATOR_PORT=6004
 
 ## Solução de Problemas
 
+### Problema: Plugin gRPC Java não encontrado
+
+```bash
+# Erro: Plugin gRPC Java não encontrado
+# Solução: Instalar o plugin manualmente
+make install-grpc-plugin
+```
+
 ### Problema: Comando não executa na Raspberry Pi 3
 
 ```bash
@@ -290,6 +304,9 @@ make status
 ### Problema: JARs não compilados
 
 ```bash
+# Instalar plugin gRPC Java primeiro (na Raspberry Pi 3)
+make install-grpc-plugin
+
 # Compilar Java
 make java
 

@@ -19,6 +19,7 @@ help:
 	@echo "  make proto         - Gera código Python/gRPC a partir dos arquivos .proto"
 	@echo "  make java          - Compila dispositivos Java com Maven"
 	@echo "  make build-jars    - Gera JARs dos dispositivos Java"
+	@echo "  make install-grpc-plugin - Instala plugin gRPC Java (apenas Raspberry Pi 3)"
 	@echo "  make clean         - Remove arquivos gerados"
 	@echo "  make clean-all     - Limpeza completa do projeto"
 	@echo "  make install       - Instala dependências Python"
@@ -58,12 +59,14 @@ help:
 setup:
 ifeq ($(INFRA),1)
 	$(MAKE) install
+	$(MAKE) install-grpc-plugin
 	$(MAKE) rabbitmq INFRA=1
 	$(MAKE) proto
 	$(MAKE) java
 else
 	$(MAKE) install
 	@echo "Pulando configuração do RabbitMQ (apenas na Raspberry Pi 3)."
+	@echo "Pulando instalação do plugin gRPC Java (apenas na Raspberry Pi 3)."
 	$(MAKE) proto
 	$(MAKE) java
 endif
@@ -86,6 +89,20 @@ proto:
 	@echo "Gerando código Python e gRPC..."
 	@chmod +x generate_proto.sh
 	./generate_proto.sh
+
+# Instala plugin gRPC Java
+.PHONY: install-grpc-plugin
+install-grpc-plugin:
+	@echo "Instalando plugin gRPC Java..."
+	@mkdir -p target/protoc-plugins
+	@if [ ! -f target/protoc-plugins/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe ]; then \
+		echo "Baixando plugin gRPC Java 1.58.0..."; \
+		wget -O target/protoc-plugins/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe \
+			https://repo1.maven.org/maven2/io/grpc/protoc-gen-grpc-java/1.58.0/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe; \
+		chmod +x target/protoc-plugins/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe; \
+	else \
+		echo "Plugin gRPC Java já está instalado."; \
+	fi
 
 # Gera arquivos Java dos protos
 .PHONY: java-proto
@@ -409,7 +426,21 @@ clean-all: clean clean-logs
 # === CONFIGURAÇÃO AUTOMÁTICA ===
 .PHONY: setup-local
 setup-local:
-	@echo "=== Configuração Completa do Sistema ==="
+ifeq ($(INFRA),1)
+	@echo "=== Configuração Completa do Sistema (Raspberry Pi 3) ==="
+	@echo "1. Instalando dependências..."
+	$(MAKE) install
+	@echo "2. Instalando plugin gRPC Java..."
+	$(MAKE) install-grpc-plugin
+	@echo "3. Gerando Protocol Buffers..."
+	$(MAKE) proto
+	@echo "4. Compilando Java..."
+	$(MAKE) java
+	@echo "5. Testando configuração..."
+	$(MAKE) status
+	@echo "✓ Sistema configurado com sucesso na Raspberry Pi 3!"
+else
+	@echo "=== Configuração Completa do Sistema (Desenvolvimento) ==="
 	@echo "1. Instalando dependências..."
 	$(MAKE) install
 	@echo "2. Gerando Protocol Buffers..."
@@ -419,6 +450,9 @@ setup-local:
 	@echo "4. Testando configuração..."
 	$(MAKE) status
 	@echo "✓ Sistema configurado com sucesso!"
+	@echo ""
+	@echo "Nota: Plugin gRPC Java não instalado (apenas necessário na Raspberry Pi 3)"
+endif
 	@echo ""
 	@echo "Para executar no Raspberry Pi 3:"
 	@echo "  make run-mqtt INFRA=1"
