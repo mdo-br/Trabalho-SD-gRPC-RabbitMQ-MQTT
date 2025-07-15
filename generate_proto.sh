@@ -9,11 +9,11 @@ OUTPUT_DIR="src/proto"
 
 # Gerar código Python para smart_city.proto (mensagens básicas)
 echo "Gerando smart_city_pb2.py..."
-python -m grpc_tools.protoc --python_out=$OUTPUT_DIR --proto_path=src/proto smart_city.proto
+python3 -m grpc_tools.protoc --python_out=$OUTPUT_DIR --proto_path=src/proto smart_city.proto
 
 # Gerar código Python e gRPC para actuator_service.proto
 echo "Gerando actuator_service_pb2.py e actuator_service_pb2_grpc.py..."
-python -m grpc_tools.protoc --python_out=$OUTPUT_DIR --grpc_python_out=$OUTPUT_DIR --proto_path=src/proto actuator_service.proto
+python3 -m grpc_tools.protoc --python_out=$OUTPUT_DIR --grpc_python_out=$OUTPUT_DIR --proto_path=src/proto actuator_service.proto
 
 # Verificar se os arquivos foram gerados
 if [ -f "$OUTPUT_DIR/smart_city_pb2.py" ]; then

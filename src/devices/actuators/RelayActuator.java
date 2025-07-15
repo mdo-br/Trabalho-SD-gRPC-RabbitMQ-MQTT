@@ -69,16 +69,25 @@ public class RelayActuator {
             while (true) {
                 multicastSocket.receive(packet);
                 LOGGER.info("Pacote recebido: tamanho=" + packet.getLength() + ", bytes=" + bytesToHex(Arrays.copyOf(packet.getData(), packet.getLength())));
-                SmartCity.DiscoveryRequest discoveryRequest = SmartCity.DiscoveryRequest.parseFrom(
+                
+                // Parse the SmartCityMessage envelope first
+                SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.parseFrom(
                     ByteString.copyFrom(packet.getData(), 0, packet.getLength())
                 );
+                
+                // Check if it contains a DiscoveryRequest
+                if (envelope.hasDiscoveryRequest()) {
+                    SmartCity.DiscoveryRequest discoveryRequest = envelope.getDiscoveryRequest();
+                    
+                    this.gatewayIp = discoveryRequest.getGatewayIp();
+                    this.gatewayTcpPort = discoveryRequest.getGatewayTcpPort();
+                    this.gatewayUdpPort = discoveryRequest.getGatewayUdpPort();
+                    LOGGER.info("Discovery recebido: gatewayIp=" + gatewayIp + ", gatewayTcpPort=" + gatewayTcpPort + ", gatewayUdpPort=" + gatewayUdpPort);
 
-                this.gatewayIp = discoveryRequest.getGatewayIp();
-                this.gatewayTcpPort = discoveryRequest.getGatewayTcpPort();
-                this.gatewayUdpPort = discoveryRequest.getGatewayUdpPort();
-                LOGGER.info("Discovery recebido: gatewayIp=" + gatewayIp + ", gatewayTcpPort=" + gatewayTcpPort + ", gatewayUdpPort=" + gatewayUdpPort);
-
-                sendDeviceInfo(gatewayIp, gatewayTcpPort);
+                    sendDeviceInfo(gatewayIp, gatewayTcpPort);
+                } else {
+                    LOGGER.warning("Pacote multicast recebido não contém DiscoveryRequest");
+                }
             }
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Erro no listener de descoberta multicast: " + e.getMessage(), e);

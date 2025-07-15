@@ -16,6 +16,7 @@ help:
 	@echo "  make setup         - Configura ambiente completo (deps + proto + rabbitmq)"
 	@echo "  make proto         - Gera código Python/gRPC a partir dos arquivos .proto"
 	@echo "  make java          - Compila dispositivos Java com Maven"
+	@echo "  make build-jars    - Gera JARs dos dispositivos Java"
 	@echo "  make clean         - Remove arquivos gerados"
 	@echo "  make install       - Instala dependências Python"
 	@echo "  make rabbitmq      - Configura RabbitMQ com plugin MQTT"
@@ -24,7 +25,9 @@ help:
 	@echo "  make run-api       - Executa API server"
 	@echo "  make run-client    - Executa cliente de teste"
 	@echo "  make run-sensor    - Executa sensor Java (MQTT)"
+	@echo "  make run-actuator  - Executa atuador Java (gRPC)"
 	@echo "  make test-mqtt     - Testa conexão MQTT"
+	@echo "  make test-actuator - Testa atuador via gRPC"
 	@echo "  make status        - Mostra status do projeto"
 	@echo "  make test-mqtt-commands - Testa comandos MQTT"
 	@echo "  make demo          - Inicia demo completa"
@@ -65,10 +68,17 @@ java-proto:
 	@chmod +x generate_java_proto.sh
 	./generate_java_proto.sh
 
-# Compila dispositivos Java (sem limpar)
+# Compila dispositivos Java apenas se necessário
 .PHONY: java
 java: java-proto
 	@echo "Compilando dispositivos Java..."
+	mvn compile
+	@echo "Compilação Java concluída!"
+
+# Gera todos os JARs
+.PHONY: build-jars
+build-jars: java-proto
+	@echo "Gerando JARs..."
 	mvn package
 	@echo "JARs gerados em target/"
 
@@ -134,15 +144,19 @@ run-client: install
 
 # Executa sensor Java (MQTT)
 .PHONY: run-sensor
-run-sensor: java
+run-sensor: build-jars
 	@echo "Executando sensor Java..."
 	mvn exec:java -Dexec.mainClass="com.smartcity.sensors.TemperatureHumiditySensor"
 
 # Executa atuador Java (RelayActuator)
+# Parâmetros opcionais:
+#   ACTUATOR_ID   - ID do atuador (padrão: relay_001)
+#   ACTUATOR_PORT - Porta TCP do atuador (padrão: 6002)
+# Exemplo: make run-actuator ACTUATOR_ID=relay_002 ACTUATOR_PORT=6003
 .PHONY: run-actuator
 ACTUATOR_ID ?= relay_001
 ACTUATOR_PORT ?= 6002
-run-actuator: java
+run-actuator: build-jars
 	@echo "Executando atuador Java com ID $(ACTUATOR_ID) e porta $(ACTUATOR_PORT)..."
 	mvn exec:java -Dexec.mainClass="com.smartcity.actuators.RelayActuator" -Dexec.args="$(ACTUATOR_ID) $(ACTUATOR_PORT)"
 
@@ -154,6 +168,14 @@ test-mqtt:
 	mosquitto_pub -h localhost -t "smart_city/sensors/test" -m '{"device_id":"test","temperature":25.0,"humidity":60.0}'
 	@echo "Escutando mensagens (Ctrl+C para parar)..."
 	mosquitto_sub -h localhost -t "smart_city/sensors/+"
+
+# Testa atuadores via gRPC
+.PHONY: test-actuator
+test-actuator: install
+	@echo "Testando atuador via gRPC..."
+	@echo "Nota: Execute 'make run-actuator' em outro terminal primeiro"
+	@echo "Testando conexão gRPC com atuador relay_001..."
+	@bash -c "source venv/bin/activate && timeout 10 python3 -c 'import grpc; import sys; sys.path.append(\"src/proto\"); from actuator_service_pb2 import DeviceRequest; from actuator_service_pb2_grpc import AtuadorServiceStub; channel = grpc.insecure_channel(\"localhost:50051\"); stub = AtuadorServiceStub(channel); request = DeviceRequest(device_id=\"relay_001\", ip=\"localhost\", port=6002); response = stub.ConsultarEstado(request); print(f\"Status: {response.status}\"); print(f\"Mensagem: {response.message}\")' || echo 'Erro: Servidor gRPC não disponível'"
 
 # === TESTE COMANDOS MQTT ===
 .PHONY: test-mqtt-commands
@@ -239,6 +261,11 @@ status:
 		echo "Sensor Java compilado"; \
 	else \
 		echo "Sensor Java nao compilado"; \
+	fi
+	@if [ -f "target/relay-actuator.jar" ]; then \
+		echo "Atuador Java compilado"; \
+	else \
+		echo "Atuador Java nao compilado"; \
 	fi
 	@echo ""
 	@echo "Servicos:"

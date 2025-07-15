@@ -209,9 +209,11 @@ class ActuatorServiceServicer(actuator_service_pb2_grpc.ActuatorServiceServicer)
             command.command_type = "GET_STATUS"
             command.command_value = ""
             device_update = send_tcp_command_to_device(ip, port, command)
+            # Para GET_STATUS, retornar o status real do dispositivo no campo status
+            device_status_name = smart_city_pb2.DeviceStatus.Name(device_update.current_status)
             return actuator_service_pb2.StatusResponse(
-                status="OK",
-                message=f"Status do dispositivo {device_id}: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
+                status=device_status_name,  # Usar o status real do dispositivo
+                message=f"Status do dispositivo {device_id}: {device_status_name}"
             )
         except Exception as e:
             logger.error(f"Erro ao consultar estado do dispositivo {device_id}: {e}")

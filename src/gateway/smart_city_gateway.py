@@ -403,7 +403,8 @@ def send_grpc_command(dev_id, command_type, command_value=""):
                         connected_devices[dev_id]['status'] = response.status
                 return {
                     "command_status": "SUCCESS",
-                    "message": f"Comando gRPC enviado para atuador: {response.message}"
+                    "message": f"Comando gRPC enviado para atuador: {response.message}",
+                    "status": response.status  # Adicionar o status no resultado
                 }
             else:
                 return {
@@ -514,11 +515,23 @@ def handle_client_request(req):
         elif dev.get('is_actuator', False):
             logger.info(f"[GATEWAY] Consultando status do atuador {dev_id} via gRPC")
             grpc_result = send_grpc_command(dev_id, "GET_STATUS")
+            logger.info(f"[DEBUG] grpc_result completo: {grpc_result}")
             if grpc_result["command_status"] == "SUCCESS":
+                status_from_grpc = grpc_result.get('status', 'UNKNOWN_STATUS')
+                logger.info(f"[DEBUG] status_from_grpc: {status_from_grpc}")
+                
+                # Tentar obter o enum do status
+                try:
+                    status_enum = getattr(smart_city_pb2.DeviceStatus, status_from_grpc)
+                    logger.info(f"[DEBUG] status_enum convertido: {status_enum}")
+                except AttributeError:
+                    logger.warning(f"[DEBUG] Status '{status_from_grpc}' não encontrado no enum, usando UNKNOWN_STATUS")
+                    status_enum = smart_city_pb2.DeviceStatus.UNKNOWN_STATUS
+                
                 update = smart_city_pb2.DeviceUpdate(
                     device_id=dev_id,
                     type=dev['type'],
-                    current_status=getattr(smart_city_pb2.DeviceStatus, grpc_result.get('status', 'UNKNOWN'), smart_city_pb2.DeviceStatus.UNKNOWN),
+                    current_status=status_enum,
                 )
                 return smart_city_pb2.GatewayResponse(
                     type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_STATUS_UPDATE,
