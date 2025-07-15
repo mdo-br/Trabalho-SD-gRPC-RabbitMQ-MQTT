@@ -138,6 +138,14 @@ run-sensor: java
 	@echo "Executando sensor Java..."
 	mvn exec:java -Dexec.mainClass="com.smartcity.sensors.TemperatureHumiditySensor"
 
+# Executa atuador Java (RelayActuator)
+.PHONY: run-actuator
+ACTUATOR_ID ?= relay_001
+ACTUATOR_PORT ?= 6002
+run-actuator: java
+	@echo "Executando atuador Java com ID $(ACTUATOR_ID) e porta $(ACTUATOR_PORT)..."
+	mvn exec:java -Dexec.mainClass="com.smartcity.actuators.RelayActuator" -Dexec.args="$(ACTUATOR_ID) $(ACTUATOR_PORT)"
+
 # Testa conexão MQTT
 .PHONY: test-mqtt
 test-mqtt:

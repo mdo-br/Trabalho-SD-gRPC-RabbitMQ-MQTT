@@ -12,6 +12,7 @@ import java.util.Enumeration;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Arrays;
 // import actuator.ActuatorService;
 // import actuator.AtuadorServiceGrpc;
 
@@ -67,6 +68,7 @@ public class RelayActuator {
 
             while (true) {
                 multicastSocket.receive(packet);
+                LOGGER.info("Pacote recebido: tamanho=" + packet.getLength() + ", bytes=" + bytesToHex(Arrays.copyOf(packet.getData(), packet.getLength())));
                 SmartCity.DiscoveryRequest discoveryRequest = SmartCity.DiscoveryRequest.parseFrom(
                     ByteString.copyFrom(packet.getData(), 0, packet.getLength())
                 );
@@ -74,6 +76,7 @@ public class RelayActuator {
                 this.gatewayIp = discoveryRequest.getGatewayIp();
                 this.gatewayTcpPort = discoveryRequest.getGatewayTcpPort();
                 this.gatewayUdpPort = discoveryRequest.getGatewayUdpPort();
+                LOGGER.info("Discovery recebido: gatewayIp=" + gatewayIp + ", gatewayTcpPort=" + gatewayTcpPort + ", gatewayUdpPort=" + gatewayUdpPort);
 
                 sendDeviceInfo(gatewayIp, gatewayTcpPort);
             }
@@ -224,6 +227,14 @@ public class RelayActuator {
             LOGGER.warning("Erro ao obter IP local: " + e.getMessage());
             return "127.0.0.1";
         }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02X", b));
+        }
+        return sb.toString();
     }
 
     public static void main(String[] args) {

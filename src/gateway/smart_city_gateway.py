@@ -269,14 +269,16 @@ def multicast_discovery():
         mqtt_broker_port=MQTT_BROKER_PORT
     )
 
-    logger.info(f"Enviando discovery: gateway_ip={local_ip}, mqtt_broker_ip={MQTT_BROKER_HOST}")
-    
+    logger.info(f"Enviando discovery: gateway_ip={local_ip}, mqtt_broker_ip={MQTT_BROKER_HOST}, tcp_port={GATEWAY_TCP_PORT}, udp_port={GATEWAY_UDP_PORT}")
+    logger.info(f"DiscoveryRequest enviado: {discovery_request}")
     envelope = smart_city_pb2.SmartCityMessage(
         message_type=smart_city_pb2.MessageType.DISCOVERY_REQUEST,
         discovery_request=discovery_request
     )
-    
+
     message = envelope.SerializeToString()
+
+    logger.info(f"Payload discovery (hex): {message.hex()}")
     
     logger.info(f"Iniciando descoberta multicast no grupo {MULTICAST_GROUP}:{MULTICAST_PORT}")
     
