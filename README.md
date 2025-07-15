@@ -255,13 +255,13 @@ flowchart TB
 **Na Raspberry Pi 3 (Infraestrutura):**
 ```bash
 # Instala dependências, configura RabbitMQ, gera proto e compila Java
-make setup-complete INFRA=1
+make setup-local INFRA=1
 ```
 
 **Em máquinas de desenvolvimento:**
 ```bash
 # Instala dependências, gera proto e compila Java (pula RabbitMQ)
-make setup-complete
+make setup-local
 ```
 
 ### 2. Configuração Manual
@@ -1040,7 +1040,7 @@ O projeto inclui um Makefile completo para automatizar todas as tarefas de compi
 make help
 
 # Configuração completa
-make setup-complete
+make setup-local
 
 # Executar na Raspberry Pi 3
 make run-grpc INFRA=1

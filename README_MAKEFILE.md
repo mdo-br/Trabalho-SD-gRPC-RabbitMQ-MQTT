@@ -23,10 +23,10 @@ O sistema Smart City é distribuído em duas partes principais:
 
 ```bash
 # Configuração completa na Raspberry Pi 3
-make setup-complete INFRA=1
+make setup-local INFRA=1
 
 # Configuração em máquina de desenvolvimento
-make setup-complete
+make setup-local
 ```
 
 ### Comandos de Infraestrutura (Raspberry Pi 3)
@@ -135,7 +135,7 @@ make java
 make build-jars
 
 # Compilação completa
-make setup-complete
+make setup-local
 ```
 
 ### Testes
@@ -205,10 +205,10 @@ make clean-all
 
 ```bash
 # 1. Na Raspberry Pi 3
-make setup-complete INFRA=1
+make setup-local INFRA=1
 
 # 2. Em máquina de desenvolvimento
-make setup-complete
+make setup-local
 ```
 
 ### Exemplo 2: Execução de Demo Completa
@@ -274,7 +274,7 @@ make run-grpc INFRA=1
 make install
 
 # Ou configuração completa
-make setup-complete
+make setup-local
 ```
 
 ### Problema: Protocol Buffers não gerados

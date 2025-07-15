@@ -15,7 +15,7 @@ help:
 	@echo "Comandos disponiveis para Smart City:"
 	@echo "=== CONFIGURAÇÃO ==="
 	@echo "  make setup         - Configura ambiente completo (deps + proto + rabbitmq)"
-	@echo "  make setup-complete - Configuração completa automatizada"
+	@echo "  make setup-local - Configuração completa automatizada"
 	@echo "  make proto         - Gera código Python/gRPC a partir dos arquivos .proto"
 	@echo "  make java          - Compila dispositivos Java com Maven"
 	@echo "  make build-jars    - Gera JARs dos dispositivos Java"
@@ -407,8 +407,8 @@ clean-all: clean clean-logs
 	@echo "Limpeza completa realizada!"
 
 # === CONFIGURAÇÃO AUTOMÁTICA ===
-.PHONY: setup-complete
-setup-complete:
+.PHONY: setup-local
+setup-local:
 	@echo "=== Configuração Completa do Sistema ==="
 	@echo "1. Instalando dependências..."
 	$(MAKE) install
