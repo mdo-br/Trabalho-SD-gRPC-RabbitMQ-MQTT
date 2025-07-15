@@ -37,7 +37,7 @@ GRPC_SERVER_HOST = "localhost"
 GRPC_SERVER_PORT = 50051
 
 # Configurações MQTT
-MQTT_BROKER_HOST = "localhost"
+MQTT_BROKER_HOST = "192.168.1.102"  # <--- Substitua pelo IP real do seu broker MQTT
 MQTT_BROKER_PORT = 1883
 MQTT_COMMAND_TOPIC_PREFIX = "smart_city/commands/sensors/"
 MQTT_RESPONSE_TOPIC_PREFIX = "smart_city/commands/sensors/"
@@ -94,6 +94,17 @@ def read_delimited_message_bytes(sock_file):
     envelope.ParseFromString(message_data)
     return envelope
 
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
+
 # === MQTT HANDLERS ===
 def setup_mqtt():
     """Configura cliente MQTT"""
@@ -101,6 +112,9 @@ def setup_mqtt():
     
     client_id = f"gateway_{int(time.time())}"
     mqtt_client = mqtt.Client(client_id)
+    
+    # Adicionar autenticação MQTT
+    mqtt_client.username_pw_set('smartcity', 'smartcity123')  # <--- Substitua pelos dados corretos
     
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
@@ -245,13 +259,17 @@ def multicast_discovery():
     ttl = struct.pack('b', 1)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
     
-    local_ip = socket.gethostbyname(socket.gethostname())
+    local_ip = get_local_ip()
     
     discovery_request = smart_city_pb2.DiscoveryRequest(
         gateway_ip=local_ip,
         gateway_tcp_port=GATEWAY_TCP_PORT,
-        gateway_udp_port=GATEWAY_UDP_PORT
+        gateway_udp_port=GATEWAY_UDP_PORT,
+        mqtt_broker_ip=MQTT_BROKER_HOST,
+        mqtt_broker_port=MQTT_BROKER_PORT
     )
+
+    logger.info(f"Enviando discovery: gateway_ip={local_ip}, mqtt_broker_ip={MQTT_BROKER_HOST}")
     
     envelope = smart_city_pb2.SmartCityMessage(
         message_type=smart_city_pb2.MessageType.DISCOVERY_REQUEST,
@@ -275,11 +293,13 @@ def multicast_discovery():
 def register_device(device_info):
     """Registra ou atualiza um dispositivo"""
     with device_lock:
+        # Log extra para debug: mensagem completa
+        logger.info(f"[DEBUG] DeviceInfo completo recebido:\n{device_info}")
         device_id = device_info.device_id
-        
+        # Log extra para debug
+        logger.info(f"[DEBUG] DeviceInfo recebido: device_id={device_info.device_id} type={device_info.type} ip={device_info.ip_address}")
         # Todos os sensores usam MQTT
         is_mqtt_sensor = device_info.is_sensor
-        
         device_data = {
             'id': device_id,
             'type': device_info.type,
@@ -292,12 +312,10 @@ def register_device(device_info):
             'capabilities': dict(device_info.capabilities),
             'is_mqtt_sensor': is_mqtt_sensor
         }
-        
         if is_mqtt_sensor:
             device_data['mqtt_command_topic'] = f"{MQTT_COMMAND_TOPIC_PREFIX}{device_id}"
             device_data['mqtt_response_topic'] = f"{MQTT_COMMAND_TOPIC_PREFIX}{device_id}/response"
             logger.info(f"Sensor MQTT registrado: {device_id}")
-        
         connected_devices[device_id] = device_data
         logger.info(f"Dispositivo {device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado.")
 

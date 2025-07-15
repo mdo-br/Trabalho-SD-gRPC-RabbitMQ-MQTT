@@ -67,3 +67,4 @@ test_*.pyc
 *.pb.h
 esp8266-projects/*/smart_city*.pb.c
 esp8266-projects/*/smart_city*.pb.h
+*.bkp

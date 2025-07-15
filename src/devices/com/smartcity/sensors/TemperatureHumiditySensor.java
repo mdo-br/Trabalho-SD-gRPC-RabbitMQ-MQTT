@@ -31,7 +31,6 @@ public class TemperatureHumiditySensor {
     private static final int MULTICAST_PORT = 5007;
     
     // --- Configurações MQTT ---
-    private static final String MQTT_BROKER = "tcp://192.168.1.102:1883";
     private static final String MQTT_TOPIC_PREFIX = "smart_city/sensors/";
     private static final String MQTT_COMMAND_TOPIC_PREFIX = "smart_city/commands/sensors/";
     private static final int MQTT_QOS = 0;
@@ -43,6 +42,8 @@ public class TemperatureHumiditySensor {
     private String gatewayIp;
     private int gatewayTcpPort;
     private int tcpPort = 6001; // Mantido apenas para registro inicial
+    private String mqttBrokerIp = null;
+    private int mqttBrokerPort = 1883; // valor padrão
     
     // MQTT
     private MqttClient mqttClient;
@@ -65,7 +66,7 @@ public class TemperatureHumiditySensor {
         this.mqttCommandTopic = MQTT_COMMAND_TOPIC_PREFIX + deviceId;
         this.mqttResponseTopic = MQTT_COMMAND_TOPIC_PREFIX + deviceId + "/response";
         
-        LOGGER.info("Sensor MQTT V3 criado: " + deviceId);
+        LOGGER.info("Sensor MQTT criado: " + deviceId);
         LOGGER.info("Tópico dados: " + mqttDataTopic);
         LOGGER.info("Tópico comandos: " + mqttCommandTopic);
         LOGGER.info("Tópico respostas: " + mqttResponseTopic);
@@ -111,8 +112,15 @@ public class TemperatureHumiditySensor {
                 SmartCity.DiscoveryRequest discoveryRequest = envelope.getDiscoveryRequest();
                 gatewayIp = discoveryRequest.getGatewayIp();
                 gatewayTcpPort = discoveryRequest.getGatewayTcpPort();
+                if (discoveryRequest.hasMqttBrokerIp()) {
+                    mqttBrokerIp = discoveryRequest.getMqttBrokerIp();
+                }
+                if (discoveryRequest.hasMqttBrokerPort()) {
+                    mqttBrokerPort = discoveryRequest.getMqttBrokerPort();
+                }
                 
                 LOGGER.info("Sensor " + deviceId + " encontrou Gateway: " + gatewayIp + ":" + gatewayTcpPort);
+                LOGGER.info("Sensor " + deviceId + " encontrou MQTT broker: " + mqttBrokerIp + ":" + mqttBrokerPort);
             }
             
             socket.leaveGroup(new InetSocketAddress(group, 0), NetworkInterface.getByInetAddress(InetAddress.getLocalHost()));
@@ -121,7 +129,8 @@ public class TemperatureHumiditySensor {
 
     private void connectToMQTT() {
         try {
-            mqttClient = new MqttClient(MQTT_BROKER, deviceId + "_v3", new MemoryPersistence());
+            String broker = "tcp://" + (mqttBrokerIp != null ? mqttBrokerIp : "localhost") + ":" + mqttBrokerPort;
+            mqttClient = new MqttClient(broker, deviceId + "_v3", new MemoryPersistence());
             
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
@@ -150,7 +159,7 @@ public class TemperatureHumiditySensor {
             });
             
             mqttClient.connect(options);
-            LOGGER.info("Sensor " + deviceId + " conectado ao MQTT broker: " + MQTT_BROKER);
+            LOGGER.info("Sensor " + deviceId + " conectado ao MQTT broker: " + broker);
             
             // Inscrever-se no tópico de comandos
             mqttClient.subscribe(mqttCommandTopic, MQTT_COMMAND_QOS);
