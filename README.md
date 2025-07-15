@@ -248,10 +248,20 @@ flowchart TB
 
 ## Instalação e Configuração
 
+> **Para um guia detalhado do Makefile com exemplos práticos, consulte [README_MAKEFILE.md](README_MAKEFILE.md)**
+
 ### 1. Configuração Automática (Recomendado)
+
+**Na Raspberry Pi 3 (Infraestrutura):**
 ```bash
 # Instala dependências, configura RabbitMQ, gera proto e compila Java
-make setup
+make setup-complete INFRA=1
+```
+
+**Em máquinas de desenvolvimento:**
+```bash
+# Instala dependências, gera proto e compila Java (pula RabbitMQ)
+make setup-complete
 ```
 
 ### 2. Configuração Manual
@@ -268,8 +278,8 @@ pip install -r requirements.txt
 
 #### Configurar RabbitMQ com plugin MQTT:
 ```bash
-# Automático
-make rabbitmq
+# Automático (apenas na Raspberry Pi 3)
+make rabbitmq INFRA=1
 
 # Manual
 sudo systemctl start rabbitmq-server
@@ -305,69 +315,90 @@ cd esp8266-projects/temperature-sensor-board
 
 ## Execução do Sistema
 
+> **Para comandos detalhados e exemplos práticos, consulte [README_MAKEFILE.md](README_MAKEFILE.md)**
+
+### Arquitetura de Execução
+
+**Infraestrutura (Raspberry Pi 3):**
+- RabbitMQ MQTT Broker
+- Servidor gRPC
+- Gateway (pode rodar em qualquer máquina)
+
+**Dispositivos (Qualquer máquina):**
+- Sensores Java (MQTT)
+- Atuadores Java (gRPC)
+- ESP8266 (MQTT)
+- Clientes de teste
+
 ### Pré-requisitos
-- RabbitMQ instalado e em execução
+- RabbitMQ instalado e em execução na Raspberry Pi 3
 - Plugin MQTT habilitado no RabbitMQ
 - Java 17+ instalado
 - Python 3.10+ com ambiente virtual configurado
 
-### Preparação do Sistema
+### Execução Rápida
 
-#### 1. Verificar RabbitMQ
+#### Na Raspberry Pi 3 (Infraestrutura)
 ```bash
-sudo systemctl status rabbitmq-server
-sudo rabbitmq-plugins list | grep mqtt
+# Terminal 1: Servidor gRPC
+make run-grpc INFRA=1
+
+# Terminal 2: Testes
+make test-mqtt INFRA=1
+make validate-v3 INFRA=1
 ```
 
-#### 2. Configurar Ambiente Virtual
+#### Em Qualquer Máquina (Dispositivos)
 ```bash
-# Criar ambiente virtual (primeira vez)
-python3 -m venv venv
+# Terminal 1: Gateway
+make run-gateway
 
-# Ativar ambiente virtual
-source venv/bin/activate
+# Terminal 2: Sensor
+make run-sensor
 
-# Instalar dependências
-pip install -r requirements.txt
+# Terminal 3: Atuador
+make run-actuator
+
+# Terminal 4: Cliente de teste
+make run-client
 ```
 
-#### 3. Gerar Arquivos Protocol Buffers
-```bash
-# Gerar arquivos Python
-make proto
-
-# Gerar arquivos Java
-make java
-```
-
-#### 4. Compilar Dispositivos Java
-```bash
-make build-java
-```
-
-### Execução em Ordem
+### Execução Detalhada (Método Tradicional)
 
 #### 1. Servidor gRPC (Terminal 1) - OBRIGATÓRIO PRIMEIRO
 ```bash
-source venv/bin/activate
-make run-grpc
+# Na Raspberry Pi 3
+make run-grpc INFRA=1
 ```
 Status: Servidor rodando na porta 50051
 
 #### 2. Gateway (Terminal 2)
 ```bash
-source venv/bin/activate
+# Em qualquer máquina
 make run-gateway
 ```
 Status: Gateway conectado ao broker MQTT e servidor gRPC
 
 #### 3. Sensor Java (Terminal 3)
 ```bash
+# Em qualquer máquina
 make run-sensor
 ```
 Status: Sensor publicando dados via MQTT
 
-#### 4. Cliente de Teste (Terminal 4)
+#### 4. Atuador Java (Terminal 4)
+```bash
+# Em qualquer máquina
+make run-actuator
+```
+Status: Atuador aguardando comandos gRPC
+
+#### 5. Cliente de Teste (Terminal 5)
+```bash
+# Em qualquer máquina
+make run-client
+```
+Status: Cliente pronto para enviar comandos
 ```bash
 source venv/bin/activate
 make run-client
@@ -997,3 +1028,40 @@ Executa uma demonstração completa do sistema, iniciando todos os principais co
 
 #### make test-esp8266-mqtt
 Executa testes automáticos de comandos MQTT específicos para sensores ESP8266, simulando comandos e verificando respostas.
+
+## Automatização com Makefile
+
+O projeto inclui um Makefile completo para automatizar todas as tarefas de compilação, execução e teste. 
+
+### Comandos Principais
+
+```bash
+# Ver todos os comandos disponíveis
+make help
+
+# Configuração completa
+make setup-complete
+
+# Executar na Raspberry Pi 3
+make run-grpc INFRA=1
+make validate-v3 INFRA=1
+
+# Executar dispositivos
+make run-gateway
+make run-sensor
+make run-actuator
+make run-client
+```
+
+### Documentação Completa
+
+Para uma lista completa de comandos, exemplos práticos e guias de solução de problemas, consulte:
+
+**[README_MAKEFILE.md](README_MAKEFILE.md) - Guia Completo do Makefile**
+
+Este documento inclui:
+- Todos os comandos disponíveis
+- Exemplos práticos de uso
+- Fluxos de trabalho completos
+- Solução de problemas
+- Configuração de variáveis
