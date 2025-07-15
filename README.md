@@ -1,5 +1,49 @@
 # Smart City - Sistema Distribuído com gRPC e RabbitMQ/MQTT
 
+## AVISO IMPORTANTE: Execução em diferentes máquinas
+
+- Comandos de infraestrutura (RabbitMQ, servidor gRPC, setup completo) devem ser executados na Raspberry Pi 3 usando a variável `INFRA=1`.
+- Nos demais ambientes (gateway, API, frontend, clientes), execute os comandos normalmente, sem a variável.
+
+### Exemplos:
+
+**Na Raspberry Pi 3 (Infraestrutura):**
+```bash
+make setup INFRA=1         # Instala tudo e configura RabbitMQ
+make run-grpc INFRA=1      # Executa o servidor ponte gRPC
+make rabbitmq INFRA=1      # Configura RabbitMQ
+```
+
+**Na máquina de desenvolvimento (Gateway, API, etc):**
+```bash
+make setup                 # Instala dependências, gera protos, compila Java (pula RabbitMQ)
+make run-gateway           # Executa o gateway
+make run-api               # Executa a API REST
+make run-client            # Executa o cliente de teste
+```
+
+> Se tentar rodar comandos de infraestrutura sem `INFRA=1` fora da Raspberry Pi, o Makefile exibirá um aviso e não executará o comando.
+
+## Descoberta Automática de Parâmetros de Rede
+
+Os sensores (Java e ESP8266) **não dependem de valores hardcoded** para IP/porta do gateway e do broker MQTT. Todos esses parâmetros são aprendidos automaticamente via o processo de descoberta multicast UDP, enviado pelo gateway.
+
+### Como funciona:
+- O gateway envia periodicamente uma mensagem DiscoveryRequest via multicast, contendo:
+  - IP e porta TCP do gateway
+  - IP e porta do broker MQTT
+- Os sensores, ao receberem essa mensagem, aprendem todos os parâmetros necessários para operar e se conectar à infraestrutura.
+- Não é necessário editar o código dos sensores para mudar IPs ou portas.
+
+### Parâmetros aprendidos automaticamente:
+- IP do gateway
+- Porta TCP do gateway
+- IP do broker MQTT
+- Porta do broker MQTT
+
+> **Atenção:**  
+> Certifique-se de que o gateway está enviando a DiscoveryRequest corretamente e que a rede permite multicast UDP.
+
 ## Visão Geral
 
 Este projeto implementa um sistema distribuído para simular o monitoramento e controle de uma cidade inteligente, utilizando paradigmas atuais de comunicação distribuída.

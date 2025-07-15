@@ -47,6 +47,8 @@ message DiscoveryRequest {
   string gateway_ip = 1;        // Endereço IP do Gateway
   int32 gateway_tcp_port = 2;   // Porta TCP do Gateway (para comunicação de controle)
   int32 gateway_udp_port = 3;   // Porta UDP do Gateway (para recebimento de dados sensoriados)
+  string mqtt_broker_ip = 4;    // Endereço IP do broker MQTT
+  int32 mqtt_broker_port = 5;   // Porta do broker MQTT
 }
 
 // Mensagem enviada pelo Dispositivo em resposta a uma DiscoveryRequest

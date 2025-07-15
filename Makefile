@@ -7,6 +7,8 @@ SMART_CITY_PROTO = $(PROTO_DIR)/smart_city.proto
 ACTUATOR_SERVICE_PROTO = $(PROTO_DIR)/actuator_service.proto
 PYTHON_OUT = $(PROTO_DIR)
 
+# Use INFRA=1 para rodar comandos de infraestrutura (RabbitMQ, gRPC) na Raspberry Pi 3
+
 # Comando padrão
 .PHONY: help
 help:
@@ -30,7 +32,18 @@ help:
 
 # Configuração completa do ambiente
 .PHONY: setup
-setup: install rabbitmq proto java
+setup:
+ifeq ($(INFRA),1)
+	$(MAKE) install
+	$(MAKE) rabbitmq INFRA=1
+	$(MAKE) proto
+	$(MAKE) java
+else
+	$(MAKE) install
+	@echo "Pulando configuração do RabbitMQ (apenas na Raspberry Pi 3)."
+	$(MAKE) proto
+	$(MAKE) java
+endif
 	@echo "Ambiente configurado com sucesso!"
 	@echo "Próximos passos:"
 	@echo "1. make run-grpc    (servidor ponte gRPC - em um terminal)"
@@ -62,9 +75,13 @@ java: java-proto
 # Configura RabbitMQ com plugin MQTT
 .PHONY: rabbitmq
 rabbitmq:
-	@echo "Configurando RabbitMQ..."
+ifeq ($(INFRA),1)
+	@echo "Configurando RabbitMQ (Raspberry Pi 3)..."
 	@chmod +x setup_rabbitmq.sh
 	./setup_rabbitmq.sh
+else
+	@echo "Este comando deve ser executado apenas na Raspberry Pi 3 (Infraestrutura)."
+endif
 
 # Remove arquivos gerados
 .PHONY: clean
@@ -89,10 +106,13 @@ install:
 
 # Executa servidor gRPC
 .PHONY: run-grpc
-run-grpc: install proto
-	@echo "Executando servidor ponte gRPC..."
-	@echo "Usando ambiente virtual: $(shell pwd)/venv"
+run-grpc:
+ifeq ($(INFRA),1)
+	@echo "Executando servidor ponte gRPC (Raspberry Pi 3)..."
 	@bash -c "source venv/bin/activate && python3 src/grpc_server/actuator_bridge_server.py"
+else
+	@echo "Este comando deve ser executado apenas na Raspberry Pi 3 (Infraestrutura)."
+endif
 
 # Executa gateway
 .PHONY: run-gateway
