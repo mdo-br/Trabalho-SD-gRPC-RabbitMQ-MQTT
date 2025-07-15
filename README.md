@@ -11,7 +11,7 @@ Apesar da maior parte do sistema utilizar descoberta automática de IPs e portas
     ```
   - Configure o IP do servidor gRPC na variável `GRPC_SERVER_HOST`.
     ```python
-    GRPC_SERVER_HOST = "loca192.168.x.x"  # Ou o IP da máquina onde roda o servidor gRPC
+    GRPC_SERVER_HOST = "192.168.x.x"  # Substitua pelo IP real do servidor gRPC
     ```
 
 - **Frontend React (src/front-end/smart-city-front/src/App.js e DeviceStatus.js):**

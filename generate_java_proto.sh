@@ -6,10 +6,12 @@ echo "Generating protobuf files..."
 
 # Clean the output directory
 rm -rf target/generated-sources/protobuf/java/*
+mkdir -p target/generated-sources/protobuf/java
 
 # Generate Java classes from proto files
 echo "Generating Java classes..."
-protoc --java_out=target/generated-sources/protobuf/java --proto_path=src/proto src/proto/smart_city.proto src/proto/actuator_service.proto
+protoc --java_out=target/generated-sources/protobuf/java --proto_path=src/proto src/proto/smart_city.proto
+#protoc --java_out=target/generated-sources/protobuf/java --proto_path=src/proto src/proto/actuator_service.proto
 
 # Generate gRPC service files
 echo "Generating gRPC service files..."

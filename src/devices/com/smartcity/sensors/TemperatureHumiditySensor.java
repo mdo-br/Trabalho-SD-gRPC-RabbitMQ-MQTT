@@ -112,10 +112,10 @@ public class TemperatureHumiditySensor {
                 SmartCity.DiscoveryRequest discoveryRequest = envelope.getDiscoveryRequest();
                 gatewayIp = discoveryRequest.getGatewayIp();
                 gatewayTcpPort = discoveryRequest.getGatewayTcpPort();
-                if (discoveryRequest.hasMqttBrokerIp()) {
+                if (!discoveryRequest.getMqttBrokerIp().isEmpty()) {
                     mqttBrokerIp = discoveryRequest.getMqttBrokerIp();
                 }
-                if (discoveryRequest.hasMqttBrokerPort()) {
+                if (discoveryRequest.getMqttBrokerPort() != 0) {
                     mqttBrokerPort = discoveryRequest.getMqttBrokerPort();
                 }
                 

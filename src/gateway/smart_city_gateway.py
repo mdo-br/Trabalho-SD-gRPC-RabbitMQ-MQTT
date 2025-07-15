@@ -444,7 +444,6 @@ def handle_tcp_connection(conn, addr):
         logger.error(f"Erro na conexão TCP de {addr}: {e}")
 
 def handle_client_request(req):
-    """Processa requisição de cliente"""
     if req.type == smart_city_pb2.ClientRequest.RequestType.LIST_DEVICES:
         with device_lock:
             devices = []
@@ -460,11 +459,11 @@ def handle_client_request(req):
                 )
                 devices.append(device_info)
             
-            return smart_city_pb2.GatewayResponse(
-                type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST,
-                message=f"Lista de {len(devices)} dispositivos",
-                devices=devices
-            )
+        return smart_city_pb2.GatewayResponse(
+            type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_LIST,
+            message=f"Lista de {len(devices)} dispositivos",
+            devices=devices
+        )
     
     elif req.type == smart_city_pb2.ClientRequest.RequestType.SEND_DEVICE_COMMAND:
         result = send_command_to_device(req.target_device_id, req.command.command_type, req.command.command_value)
@@ -474,6 +473,67 @@ def handle_client_request(req):
             message=result["message"],
             command_status=result["command_status"]
         )
+    
+    elif req.type == smart_city_pb2.ClientRequest.RequestType.GET_DEVICE_STATUS:
+        dev_id = req.target_device_id
+        with device_lock:
+            dev = connected_devices.get(dev_id)
+        if not dev:
+            return smart_city_pb2.GatewayResponse(
+                type=smart_city_pb2.GatewayResponse.ResponseType.ERROR,
+                message="Dispositivo não encontrado."
+            )
+
+        # SENSOR: responder com último dado recebido via MQTT
+        if dev.get('is_sensor', False):
+            logger.info(f"[GATEWAY] Respondendo status do sensor {dev_id} com último dado MQTT recebido")
+            last_data = dev.get('last_data', {})
+            logger.info(f"[DEBUG] last_data recebido via MQTT: {last_data}")
+            status_str = last_data.get('status')
+            if status_str and hasattr(smart_city_pb2.DeviceStatus, status_str):
+                status_enum = getattr(smart_city_pb2.DeviceStatus, status_str)
+            else:
+                status_enum = smart_city_pb2.DeviceStatus.IDLE  # Valor padrão seguro
+            update = smart_city_pb2.DeviceUpdate(
+                device_id=dev_id,
+                type=dev['type'],
+                current_status=status_enum,
+            )
+            if 'temperature' in last_data and 'humidity' in last_data:
+                update.temperature_humidity.temperature = float(last_data['temperature'])
+                update.temperature_humidity.humidity = float(last_data['humidity'])
+            return smart_city_pb2.GatewayResponse(
+                type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_STATUS_UPDATE,
+                device_status=update,
+                message="Status retornado do sensor (último dado MQTT recebido)."
+            )
+
+        # ATUADOR: obter status via gRPC (mantém igual)
+        elif dev.get('is_actuator', False):
+            logger.info(f"[GATEWAY] Consultando status do atuador {dev_id} via gRPC")
+            grpc_result = send_grpc_command(dev_id, "GET_STATUS")
+            if grpc_result["command_status"] == "SUCCESS":
+                update = smart_city_pb2.DeviceUpdate(
+                    device_id=dev_id,
+                    type=dev['type'],
+                    current_status=getattr(smart_city_pb2.DeviceStatus, grpc_result.get('status', 'UNKNOWN'), smart_city_pb2.DeviceStatus.UNKNOWN),
+                )
+                return smart_city_pb2.GatewayResponse(
+                    type=smart_city_pb2.GatewayResponse.ResponseType.DEVICE_STATUS_UPDATE,
+                    device_status=update,
+                    message="Status retornado do atuador via gRPC."
+                )
+            else:
+                return smart_city_pb2.GatewayResponse(
+                    type=smart_city_pb2.GatewayResponse.ResponseType.ERROR,
+                    message=f"Falha ao obter status do atuador {dev_id} via gRPC: {grpc_result['message']}"
+                )
+
+        else:
+            return smart_city_pb2.GatewayResponse(
+                type=smart_city_pb2.GatewayResponse.ResponseType.ERROR,
+                message=f"Tipo de dispositivo não suportado para consulta de status: {dev_id}"
+            )
     
     return smart_city_pb2.GatewayResponse(
         type=smart_city_pb2.GatewayResponse.ResponseType.ERROR,

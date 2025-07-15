@@ -15,7 +15,7 @@ MQTT_BROKER_HOST = "192.168.1.102"
 MQTT_BROKER_PORT = 1883
 MQTT_USERNAME = "smartcity"  # <--- Preencha aqui
 MQTT_PASSWORD = "smartcity123"    # <--- Preencha aqui
-DEVICE_ID = "temp_sensor_mqtt_001"
+DEVICE_ID = "temp_sensor_esp_001"
 COMMAND_TOPIC = f"smart_city/commands/sensors/{DEVICE_ID}"
 RESPONSE_TOPIC = f"smart_city/commands/sensors/{DEVICE_ID}/response"
 
