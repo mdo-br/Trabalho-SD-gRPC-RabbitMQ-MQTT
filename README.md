@@ -1,5 +1,43 @@
 # Smart City - Sistema Distribuído com gRPC e RabbitMQ/MQTT
 
+### Configuração de IPs Hardcoded
+
+Apesar da maior parte do sistema utilizar descoberta automática de IPs e portas via multicast UDP, alguns componentes ainda exigem configuração manual (hardcoded) de IP para funcionamento correto. Veja abaixo:
+
+- **Gateway (src/gateway/smart_city_gateway.py):**
+  - Configure o IP do broker MQTT na variável `MQTT_BROKER_HOST`.
+    ```python
+    MQTT_BROKER_HOST = "192.168.x.x"  # Substitua pelo IP real do seu broker MQTT
+    ```
+  - Se o servidor gRPC não estiver em localhost, altere também `GRPC_SERVER_HOST`.
+
+- **Frontend React (src/front-end/smart-city-front/src/App.js e DeviceStatus.js):**
+  - O IP do backend (API FastAPI) está hardcoded na variável `IP`.
+    ```js
+    const IP = '192.168.x.x'
+    ```
+
+- **API FastAPI (src/api/src/api_server.py):**
+  - O IP do gateway está definido em:
+    ```python
+    GATEWAY_HOST = "192.168.x.x"
+    ```
+
+- **Cliente de Teste (src/client-test/smart_city_client.py e temperature_sensor_commands.py):**
+  - O IP do gateway deve ser configurado nas variáveis:
+    ```python
+    GATEWAY_IP = 'localhost'  # ou '192.168.x.x'
+    ```
+
+- **WiFi dos ESP8266:**
+  - Configure o SSID e senha da rede WiFi diretamente no código:
+    ```cpp
+    const char* ssid = "SUA_REDE_WIFI";
+    const char* password = "SUA_SENHA_WIFI";
+    ```
+
+> **Atenção:** Sempre revise e ajuste esses IPs conforme o ambiente de execução para garantir o funcionamento correto do sistema.
+
 ## AVISO IMPORTANTE: Execução em diferentes máquinas
 
 - Comandos de infraestrutura (RabbitMQ, servidor gRPC, setup completo) devem ser executados na Raspberry Pi 3 usando a variável `INFRA=1`.
