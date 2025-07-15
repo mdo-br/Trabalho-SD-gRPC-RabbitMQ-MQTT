@@ -9,7 +9,7 @@ O sistema Smart City é distribuído em duas partes principais:
 ### Infraestrutura (Raspberry Pi 3)
 - **RabbitMQ MQTT Broker** (porta 1883)
 - **Servidor gRPC** (porta 50051)
-- **Gateway** (coordenador do sistema)
+- **Gateway** (coordenador do sistema) - pode rodar em qualquer máquina
 
 ### Dispositivos (Qualquer máquina)
 - **Sensores Java** (MQTT)
