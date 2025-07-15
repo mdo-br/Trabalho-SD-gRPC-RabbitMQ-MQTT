@@ -17,12 +17,77 @@ O sistema Smart City é distribuído em duas partes principais:
 - **ESP8266** (MQTT)
 - **Clientes de teste**
 
+## Setup Completo na Raspberry Pi 3
+
+### Pré-requisitos Mínimos
+
+Antes de usar o Makefile, certifique-se de que a Raspberry Pi 3 tem:
+
+```bash
+# Atualizar sistema
+sudo apt update && sudo apt upgrade -y
+
+# Instalar dependências essenciais
+sudo apt install -y python3 python3-pip python3-venv openjdk-21-jdk maven protobuf-compiler git wget curl build-essential
+
+# Verificar versões
+python3 --version    # Deve ser 3.8+
+java -version        # Deve ser 21+
+mvn -version         # Deve estar instalado
+protoc --version     # Deve estar instalado
+```
+
+### Configuração Automática
+
+```bash
+# 1. Clonar repositório
+git clone https://github.com/mdo-br/Trabalho-SD-gRPC-RabbitMQ-MQTT.git
+cd Trabalho-SD-gRPC-RabbitMQ-MQTT
+
+# 2. Configuração completa com RabbitMQ (RECOMENDADO)
+make setup INFRA=1
+
+# 3. Verificar instalação
+make status
+make test-mqtt INFRA=1
+
+# 4. Executar infraestrutura
+make run-grpc INFRA=1
+```
+
+### Comandos Alternativos
+
+```bash
+# Configuração por etapas (se preferir)
+make setup-local INFRA=1    # Configuração básica (sem RabbitMQ)
+make rabbitmq INFRA=1       # Configurar RabbitMQ separadamente
+```
+
+### Verificação Final
+
+Após o setup, você deve ter:
+- ✅ RabbitMQ rodando com plugin MQTT
+- ✅ Plugin gRPC Java instalado
+- ✅ Arquivos Protocol Buffers gerados
+- ✅ Dispositivos Java compilados
+
+```bash
+# Verificar serviços
+sudo systemctl status rabbitmq-server
+ls -la target/protoc-plugins/protoc-gen-grpc-java-1.58.0-linux-x86_64.exe
+ls -la target/generated-sources/protobuf/java/
+sudo netstat -tlnp | grep -E '(1883|50051)'
+```
+
 ## Comandos Essenciais
 
 ### Configuração Inicial
 
 ```bash
-# Configuração completa na Raspberry Pi 3
+# Configuração completa na Raspberry Pi 3 (COM RabbitMQ)
+make setup INFRA=1
+
+# Configuração básica na Raspberry Pi 3 (SEM RabbitMQ)
 make setup-local INFRA=1
 
 # Configuração em máquina de desenvolvimento
@@ -83,14 +148,33 @@ make monitor-actuator
 
 ## Fluxo de Trabalho Completo
 
+### Sequência Recomendada na Raspberry Pi 3
+
+```bash
+# 1. Configuração completa (RECOMENDADO)
+make setup INFRA=1
+
+# 2. Verificar funcionamento
+make status
+make test-mqtt INFRA=1
+
+# 3. Executar servidor gRPC
+make run-grpc INFRA=1
+
+# 4. Em outro terminal, monitorar
+make monitor-system INFRA=1
+```
+
+### Configuração Passo a Passo (Alternativa)
+
 ### 1. Configuração Inicial
 
 ```bash
-# Na Raspberry Pi 3 (Infraestrutura)
+# Na Raspberry Pi 3 (Infraestrutura) - COM RabbitMQ
 make setup INFRA=1
 
 # Em qualquer máquina (Dispositivos)
-make setup
+make setup-local
 ```
 
 ### 2. Execução da Infraestrutura
@@ -134,6 +218,9 @@ make install-grpc-plugin
 # Gerar código Protocol Buffers
 make proto
 
+# Gerar Protocol Buffers Java apenas
+make java-proto
+
 # Compilar Java
 make java
 
@@ -149,6 +236,9 @@ make setup-local
 ```bash
 # Testes específicos do atuador
 make test-actuator-commands
+
+# Teste atuador via gRPC (na Raspberry Pi 3)
+make test-actuator INFRA=1
 
 # Teste de consulta de status
 make test-status
@@ -210,8 +300,8 @@ make clean-all
 ### Exemplo 1: Configuração Inicial Completa
 
 ```bash
-# 1. Na Raspberry Pi 3
-make setup-local INFRA=1
+# 1. Na Raspberry Pi 3 (COM RabbitMQ)
+make setup INFRA=1
 
 # 2. Em máquina de desenvolvimento
 make setup-local
@@ -299,6 +389,23 @@ make proto
 
 # Verificar status
 make status
+```
+
+### Problema: Setup inicial na Raspberry Pi 3
+
+```bash
+# Se não tiver RabbitMQ configurado
+make setup INFRA=1
+
+# Se só precisar configurar RabbitMQ
+make rabbitmq INFRA=1
+
+# Se só precisar do plugin gRPC
+make install-grpc-plugin
+
+# Verificar se tudo está funcionando
+make status
+make test-mqtt INFRA=1
 ```
 
 ### Problema: JARs não compilados

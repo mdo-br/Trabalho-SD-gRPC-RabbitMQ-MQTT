@@ -15,7 +15,7 @@ help:
 	@echo "Comandos disponiveis para Smart City:"
 	@echo "=== CONFIGURAÇÃO ==="
 	@echo "  make setup         - Configura ambiente completo (deps + proto + rabbitmq)"
-	@echo "  make setup-local - Configuração completa automatizada"
+	@echo "  make setup-local   - Configuração sem RabbitMQ (deps + proto + java)"
 	@echo "  make proto         - Gera código Python/gRPC a partir dos arquivos .proto"
 	@echo "  make java          - Compila dispositivos Java com Maven"
 	@echo "  make build-jars    - Gera JARs dos dispositivos Java"

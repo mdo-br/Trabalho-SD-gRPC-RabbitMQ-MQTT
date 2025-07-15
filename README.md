@@ -59,7 +59,7 @@ make rabbitmq INFRA=1      # Configura RabbitMQ
 
 **Na máquina de desenvolvimento (Gateway, API, etc):**
 ```bash
-make setup                 # Instala dependências, gera protos, compila Java (pula RabbitMQ)
+make setup-local                 # Instala dependências, gera protos, compila Java (pula RabbitMQ)
 make run-gateway           # Executa o gateway
 make run-api               # Executa a API REST
 make run-client            # Executa o cliente de teste
@@ -963,7 +963,7 @@ sudo rabbitmqctl status
 make install-grpc-plugin
 
 # Verificar compilação
-make build-java
+make java
 
 # Verificar dependências
 mvn dependency:tree
