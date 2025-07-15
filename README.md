@@ -9,7 +9,10 @@ Apesar da maior parte do sistema utilizar descoberta automática de IPs e portas
     ```python
     MQTT_BROKER_HOST = "192.168.x.x"  # Substitua pelo IP real do seu broker MQTT
     ```
-  - Se o servidor gRPC não estiver em localhost, altere também `GRPC_SERVER_HOST`.
+  - Configure o IP do servidor gRPC na variável `GRPC_SERVER_HOST`.
+    ```python
+    GRPC_SERVER_HOST = "loca192.168.x.x"  # Ou o IP da máquina onde roda o servidor gRPC
+    ```
 
 - **Frontend React (src/front-end/smart-city-front/src/App.js e DeviceStatus.js):**
   - O IP do backend (API FastAPI) está hardcoded na variável `IP`.
