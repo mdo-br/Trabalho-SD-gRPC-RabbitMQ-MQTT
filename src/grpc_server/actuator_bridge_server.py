@@ -150,85 +150,71 @@ def send_tcp_command_to_device(device_ip: str, device_port: int, command: smart_
         logger.error(f"Erro ao comunicar com dispositivo {device_ip}:{device_port}: {e}")
         raise
 
-class AtuadorServicer(actuator_service_pb2_grpc.AtuadorServiceServicer):
-    """Implementação do serviço gRPC para controle de atuadores"""
-    
+
+class ActuatorServiceServicer(actuator_service_pb2_grpc.ActuatorServiceServicer):
+    """Implementação do serviço gRPC para controle de atuadores (novo .proto)"""
+
     def LigarDispositivo(self, request, context):
-        """Liga um dispositivo atuador"""
-        logger.info(f"[gRPC] Comando LIGAR para dispositivo {request.device_id}")
-        
+        device_id = request.device_id
+        logger.info(f"[gRPC] Comando LIGAR para dispositivo {device_id}")
+        ip = request.ip
+        port = request.port
         try:
-            # Criar comando Protocol Buffers
             command = smart_city_pb2.DeviceCommand()
-            command.device_id = request.device_id
+            command.device_id = device_id
             command.command_type = "TURN_ON"
             command.command_value = ""
-            
-            # Enviar comando TCP
-            device_update = send_tcp_command_to_device(request.ip, request.port, command)
-            
-            # Retornar resposta gRPC
+            device_update = send_tcp_command_to_device(ip, port, command)
             return actuator_service_pb2.StatusResponse(
-                status="SUCCESS",
-                message=f"Dispositivo {request.device_id} ligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
+                status="ON",
+                message=f"Dispositivo {device_id} ligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
             )
-            
         except Exception as e:
-            logger.error(f"Erro ao ligar dispositivo {request.device_id}: {e}")
+            logger.error(f"Erro ao ligar dispositivo {device_id}: {e}")
             return actuator_service_pb2.StatusResponse(
                 status="ERROR",
                 message=f"Erro ao ligar dispositivo: {str(e)}"
             )
-    
+
     def DesligarDispositivo(self, request, context):
-        """Desliga um dispositivo atuador"""
-        logger.info(f"[gRPC] Comando DESLIGAR para dispositivo {request.device_id}")
-        
+        device_id = request.device_id
+        logger.info(f"[gRPC] Comando DESLIGAR para dispositivo {device_id}")
+        ip = request.ip
+        port = request.port
         try:
-            # Criar comando Protocol Buffers
             command = smart_city_pb2.DeviceCommand()
-            command.device_id = request.device_id
+            command.device_id = device_id
             command.command_type = "TURN_OFF"
             command.command_value = ""
-            
-            # Enviar comando TCP
-            device_update = send_tcp_command_to_device(request.ip, request.port, command)
-            
-            # Retornar resposta gRPC
+            device_update = send_tcp_command_to_device(ip, port, command)
             return actuator_service_pb2.StatusResponse(
-                status="SUCCESS",
-                message=f"Dispositivo {request.device_id} desligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
+                status="OFF",
+                message=f"Dispositivo {device_id} desligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
             )
-            
         except Exception as e:
-            logger.error(f"Erro ao desligar dispositivo {request.device_id}: {e}")
+            logger.error(f"Erro ao desligar dispositivo {device_id}: {e}")
             return actuator_service_pb2.StatusResponse(
                 status="ERROR",
                 message=f"Erro ao desligar dispositivo: {str(e)}"
             )
-    
+
     def ConsultarEstado(self, request, context):
-        """Consulta o estado atual de um dispositivo"""
-        logger.info(f"[gRPC] Consulta de estado para dispositivo {request.device_id}")
-        
+        device_id = request.device_id
+        logger.info(f"[gRPC] Consulta de estado para dispositivo {device_id}")
+        ip = request.ip
+        port = request.port
         try:
-            # Criar requisição de status
             command = smart_city_pb2.DeviceCommand()
-            command.device_id = request.device_id
+            command.device_id = device_id
             command.command_type = "GET_STATUS"
             command.command_value = ""
-            
-            # Enviar comando TCP
-            device_update = send_tcp_command_to_device(request.ip, request.port, command)
-            
-            # Retornar resposta gRPC
+            device_update = send_tcp_command_to_device(ip, port, command)
             return actuator_service_pb2.StatusResponse(
-                status="SUCCESS",
-                message=f"Status do dispositivo {request.device_id}: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
+                status="OK",
+                message=f"Status do dispositivo {device_id}: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
             )
-            
         except Exception as e:
-            logger.error(f"Erro ao consultar estado do dispositivo {request.device_id}: {e}")
+            logger.error(f"Erro ao consultar estado do dispositivo {device_id}: {e}")
             return actuator_service_pb2.StatusResponse(
                 status="ERROR",
                 message=f"Erro ao consultar estado: {str(e)}"
@@ -237,16 +223,12 @@ class AtuadorServicer(actuator_service_pb2_grpc.AtuadorServiceServicer):
 def serve():
     """Inicia o servidor gRPC"""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    actuator_service_pb2_grpc.add_AtuadorServiceServicer_to_server(AtuadorServicer(), server)
-    
+    actuator_service_pb2_grpc.add_ActuatorServiceServicer_to_server(ActuatorServiceServicer(), server)
     listen_addr = f'[::]:{GRPC_PORT}'
     server.add_insecure_port(listen_addr)
-    
     logger.info(f"Servidor gRPC iniciado na porta {GRPC_PORT}")
     logger.info("Aguardando chamadas gRPC do Gateway...")
-    
     server.start()
-    
     try:
         while True:
             time.sleep(1)

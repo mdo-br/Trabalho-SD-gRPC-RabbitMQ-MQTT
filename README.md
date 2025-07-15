@@ -618,6 +618,19 @@ const char* mqtt_server = "192.168.3.129";
 const char* device_id = "temp_sensor_esp_001";
 ```
 
+## Controle de Atuadores (gRPC)
+
+O controle de atuadores é realizado via gRPC entre o Gateway e o Servidor Ponte gRPC. O Gateway envia comandos contendo o ID, IP e porta do dispositivo, permitindo que o servidor gRPC se conecte diretamente ao atuador.
+
+Exemplo de mensagem gRPC:
+```proto
+message DeviceId {
+  string device_id = 1;
+  string ip = 2;
+  int32 port = 3;
+}
+```
+
 ## Desenvolvimento e Contribuição
 
 ### Estrutura do Projeto
@@ -752,22 +765,16 @@ mosquitto_sub -h localhost -t "smart_city/+/+" -v
 - **Wireshark**: Análise de tráfego de rede
 - **Docker Compose**: Orquestração de serviços
 
-## Licença
 
-Este projeto está licenciado sob a MIT License - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## Autor
 
 Desenvolvido como parte do curso de Sistemas Distribuídos.
 
 **Data**: Julho 2025  
-**Versão**: 3.0 (Arquitetura Unificada MQTT + gRPC)
+**Versão**: 2.0 (Arquitetura Unificada MQTT + gRPC)
 
 ---
-
-**Status do Projeto**: Funcional e Testado  
-**Última Atualização**: $(date)  
-**Taxa de Sucesso**: 100% (todos os componentes principais funcionando)
 
 Para suporte ou dúvidas, consulte a seção de **Troubleshooting** ou abra uma issue no repositório.
 

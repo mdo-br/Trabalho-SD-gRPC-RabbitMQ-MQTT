@@ -5,22 +5,22 @@ package actuator;
 option java_package = "actuator";
 option java_outer_classname = "ActuatorService";
 
-// Serviço gRPC para controle de atuadores
-service AtuadorService {
-  rpc LigarDispositivo(DeviceRequest) returns (StatusResponse);
-  rpc DesligarDispositivo(DeviceRequest) returns (StatusResponse);
-  rpc ConsultarEstado(DeviceRequest) returns (StatusResponse);
-}
-
-// Mensagem de requisição para dispositivos
-message DeviceRequest {
+// Mensagem para identificar o dispositivo
+message DeviceId {
   string device_id = 1;
-  string ip = 2;
-  int32 port = 3;
+  string ip = 2;      // IP do dispositivo
+  int32 port = 3;     // Porta do dispositivo
 }
 
-// Resposta de status do dispositivo
+// Resposta padrão
 message StatusResponse {
-  string status = 1;
-  string message = 2;
+  string status = 1;   // Ex: "ON", "OFF", "OK", "ERROR"
+  string message = 2;  // Mensagem detalhada
+}
+
+// Serviço gRPC para controle de atuadores
+service ActuatorService {
+  rpc LigarDispositivo(DeviceId) returns (StatusResponse);
+  rpc DesligarDispositivo(DeviceId) returns (StatusResponse);
+  rpc ConsultarEstado(DeviceId) returns (StatusResponse);
 }

@@ -359,21 +359,28 @@ def send_grpc_command(dev_id, command_type, command_value=""):
     try:
         with grpc.insecure_channel(f'{GRPC_SERVER_HOST}:{GRPC_SERVER_PORT}') as channel:
             stub = actuator_service_pb2_grpc.ActuatorServiceStub(channel)
-            
-            request = actuator_service_pb2.ActuatorCommandRequest(
-                device_id=dev_id,
-                command_type=command_type,
-                command_value=command_value
-            )
-            
-            response = stub.SendCommand(request)
-            
-            if response.success:
+            # Buscar ip e port do dispositivo
+            with device_lock:
+                dev = connected_devices.get(dev_id)
+                ip = dev['ip'] if dev else ''
+                port = dev['port'] if dev else 0
+            request = actuator_service_pb2.DeviceId(device_id=dev_id, ip=ip, port=port)
+
+            # Mapeamento do comando para o método correto
+            if command_type.upper() in ["LIGAR", "TURN_ON", "ON"]:
+                response = stub.LigarDispositivo(request)
+            elif command_type.upper() in ["DESLIGAR", "TURN_OFF", "OFF"]:
+                response = stub.DesligarDispositivo(request)
+            elif command_type.upper() in ["CONSULTAR", "STATUS", "GET_STATUS"]:
+                response = stub.ConsultarEstado(request)
+            else:
+                return {"command_status": "FAILED", "message": f"Comando gRPC desconhecido: {command_type}"}
+
+            if response.status.upper() in ["ON", "OFF", "OK"]:
                 with device_lock:
                     if dev_id in connected_devices:
                         connected_devices[dev_id]['last_seen'] = time.time()
-                        connected_devices[dev_id]['status'] = response.device_status
-                
+                        connected_devices[dev_id]['status'] = response.status
                 return {
                     "command_status": "SUCCESS",
                     "message": f"Comando gRPC enviado para atuador: {response.message}"
@@ -383,7 +390,6 @@ def send_grpc_command(dev_id, command_type, command_value=""):
                     "command_status": "FAILED",
                     "message": f"Erro no atuador: {response.message}"
                 }
-                
     except grpc.RpcError as e:
         logger.error(f"Erro gRPC ao enviar comando para {dev_id}: {e}")
         return {"command_status": "FAILED", "message": f"Erro gRPC: {e.details()}"}

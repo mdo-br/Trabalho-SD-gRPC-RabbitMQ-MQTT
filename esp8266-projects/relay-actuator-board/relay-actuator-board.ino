@@ -39,8 +39,8 @@ long msgInterval = 5000;            // Intervalo para envio de status (30 segund
 String lampStatus = "OFF";           // Status atual do relé
 
 // --- Configurações de Rede WiFi ---
-const char* SSID = "ATLab";           // Nome da rede WiFi - CONFIGURAR
-const char* PASSWORD = "@TLab#0506";   // Senha da rede WiFi - CONFIGURAR
+const char* SSID = "";           // Nome da rede WiFi - CONFIGURAR
+const char* PASSWORD = "";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
