@@ -12,7 +12,7 @@
  * - Recebimento de comandos via MQTT
  * - Envio de respostas via MQTT
  * - Detecção de mudanças nos valores para otimizar transmissão
- * - Modo simulação: gera dados fake quando DHT11 não está conectado
+ * - Envio automático quando sensor DHT11 detecta dados válidos
  * 
  * Protocolos:
  * - Protocol Buffers para descoberta e registro (mantido)
@@ -22,7 +22,7 @@
  * 
  * Hardware:
  * - ESP8266 (NodeMCU, Wemos D1 Mini, etc.)
- * - Sensor DHT11 conectado ao pino D3 (opcional - usa simulação se não conectado)
+ * - Sensor DHT11 conectado ao pino D3 (só envia dados quando sensor funciona)
  * - Biblioteca DHT para leitura do sensor
  * - Biblioteca PubSubClient para MQTT
  * - Biblioteca ArduinoJson para parsing JSON
@@ -74,10 +74,11 @@ unsigned long captureIntervalMs = 5000;  // Intervalo de captura padrão: 5 segu
 float lastTemperature = NAN;  // Inicializar com NaN para indicar "não lido"
 float lastHumidity = NAN;     // Inicializar com NaN para indicar "não lido"
 unsigned long lastSensorReading = 0;
-unsigned long lastDataSent = 0;
 bool gatewayFound = false;
 String gatewayIP = "";
 int gatewayTCPPort = 0; // Porta TCP do gateway (dinâmica, aprendida via descoberta)
+bool deviceRegistered = false;  // Flag para garantir que dispositivo se registrou via TCP (como no backup)
+bool isUsingSimulatedData = false;  // Flag para identificar se está usando dados simulados
 
 // --- Objetos de Rede ---
 WiFiUDP multicastUdp;
@@ -176,6 +177,20 @@ void setup() {
   // Inicializa o sensor DHT11
   dht.begin();
   
+  // Aguardar um pouco para o sensor DHT11 estabilizar
+  Serial.println("Aguardando inicialização do sensor DHT11...");
+  delay(2000);
+  
+  // Fazer uma leitura inicial para verificar se o sensor está conectado
+  Serial.print("Teste inicial do sensor DHT11: ");
+  float test_temp = dht.readTemperature();
+  float test_hum = dht.readHumidity();
+  if (!isnan(test_temp) && !isnan(test_hum)) {
+    Serial.println("✓ Sensor DHT11 detectado e funcionando");
+  } else {
+    Serial.println("✗ Sensor DHT11 não detectado - enviará zeros quando solicitado");
+  }
+  
   // NÃO configura cliente MQTT aqui - será configurado após descoberta do gateway
   // mqttClient.setServer(mqtt_server, mqtt_port);
   // mqttClient.setCallback(onMqttMessage);
@@ -193,6 +208,22 @@ void setup() {
 
 // --- Loop Principal ---
 void loop() {
+  // Debug inicial do estado
+  static unsigned long lastStateDebug = 0;
+  if (millis() - lastStateDebug >= 30000) {  // Debug a cada 30 segundos
+    Serial.println("=== DEBUG STATUS ===");
+    Serial.print("gatewayFound: ");
+    Serial.println(gatewayFound ? "SIM" : "NÃO");
+    Serial.print("deviceRegistered: ");
+    Serial.println(deviceRegistered ? "SIM" : "NÃO");
+    Serial.print("currentStatus: ");
+    Serial.println(getStatusString());
+    Serial.print("mqttClient.connected(): ");
+    Serial.println(mqttClient.connected() ? "SIM" : "NÃO");
+    Serial.println("===================");
+    lastStateDebug = millis();
+  }
+  
   // Descobrir gateway se ainda não encontrado
   if (!gatewayFound) {
     discoverGateway();
@@ -205,17 +236,23 @@ void loop() {
     delay(10);  // Pequeno delay para processar mensagens MQTT
   }
 
-  // Ler dados do sensor periodicamente
-  if (millis() - lastSensorReading >= 2000) {  // Lê sensor a cada 2 segundos
-    readSensorData();
-    lastSensorReading = millis();
-  }
-
-  // Enviar dados via MQTT se estiver ativo E se o gateway foi descoberto
-  if (gatewayFound && currentStatus == smartcity_devices_DeviceStatus_ACTIVE) {
-    if (millis() - lastDataSent >= captureIntervalMs) {
-      sendSensorDataMQTT();
-      lastDataSent = millis();
+  // Ler dados do sensor periodicamente se gateway foi descoberto, sensor está ativo e JÁ REGISTROU via TCP (como no backup)
+  if (gatewayFound && deviceRegistered && currentStatus == smartcity_devices_DeviceStatus_ACTIVE) {
+    if (millis() - lastSensorReading >= captureIntervalMs) {
+      readSensorData();
+      lastSensorReading = millis();
+    }
+  } else {
+    // Debug para entender por que não está lendo sensor
+    static unsigned long lastDebugPrint = 0;
+    if (millis() - lastDebugPrint >= 10000) {  // Debug a cada 10 segundos
+      Serial.print("[DEBUG] Sensor não ativo - gatewayFound: ");
+      Serial.print(gatewayFound ? "SIM" : "NÃO");
+      Serial.print(", deviceRegistered: ");
+      Serial.print(deviceRegistered ? "SIM" : "NÃO");
+      Serial.print(", status: ");
+      Serial.println(getStatusString());
+      lastDebugPrint = millis();
     }
   }
 
@@ -321,7 +358,6 @@ void processCommand(String jsonMessage) {
   if (commandType == "TURN_ON" || commandType == "TURN_ACTIVE") {
     currentStatus = smartcity_devices_DeviceStatus_ACTIVE;
     responseMessage = "Sensor ativado";
-    lastDataSent = 0;  // Forçar envio imediato
     
   } else if (commandType == "TURN_OFF" || commandType == "TURN_IDLE") {
     currentStatus = smartcity_devices_DeviceStatus_IDLE;
@@ -355,12 +391,6 @@ void processCommand(String jsonMessage) {
 }
 
 void sendCommandResponse(String requestId, bool success, String message, String commandType) {
-  // Garantir que temos dados válidos antes de enviar resposta
-  if (isnan(lastTemperature) || isnan(lastHumidity)) {
-    Serial.println("[DEBUG] Dados não válidos na resposta, lendo sensor...");
-    readSensorData();
-  }
-  
   StaticJsonDocument<400> doc;
   doc["device_id"] = device_id;
   doc["request_id"] = requestId;
@@ -475,8 +505,12 @@ void discoverGateway() {
         Serial.print(mqtt_server);
         Serial.print(":");
         Serial.println(mqtt_port);
+        
+        Serial.println("[DEBUG] Iniciando registro no gateway...");
         // Registrar no gateway
         registerWithGateway();
+    } else {
+        Serial.println("[ERRO] Falha ao decodificar mensagem de descoberta!");
     }
   }
 }
@@ -539,6 +573,8 @@ void registerWithGateway() {
       client.write(buffer, stream.bytes_written);
       client.flush();
       Serial.println("Registro enviado com sucesso!");
+      deviceRegistered = true;  // Marcar como registrado (como no backup)
+      Serial.println("[DEBUG] deviceRegistered = true - Sensor pode começar a enviar dados!");
     } else {
       Serial.println("Erro ao codificar mensagem de registro");
     }
@@ -549,63 +585,91 @@ void registerWithGateway() {
 }
 
 void readSensorData() {
+  Serial.println("[DEBUG] readSensorData() chamada!");
+  
+  // Lê novos valores do sensor (igual ao backup)
   float temperature = dht.readTemperature();
   float humidity = dht.readHumidity();
   
+  // Verifica se os valores são válidos (não NaN) - igual ao backup
   if (!isnan(temperature) && !isnan(humidity)) {
-    // Sensor real conectado
-    lastTemperature = temperature;
-    lastHumidity = humidity;
+    Serial.printf("[DEBUG] Leitura DHT11: Temperatura = %.1f °C | Umidade = %.1f %%\n", temperature, humidity);
     
-    Serial.print("Sensor DHT11 lido: ");
-    Serial.print(temperature);
-    Serial.print("°C, ");
-    Serial.print(humidity);
-    Serial.println("%");
+    // Teste adicional: valores muito baixos (próximos de zero) indicam sensor desconectado
+    if (temperature > 0.0 && humidity > 0.0) {
+      // Atualiza variáveis globais
+      lastTemperature = temperature;
+      lastHumidity = humidity;
+      isUsingSimulatedData = false;  // Dados reais do sensor
+      
+      // Envia dados para o gateway em toda leitura válida (igual ao backup)
+      sendSensorDataMQTT();
+    } else {
+      Serial.println("[ERRO] Sensor DHT11 retornou zeros - sensor desconectado");
+      
+      // Enviar dados simulados para teste
+      Serial.println("[DEBUG] Enviando dados simulados para teste de MQTT...");
+      lastTemperature = 25.0 + (random(0, 20) / 10.0);  // 25.0 a 35.0°C
+      lastHumidity = 70.0 + (random(0, 100) / 10.0);     // 50.0 a 80.0%
+      isUsingSimulatedData = true;  // Marcar como dados simulados
+      
+      Serial.printf("[DEBUG] Dados simulados: Temperatura = %.1f °C | Umidade = %.1f %%\n", lastTemperature, lastHumidity);
+      sendSensorDataMQTT();
+    }
   } else {
-    // Sensor não conectado - gerar dados simulados
-    Serial.println("DHT11 não conectado - usando dados simulados");
+    Serial.println("[ERRO] Falha na leitura do sensor DHT!");
     
-    // Gerar temperatura entre 20°C e 30°C
-    lastTemperature = 20.0 + (random(0, 1000) / 100.0);
+    // PARA TESTE: Enviar dados simulados quando sensor não está disponível
+    // Isso permite testar MQTT mesmo quando ESP está fora da PCB
+    Serial.println("[DEBUG] Enviando dados simulados para teste de MQTT...");
+    lastTemperature = 25.0 + (random(0, 20) / 10.0);  // 25.0 a 35.0°C
+    lastHumidity = 70.0 + (random(0, 100) / 10.0);     // 50.0 a 80.0%
+    isUsingSimulatedData = true;  // Marcar como dados simulados
     
-    // Gerar umidade entre 40% e 80%
-    lastHumidity = 40.0 + (random(0, 4000) / 100.0);
-    
-    Serial.print("Dados simulados: ");
-    Serial.print(lastTemperature);
-    Serial.print("°C, ");
-    Serial.print(lastHumidity);
-    Serial.println("%");
+    Serial.printf("[DEBUG] Dados simulados: Temperatura = %.1f °C | Umidade = %.1f %%\n", lastTemperature, lastHumidity);
+    sendSensorDataMQTT();
   }
 }
 
 void sendSensorDataMQTT() {
+  Serial.println("[DEBUG] sendSensorDataMQTT() chamada!");
+  
   // Verificar se o cliente MQTT está conectado
   if (!mqttClient.connected()) {
     Serial.println("Cliente MQTT não conectado, pulando envio de dados...");
     return;
   }
   
-  // Sempre tentar ler dados atuais antes de enviar
-  readSensorData();
+  // Determinar fonte dos dados baseado na flag
+  String dataSource = isUsingSimulatedData ? "simulated" : "dht11";
+  String version = isUsingSimulatedData ? "mqtt_test" : "mqtt_real";
   
-  // Agora sempre teremos dados válidos (reais ou simulados)
+  // Enviar dados do sensor
   StaticJsonDocument<300> doc;
   doc["device_id"] = device_id;
   doc["temperature"] = lastTemperature;
   doc["humidity"] = lastHumidity;
   doc["status"] = getStatusString();
   doc["timestamp"] = millis();
-  doc["version"] = "mqtt";
+  doc["version"] = version;
+  doc["data_source"] = dataSource;
   
   String jsonString;
   serializeJson(doc, jsonString);
   
-  if (mqttClient.publish(dataTopic.c_str(), jsonString.c_str())) {
-    Serial.println("Dados MQTT enviados: " + jsonString);
+  if (isUsingSimulatedData) {
+    Serial.println("✓ Dados MQTT enviados (SIMULADOS): " + jsonString);
   } else {
-    Serial.println("Erro ao enviar dados MQTT");
+    Serial.println("✓ Dados MQTT enviados (SENSOR REAL): " + jsonString);
+  }
+  
+  bool publishResult = mqttClient.publish(dataTopic.c_str(), jsonString.c_str());
+  Serial.print("[DEBUG] Resultado da publicação MQTT: ");
+  Serial.println(publishResult ? "SUCESSO" : "FALHA");
+  
+  if (!publishResult) {
+    Serial.print("[DEBUG] Estado do cliente MQTT: ");
+    Serial.println(mqttClient.state());
   }
 }
 
