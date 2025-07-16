@@ -209,11 +209,25 @@ def handle_mqtt_command_response(topic, payload):
     try:
         data = json.loads(payload)
         request_id = data.get('request_id')
+        device_id = data.get('device_id')
         
         if request_id:
             with mqtt_response_lock:
                 mqtt_responses[request_id] = data
                 logger.info(f"Resposta MQTT recebida para request_id {request_id}: {data.get('message', 'N/A')}")
+            
+            # Atualizar status do dispositivo na lista connected_devices
+            if device_id and 'status' in data:
+                with device_lock:
+                    if device_id in connected_devices:
+                        try:
+                            status_name = data['status']
+                            if hasattr(smart_city_pb2.DeviceStatus, status_name):
+                                connected_devices[device_id]['status'] = getattr(smart_city_pb2.DeviceStatus, status_name)
+                                connected_devices[device_id]['last_seen'] = time.time()
+                                logger.info(f"Status do dispositivo {device_id} atualizado para {status_name}")
+                        except Exception as e:
+                            logger.warning(f"Erro ao atualizar status do dispositivo {device_id}: {e}")
         else:
             logger.warning(f"Resposta MQTT sem request_id: {payload}")
     

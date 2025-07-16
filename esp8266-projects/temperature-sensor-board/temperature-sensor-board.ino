@@ -12,6 +12,7 @@
  * - Recebimento de comandos via MQTT
  * - Envio de respostas via MQTT
  * - Detecção de mudanças nos valores para otimizar transmissão
+ * - Modo simulação: gera dados fake quando DHT11 não está conectado
  * 
  * Protocolos:
  * - Protocol Buffers para descoberta e registro (mantido)
@@ -21,7 +22,7 @@
  * 
  * Hardware:
  * - ESP8266 (NodeMCU, Wemos D1 Mini, etc.)
- * - Sensor DHT11 conectado ao pino D3
+ * - Sensor DHT11 conectado ao pino D3 (opcional - usa simulação se não conectado)
  * - Biblioteca DHT para leitura do sensor
  * - Biblioteca PubSubClient para MQTT
  * - Biblioteca ArduinoJson para parsing JSON
@@ -68,10 +69,10 @@ String commandTopic = "smart_city/commands/sensors/" + String(device_id);
 String responseTopic = "smart_city/commands/sensors/" + String(device_id) + "/response";
 
 // --- Variáveis de Estado ---
-smartcity_devices_DeviceStatus currentStatus = smartcity_devices_DeviceStatus_IDLE;
+smartcity_devices_DeviceStatus currentStatus = smartcity_devices_DeviceStatus_ACTIVE;
 unsigned long captureIntervalMs = 5000;  // Intervalo de captura padrão: 5 segundos
-float lastTemperature = 0.0;
-float lastHumidity = 0.0;
+float lastTemperature = NAN;  // Inicializar com NaN para indicar "não lido"
+float lastHumidity = NAN;     // Inicializar com NaN para indicar "não lido"
 unsigned long lastSensorReading = 0;
 unsigned long lastDataSent = 0;
 bool gatewayFound = false;
@@ -88,7 +89,7 @@ void connectToWiFi();
 void connectToMQTT();
 void onMqttMessage(char* topic, byte* payload, unsigned int length);
 void processCommand(String jsonMessage);
-void sendCommandResponse(String requestId, bool success, String message);
+void sendCommandResponse(String requestId, bool success, String message, String commandType = "");
 void discoverGateway();
 void registerWithGateway();
 void sendSensorDataMQTT();
@@ -175,9 +176,9 @@ void setup() {
   // Inicializa o sensor DHT11
   dht.begin();
   
-  // Configura cliente MQTT
-  mqttClient.setServer(mqtt_server, mqtt_port);
-  mqttClient.setCallback(onMqttMessage);
+  // NÃO configura cliente MQTT aqui - será configurado após descoberta do gateway
+  // mqttClient.setServer(mqtt_server, mqtt_port);
+  // mqttClient.setCallback(onMqttMessage);
   
   // Inicializa descoberta multicast
   multicastUdp.beginMulticast(WiFi.localIP(), IPAddress(224,1,1,1), multicastPort);
@@ -201,6 +202,7 @@ void loop() {
       connectToMQTT();
     }
     mqttClient.loop();
+    delay(10);  // Pequeno delay para processar mensagens MQTT
   }
 
   // Ler dados do sensor periodicamente
@@ -209,8 +211,8 @@ void loop() {
     lastSensorReading = millis();
   }
 
-  // Enviar dados via MQTT se estiver ativo
-  if (currentStatus == smartcity_devices_DeviceStatus_ACTIVE) {
+  // Enviar dados via MQTT se estiver ativo E se o gateway foi descoberto
+  if (gatewayFound && currentStatus == smartcity_devices_DeviceStatus_ACTIVE) {
     if (millis() - lastDataSent >= captureIntervalMs) {
       sendSensorDataMQTT();
       lastDataSent = millis();
@@ -239,15 +241,36 @@ void connectToWiFi() {
 }
 
 void connectToMQTT() {
+  // Configurar cliente MQTT se ainda não foi configurado
+  if (strlen(mqtt_server) == 0) {
+    Serial.println("Broker MQTT não descoberto ainda, pulando conexão...");
+    return;
+  }
+  
+  // Configurar servidor e callback apenas uma vez
+  static bool mqtt_configured = false;
+  if (!mqtt_configured) {
+    mqttClient.setServer(mqtt_server, mqtt_port);
+    mqttClient.setCallback(onMqttMessage);
+    mqtt_configured = true;
+    Serial.println("Cliente MQTT configurado com servidor: " + String(mqtt_server) + ":" + String(mqtt_port));
+  }
+  
   while (!mqttClient.connected()) {
     Serial.print("Tentando conexão MQTT em: ");
     Serial.print(mqtt_server);
     Serial.print(":");
     Serial.println(mqtt_port);
+    
+    // Configurar buffer maior para mensagens
+    mqttClient.setBufferSize(512);
+    
     // Tenta conectar com autenticação
     if (mqttClient.connect(device_id, mqtt_user, mqtt_password)) {
       Serial.println("Conectado ao broker MQTT!");
-      // (Re)inscreva-se nos tópicos necessários aqui, se for o caso
+      // Inscrever-se no tópico de comandos
+      mqttClient.subscribe(commandTopic.c_str());
+      Serial.println("Inscrito no tópico de comandos: " + commandTopic);
     } else {
       Serial.print("falhou, rc=");
       Serial.print(mqttClient.state());
@@ -278,7 +301,7 @@ void processCommand(String jsonMessage) {
   
   if (error) {
     Serial.println("Erro ao fazer parse do JSON do comando");
-    sendCommandResponse("", false, "Formato JSON inválido");
+    sendCommandResponse("", false, "Formato JSON inválido", "");
     return;
   }
   
@@ -288,6 +311,8 @@ void processCommand(String jsonMessage) {
   String requestId = doc["request_id"].as<String>();
   
   Serial.println("Comando recebido: " + commandType + " " + commandValue);
+  Serial.print("[DEBUG] Request ID: ");
+  Serial.println(requestId);
   
   // Processar comando
   bool success = true;
@@ -320,22 +345,36 @@ void processCommand(String jsonMessage) {
     responseMessage = "Comando desconhecido: " + commandType;
   }
   
+  Serial.print("[DEBUG] Processado - Success: ");
+  Serial.print(success);
+  Serial.print(", Message: ");
+  Serial.println(responseMessage);
+  
   // Enviar resposta
-  sendCommandResponse(requestId, success, responseMessage);
+  sendCommandResponse(requestId, success, responseMessage, commandType);
 }
 
-void sendCommandResponse(String requestId, bool success, String message) {
+void sendCommandResponse(String requestId, bool success, String message, String commandType) {
+  // Garantir que temos dados válidos antes de enviar resposta
+  if (isnan(lastTemperature) || isnan(lastHumidity)) {
+    Serial.println("[DEBUG] Dados não válidos na resposta, lendo sensor...");
+    readSensorData();
+  }
+  
   StaticJsonDocument<400> doc;
   doc["device_id"] = device_id;
   doc["request_id"] = requestId;
   doc["success"] = success;
   doc["message"] = message;
   doc["status"] = getStatusString();
-  doc["frequency_ms"] = captureIntervalMs;
   doc["timestamp"] = millis();
   
-  // Adicionar dados atuais do sensor se disponíveis
-  if (lastTemperature > 0 && lastHumidity > 0) {
+  // Incluir dados específicos baseados no tipo de comando
+  if (commandType == "SET_FREQ") {
+    // Para comando de frequência, incluir apenas a frequência
+    doc["frequency_ms"] = captureIntervalMs;
+  } else {
+    // Para outros comandos, incluir temperatura e umidade
     doc["temperature"] = lastTemperature;
     doc["humidity"] = lastHumidity;
   }
@@ -343,10 +382,38 @@ void sendCommandResponse(String requestId, bool success, String message) {
   String jsonString;
   serializeJson(doc, jsonString);
   
-  if (mqttClient.publish(responseTopic.c_str(), jsonString.c_str())) {
+  Serial.print("[DEBUG] Tentando enviar resposta: ");
+  Serial.println(jsonString);
+  Serial.print("[DEBUG] Response topic: ");
+  Serial.println(responseTopic);
+  Serial.print("[DEBUG] Payload size: ");
+  Serial.println(jsonString.length());
+  Serial.print("[DEBUG] Cliente MQTT conectado: ");
+  Serial.println(mqttClient.connected() ? "SIM" : "NÃO");
+  
+  // Tentar enviar com QoS 0 e verificar resultado
+  bool publishResult = mqttClient.publish(responseTopic.c_str(), jsonString.c_str(), false);
+  
+  if (publishResult) {
     Serial.println("Resposta enviada: " + jsonString);
   } else {
-    Serial.println("Erro ao enviar resposta MQTT");
+    Serial.print("Erro ao enviar resposta MQTT - Estado cliente: ");
+    Serial.println(mqttClient.state());
+    
+    // Tentar reconectar se necessário
+    if (!mqttClient.connected()) {
+      Serial.println("[DEBUG] Cliente desconectado, tentando reconectar...");
+      connectToMQTT();
+      // Tentar enviar novamente após reconexão
+      if (mqttClient.connected()) {
+        publishResult = mqttClient.publish(responseTopic.c_str(), jsonString.c_str(), false);
+        if (publishResult) {
+          Serial.println("Resposta enviada após reconexão: " + jsonString);
+        } else {
+          Serial.println("Falha ao enviar mesmo após reconexão");
+        }
+      }
+    }
   }
 }
 
@@ -486,42 +553,59 @@ void readSensorData() {
   float humidity = dht.readHumidity();
   
   if (!isnan(temperature) && !isnan(humidity)) {
+    // Sensor real conectado
     lastTemperature = temperature;
     lastHumidity = humidity;
     
-    Serial.print("Sensor lido: ");
+    Serial.print("Sensor DHT11 lido: ");
     Serial.print(temperature);
     Serial.print("°C, ");
     Serial.print(humidity);
     Serial.println("%");
   } else {
-    Serial.println("Erro ao ler sensor DHT11");
+    // Sensor não conectado - gerar dados simulados
+    Serial.println("DHT11 não conectado - usando dados simulados");
+    
+    // Gerar temperatura entre 20°C e 30°C
+    lastTemperature = 20.0 + (random(0, 1000) / 100.0);
+    
+    // Gerar umidade entre 40% e 80%
+    lastHumidity = 40.0 + (random(0, 4000) / 100.0);
+    
+    Serial.print("Dados simulados: ");
+    Serial.print(lastTemperature);
+    Serial.print("°C, ");
+    Serial.print(lastHumidity);
+    Serial.println("%");
   }
 }
 
 void sendSensorDataMQTT() {
-  if (lastTemperature == 0.0 && lastHumidity == 0.0) {
-    readSensorData();  // Tentar ler novamente
+  // Verificar se o cliente MQTT está conectado
+  if (!mqttClient.connected()) {
+    Serial.println("Cliente MQTT não conectado, pulando envio de dados...");
+    return;
   }
   
-  if (lastTemperature > 0.0 || lastHumidity > 0.0) {
-    StaticJsonDocument<300> doc;
-    doc["device_id"] = device_id;
-    doc["temperature"] = lastTemperature;
-    doc["humidity"] = lastHumidity;
-    doc["status"] = getStatusString();
-    doc["frequency_ms"] = captureIntervalMs;
-    doc["timestamp"] = millis();
-    doc["version"] = "mqtt";
-    
-    String jsonString;
-    serializeJson(doc, jsonString);
-    
-    if (mqttClient.publish(dataTopic.c_str(), jsonString.c_str())) {
-      Serial.println("Dados MQTT enviados: " + jsonString);
-    } else {
-      Serial.println("Erro ao enviar dados MQTT");
-    }
+  // Sempre tentar ler dados atuais antes de enviar
+  readSensorData();
+  
+  // Agora sempre teremos dados válidos (reais ou simulados)
+  StaticJsonDocument<300> doc;
+  doc["device_id"] = device_id;
+  doc["temperature"] = lastTemperature;
+  doc["humidity"] = lastHumidity;
+  doc["status"] = getStatusString();
+  doc["timestamp"] = millis();
+  doc["version"] = "mqtt";
+  
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  if (mqttClient.publish(dataTopic.c_str(), jsonString.c_str())) {
+    Serial.println("Dados MQTT enviados: " + jsonString);
+  } else {
+    Serial.println("Erro ao enviar dados MQTT");
   }
 }
 
