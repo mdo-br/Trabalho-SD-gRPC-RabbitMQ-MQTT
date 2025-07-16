@@ -8,7 +8,9 @@ function getFriendlyName(device) {
   };
 
   const sensorMap = {
-    "temp_board_001001002": "Sensor 1",
+    "temp_board_001001001": "Sensor 1",
+    "temp_board_001001002": "Sensor 2",
+    "temp_java_001": "Sensor 3",
   };
 
   if (device.type === "RELAY") {
