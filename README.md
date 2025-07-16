@@ -1,151 +1,20 @@
 # Smart City - Sistema Distribuído com gRPC e RabbitMQ/MQTT
 
-### Configuração de IPs Hardcoded
-
-Apesar da maior parte do sistema utilizar descoberta automática de IPs e portas via multicast UDP, alguns componentes ainda exigem configuração manual (hardcoded) de IP para funcionamento correto. Veja abaixo:
-
-- **Gateway (src/gateway/smart_city_gateway.py):**
-  - Configure o IP do broker MQTT na variável `MQTT_BROKER_HOST`.
-    ```python
-    MQTT_BROKER_HOST = "192.168.x.x"  # Substitua pelo IP real do seu broker MQTT
-    ```
-  - Configure o IP do servidor gRPC na variável `GRPC_SERVER_HOST`.
-    ```python
-    GRPC_SERVER_HOST = "192.168.x.x"  # Substitua pelo IP real do servidor gRPC
-    ```
-
-- **Frontend React (src/front-end/smart-city-front/src/App.js e DeviceStatus.js):**
-  - O IP do backend (API FastAPI) está hardcoded na variável `IP`.
-    ```js
-    const IP = '192.168.x.x'
-    ```
-
-- **API FastAPI (src/api/src/api_server.py):**
-  - O IP do gateway está definido em:
-    ```python
-    GATEWAY_HOST = "192.168.x.x"
-    ```
-
-- **Cliente de Teste (src/client-test/smart_city_client.py e temperature_sensor_commands.py):**
-  - O IP do gateway deve ser configurado nas variáveis:
-    ```python
-    GATEWAY_IP = 'localhost'  # ou '192.168.x.x'
-    ```
-
-- **WiFi dos ESP8266:**
-  - Configure o SSID e senha da rede WiFi diretamente no código:
-    ```cpp
-    const char* ssid = "SUA_REDE_WIFI";
-    const char* password = "SUA_SENHA_WIFI";
-    ```
-
-> **Atenção:** Sempre revise e ajuste esses IPs conforme o ambiente de execução para garantir o funcionamento correto do sistema.
-
-## AVISO IMPORTANTE: Execução em diferentes máquinas
-
-- Comandos de infraestrutura (RabbitMQ, servidor gRPC, setup completo) devem ser executados na Raspberry Pi 3 usando a variável `INFRA=1`.
-- Nos demais ambientes (gateway, API, frontend, clientes), execute os comandos normalmente, sem a variável.
-- **Plugin gRPC Java**: Necessário apenas na Raspberry Pi 3 para compilação de dispositivos Java com gRPC.
-
-### Exemplos:
-
-**Na Raspberry Pi 3 (Infraestrutura):**
-```bash
-make setup INFRA=1         # Instala tudo e configura RabbitMQ
-make install-grpc-plugin   # Instala plugin gRPC Java automaticamente
-make run-grpc INFRA=1      # Executa o servidor ponte gRPC
-make rabbitmq INFRA=1      # Configura RabbitMQ
-```
-
-**Na máquina de desenvolvimento (Gateway, API, etc):**
-```bash
-make setup-local                 # Instala dependências, gera protos, compila Java (pula RabbitMQ)
-make run-gateway           # Executa o gateway
-make run-api               # Executa a API REST
-make run-client            # Executa o cliente de teste
-```
-
-> Se tentar rodar comandos de infraestrutura sem `INFRA=1` fora da Raspberry Pi, o Makefile exibirá um aviso e não executará o comando.
-
-## Descoberta Automática de Parâmetros de Rede
-
-Os sensores (Java e ESP8266) **não dependem de valores hardcoded** para IP/porta do gateway e do broker MQTT. Todos esses parâmetros são aprendidos automaticamente via o processo de descoberta multicast UDP, enviado pelo gateway.
-
-### Como funciona:
-- O gateway envia periodicamente uma mensagem DiscoveryRequest via multicast, contendo:
-  - IP e porta TCP do gateway
-  - IP e porta do broker MQTT
-- Os sensores, ao receberem essa mensagem, aprendem todos os parâmetros necessários para operar e se conectar à infraestrutura.
-- Não é necessário editar o código dos sensores para mudar IPs ou portas.
-
-### Parâmetros aprendidos automaticamente:
-- IP do gateway
-- Porta TCP do gateway
-- IP do broker MQTT
-- Porta do broker MQTT
-
-> **Atenção:**  
-> Certifique-se de que o gateway está enviando a DiscoveryRequest corretamente e que a rede permite multicast UDP.
-
 ## Visão Geral
 
 Este projeto implementa um sistema distribuído para simular o monitoramento e controle de uma cidade inteligente, utilizando paradigmas atuais de comunicação distribuída.
 
-### Arquitetura Unificada:
-
-- **Sensores**: Comunicação via **MQTT** (dados e comandos)
-- **Atuadores**: Comunicação via **gRPC** através de servidor intermediário
-- **Gateway**: Cliente gRPC + Subscriber/Publisher MQTT
-- **Descoberta/Registro**: Via UDP multicast e TCP
-- **API/Frontend**: Interface REST para controle e monitoramento
-
-### Objetivos:
-
-- Aplicar conceitos avançados de sistemas distribuídos
-- Implementar comunicação assíncrona eficiente (MQTT)
-- Utilizar RPC síncrono para controle de atuadores (gRPC)
-- Garantir descoberta automática de dispositivos
-- Prover interface amigável para usuários finais
 
 ## Arquitetura do Sistema
 
-A arquitetura foi projetada para ser simples e eficiente, com separação clara de responsabilidades:
+A arquitetura foi projetada seguindo a especificação do Trabalho 2 de sistemas distribuídos, priorizando escalabilidade, confiabilidade e separação clara de responsabilidades através de diferentes paradigmas de comunicação adaptados às necessidades específicas de cada tipo de dispositivo.
 
-### Componentes Principais:
+### Objetivos:
 
-- **Gateway** (`src/gateway/smart_city_gateway.py`):
-  - Orquestrador central do sistema
-  - **Cliente gRPC** para controlar atuadores
-  - **Subscriber/Publisher MQTT** para comunicação com sensores
-  - Descoberta multicast e registro TCP de dispositivos
-  - Interface entre API REST e infraestrutura distribuída
-
-- **Sensores** (`src/devices/sensors/TemperatureHumiditySensor.java`):
-  - Descoberta automática via multicast UDP
-  - Registro no gateway via TCP
-  - **Comunicação unificada via MQTT** (dados e comandos)
-  - Suporte a comandos de configuração em tempo real
-
-- **Atuadores** (`src/devices/actuators/RelayActuator.java`):
-  - Descoberta multicast e registro TCP
-  - **Controle via gRPC** através de servidor intermediário
-  - Resposta com status atualizado
-
-- **Servidor gRPC** (`src/grpc_server/actuator_bridge_server.py`):
-  - Ponte entre chamadas gRPC e comunicação TCP
-  - Recebe comandos do Gateway via gRPC
-  - Traduz para Protocol Buffers TCP para atuadores
-  - Gerencia conexões e timeouts
-
-- **RabbitMQ + Plugin MQTT**:
-  - Broker MQTT para comunicação assíncrona
-  - Tópicos organizados: `smart_city/sensors/+` e `smart_city/commands/sensors/+`
-  - Desacoplamento total entre sensores e gateway
-
-- **API REST + Frontend**:
-  - Interface de usuário via navegador
-  - Cliente CLI para testes e automação
-  - Tradução de requisições HTTP para comandos do gateway
+- Aplicar conceitos vistos nas disciplina de sistemas distribuídos
+- Implementar comunicação assíncrona eficiente (MQTT)
+- Utilizar RPC síncrono para controle de atuadores (gRPC)
+- Garantir descoberta automática de dispositivos
 
 ## Diagrama da Arquitetura
 
@@ -212,33 +81,144 @@ flowchart TB
 
 ## Componentes Principais
 
-### 1. **Servidor Ponte gRPC** (`src/grpc_server/actuator_bridge_server.py`)
-- Porta 50051
-- Recebe chamadas gRPC do Gateway
-- Traduz para comandos TCP para atuadores
-- Executa na Raspberry Pi 3 como intermediário
 
-### 2. **Gateway** (`src/gateway/smart_city_gateway.py`)
-- Cliente gRPC para controlar atuadores
-- Cliente MQTT para comunicação com sensores
-- Descoberta multicast e registro TCP
+### 1. **Gateway**
 
-### 3. **Sensores** (`src/devices/sensors/TemperatureHumiditySensor.java`)
-- Comunicação completa via MQTT (dados e comandos)
-- Descoberta multicast e registro TCP
-- Suporte a comandos para configuração
+O **Gateway** (`src/gateway/smart_city_gateway.py`) atua como o orquestrador central do sistema, funcionando simultaneamente como cliente gRPC para controlar atuadores e como subscriber/publisher MQTT para comunicação com sensores. Este componente centraliza a descoberta multicast e registro TCP de dispositivos, servindo como interface entre a API REST e toda a infraestrutura distribuída. Sua arquitetura híbrida permite que o sistema aproveite as vantagens de comunicação síncrona para controle preciso de atuadores e assíncrona para coleta eficiente de dados de sensores.
 
-### 4. **RabbitMQ + Plugin MQTT**
-- Broker MQTT na porta 1883
-- Tópicos: `smart_city/sensors/+` e `smart_city/commands/sensors/+`
+### 2. **Sensores**
 
-## Pré-requisitos
+Os **Sensores** (`src/devices/sensors/TemperatureHumiditySensor.java`) implementam descoberta automática via multicast UDP, registrando-se no gateway através de conexões TCP para posterior comunicação unificada via MQTT. Esta abordagem permite que sensores publiquem dados continuamente e respondam a comandos de configuração em tempo real, mantendo uma comunicação eficiente e de baixa latência adequada para dispositivos IoT com recursos limitados.
+
+### 3. **Atuadores**
+
+Os **Atuadores** (`src/devices/actuators/RelayActuator.java`) seguem o mesmo padrão de descoberta multicast e registro TCP, porém utilizam controle via gRPC através de um servidor intermediário que roda na borda (Rasp PI 3). Esta arquitetura garante que comandos críticos de controle sejam executados de forma síncrona e confiável, com confirmação imediata de execução e resposta com status atualizado para o sistema de controle.
+
+
+### 4. **Servidor Ponte gRPC**
+
+O **Servidor gRPC** (`src/grpc_server/actuator_bridge_server.py`) funciona como uma ponte inteligente entre as chamadas gRPC vindas do Gateway e a comunicação TCP com atuadores. Este componente recebe comandos estruturados via gRPC, traduz-os para Protocol Buffers TCP e gerencia conexões, timeouts e recuperação de falhas, garantindo que comandos críticos sejam executados mesmo em condições de rede instáveis.
+
+### 5. **RabbitMQ/MQTT**
+
+A infraestrutura **RabbitMQ + Plugin MQTT** provê o broker MQTT necessário para comunicação assíncrona, organizando tópicos hierárquicos como `smart_city/sensors/+` e `smart_city/commands/sensors/+`. Esta configuração permite desacoplamento total entre sensores e gateway, facilitando escalabilidade horizontal e tolerância a falhas através de filas persistentes e mecanismos de QoS configuráveis.
+
+### 6. **Cientes**
+
+O conjunto **API REST + Frontend** oferece interfaces de usuário através de navegador web e cliente CLI para testes e automação, traduzindo requisições HTTP convencionais para comandos específicos do gateway. Esta camada de abstração permite que desenvolvedores e usuários finais interajam com o sistema complexo através de interfaces familiares e bem documentadas.
+
+
+## Descoberta Automática de Parâmetros de Rede
+
+Todos os dispositivos IoT (sensores e atuadores, tanto Java quanto ESP8266) **não dependem de valores hardcoded** para configuração de rede. Todos os parâmetros necessários são aprendidos automaticamente através do processo de descoberta multicast UDP, enviado pelo gateway.
+
+### Como funciona:
+
+1. **Descoberta Multicast**: O gateway envia periodicamente uma mensagem `DiscoveryRequest` via multicast UDP no grupo `224.1.1.1:5007`
+2. **Aprendizado de Parâmetros**: Todos os dispositivos (sensores e atuadores) escutam essas mensagens e aprendem a configuração da rede
+3. **Registro TCP**: Após a descoberta, cada dispositivo se registra no gateway via TCP enviando suas informações (`DeviceInfo`)
+4. **Manutenção de Conexão**: O registro é renovado periodicamente (a cada 30 segundos) para tolerância a falhas
+
+### Dispositivos Suportados:
+
+#### **Sensores** (Comunicação MQTT):
+- **Sensores Java**: `TemperatureHumiditySensor.java`
+- **Sensores ESP8266**: `temperature-sensor-board.ino`
+- Aprendem IP/porta do gateway e do broker MQTT automaticamente
+- Registram-se no gateway
+
+#### **Atuadores** (Comunicação gRPC):
+- **Atuadores Java**: `RelayActuator.java`
+- **Atuadores ESP8266**: `relay-actuator-board.ino`
+- Aprendem IP/porta do gateway automaticamente
+- Registram-se no gateway
+
+### Parâmetros aprendidos automaticamente:
+- **IP do gateway** (para registro TCP)
+- **Porta TCP do gateway** (para registro TCP)
+- **IP do broker MQTT** (para sensores)
+- **Porta do broker MQTT** (para sensores)
+
+
+### Diagrama do Processo de Descoberta:
+
+```mermaid
+sequenceDiagram
+    participant G as Gateway
+    participant S as Sensor
+    participant A as Atuador
+    participant MQTT as Broker MQTT
+    participant gRPC as Servidor gRPC
+    
+    Note over G: Inicia processo de descoberta
+    
+    loop A cada 10 segundos
+        G->>+S: DiscoveryRequest (UDP Multicast 224.1.1.1:5007)
+        G->>+A: DiscoveryRequest (UDP Multicast 224.1.1.1:5007)
+        
+        Note over S,A: Dispositivos recebem configuração:<br/>- IP/porta do gateway<br/>- IP/porta do broker MQTT
+        
+        S->>G: DeviceInfo (TCP - Registro do Sensor)
+        A->>G: DeviceInfo (TCP - Registro do Atuador)
+        
+        Note over G: Atualiza lista de dispositivos
+    end
+    
+    rect rgb(200, 255, 200)
+        Note over S,MQTT: Comunicação Sensor ↔ MQTT
+        S->>MQTT: Conecta usando IP descoberto
+        S->>MQTT: Publica dados (smart_city/sensors/+)
+        MQTT->>G: Repassa dados para Gateway
+        G->>MQTT: Envia comandos (smart_city/commands/sensors/+)
+        MQTT->>S: Repassa comandos para Sensor
+    end
+    
+    rect rgb(200, 200, 255)
+        Note over G,gRPC: Comunicação Atuador ↔ gRPC
+        G->>gRPC: Comando gRPC (LigarDispositivo)
+        gRPC->>A: Envia comando TCP (Protocol Buffers)
+        A->>gRPC: Resposta TCP (DeviceUpdate)
+        gRPC->>G: Resposta gRPC (StatusResponse)
+    end
+    
+    loop A cada 30 segundos
+        Note over S,A: Renovação de registro
+        S->>G: DeviceInfo (TCP - Manter registro)
+        A->>G: DeviceInfo (TCP - Manter registro)
+    end
+```
+
+### Tolerância a Falhas:
+
+- **Redescobrimento**: Se um dispositivo perde a conexão, ele pode redescobrir a configuração
+- **Registro Periódico**: Dispositivos se registram novamente a cada 30 segundos
+- **Detecção de Falhas**: Gateway detecta dispositivos offline automaticamente
+- **Reconexão Automática**: Sensores MQTT e atuadores gRPC reconectam automaticamente
+
+### Configuração Protocol Buffers:
+
+A mensagem `DiscoveryRequest` contém todas as informações necessárias:
+
+```protobuf
+message DiscoveryRequest {
+  string gateway_ip = 1;        // Endereço IP do Gateway
+  int32 gateway_tcp_port = 2;   // Porta TCP do Gateway (para comunicação de controle)
+  int32 gateway_udp_port = 3;   // Porta UDP do Gateway (TRABALHO 1 APENAS!)
+  string mqtt_broker_ip = 4;    // Endereço IP do broker MQTT
+  int32 mqtt_broker_port = 5    // Porta do broker MQTT
+}
+```
 
 > **Atenção:**  
-> Use `sudo` apenas para comandos de instalação ou configuração de serviços do sistema (como o RabbitMQ, por exemplo via `make rabbitmq` ou `make setup`).  
-> **Ao rodar `make setup` ou `make rabbitmq`, o Makefile pode solicitar sua senha de sudo apenas durante a configuração do RabbitMQ.**  
-> **Não utilize sudo para rodar o Makefile inteiro, scripts Python ou comandos de desenvolvimento.**  
-> Isso evita problemas de permissões no seu ambiente de trabalho.
+> Certifique-se de que:
+> - O gateway está enviando a `DiscoveryRequest` corretamente
+> - A rede permite multicast UDP no grupo `224.1.1.1:5007`
+> - O firewall permite conexões TCP para registro
+> - Os serviços MQTT e gRPC estão rodando nos IPs descobertos
+
+## Instalação e Configuração
+
+## Pré-requisitos
 
 - **Python 3.8+** com pip
 - **Java 21+** com Maven
@@ -249,9 +229,74 @@ flowchart TB
 - **ESP8266** (NodeMCU) + PlatformIO (opcional)
 - **Arduino CLI** (para ESP8266)
 
-## Instalação e Configuração
-
 > **Para um guia detalhado do Makefile com exemplos práticos, consulte [README_MAKEFILE.md](README_MAKEFILE.md)**
+
+### Configuração de IPs Hardcoded
+
+Apesar da maior parte do sistema utilizar descoberta automática de IPs e portas via multicast UDP, alguns componentes ainda exigem configuração manual (hardcoded) de IP para funcionamento correto. Veja abaixo:
+
+- **Gateway (src/gateway/smart_city_gateway.py):**
+  - Configure o IP do broker MQTT na variável `MQTT_BROKER_HOST`.
+    ```python
+    MQTT_BROKER_HOST = "192.168.x.x"  # Substitua pelo IP real do seu broker MQTT
+    ```
+  - Configure o IP do servidor gRPC na variável `GRPC_SERVER_HOST`.
+    ```python
+    GRPC_SERVER_HOST = "192.168.x.x"  # Substitua pelo IP real do servidor gRPC
+    ```
+
+- **Frontend React (src/front-end/smart-city-front/src/App.js e DeviceStatus.js):**
+  - O IP do backend (API FastAPI) está hardcoded na variável `IP`.
+    ```js
+    const IP = '192.168.x.x'
+    ```
+
+- **API FastAPI (src/api/src/api_server.py):**
+  - O IP do gateway está definido em:
+    ```python
+    GATEWAY_HOST = "192.168.x.x"
+    ```
+
+- **Cliente de Teste (src/client-test/smart_city_client.py):**
+  - O IP do backend (API FastAPI) está hardcoded na variável `IP`.
+    ```js
+    const IP = '192.168.x.x'
+    ```
+
+- **WiFi dos ESP8266:**
+  - Configure o SSID e senha da rede WiFi diretamente no código:
+    ```cpp
+    const char* ssid = "SUA_REDE_WIFI";
+    const char* password = "SUA_SENHA_WIFI";
+    ```
+
+> **Atenção:** Sempre revise e ajuste esses IPs conforme o ambiente de execução para garantir o funcionamento correto do sistema.
+
+## AVISO IMPORTANTE: Execução em diferentes máquinas
+
+- Comandos de infraestrutura (RabbitMQ, servidor gRPC, setup completo) devem ser executados na Raspberry Pi 3 usando a variável `INFRA=1`.
+- Nos demais ambientes (gateway, API, frontend, clientes), execute os comandos normalmente, sem a variável.
+- **Plugin gRPC Java**: Necessário apenas na Raspberry Pi 3 para compilação de dispositivos Java com gRPC.
+
+### Exemplos:
+
+**Na Raspberry Pi 3 (Infraestrutura):**
+```bash
+make setup INFRA=1         # Instala tudo e configura RabbitMQ
+make install-grpc-plugin   # Instala plugin gRPC Java automaticamente
+make run-grpc INFRA=1      # Executa o servidor ponte gRPC
+make rabbitmq INFRA=1      # Configura RabbitMQ
+```
+
+**Na máquina de desenvolvimento (Gateway, API, etc):**
+```bash
+make setup-local                 # Instala dependências, gera protos, compila Java (pula RabbitMQ)
+make run-gateway           # Executa o gateway
+make run-api               # Executa a API REST
+make run-client            # Executa o cliente de teste
+```
+
+> Se tentar rodar comandos de infraestrutura sem `INFRA=1` fora da Raspberry Pi, o Makefile exibirá um aviso e não executará o comando.
 
 ### 1. Configuração Automática (Recomendado)
 
