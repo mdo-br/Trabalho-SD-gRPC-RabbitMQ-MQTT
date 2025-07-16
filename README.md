@@ -161,12 +161,12 @@ flowchart TB
     end
 
     subgraph Gateway
-        GW["Gateway\n(gRPC Client + MQTT Client)"]
+        GW["Gateway (gRPC Client + MQTT Client)"]
     end
 
     subgraph Infraestrutura
-        MQ["RabbitMQ\n(MQTT Broker)"]
-        GRPC["Servidor Ponte gRPC\n(Raspberry Pi 3)"]
+        MQ["RabbitMQ (MQTT Broker)"]
+        GRPC["Servidor gRPC"]
     end
 
     subgraph Dispositivos

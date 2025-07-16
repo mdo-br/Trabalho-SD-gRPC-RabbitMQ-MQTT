@@ -46,13 +46,13 @@
 DHT dht(DHTPIN, DHTTYPE);            // Objeto do sensor DHT
 
 // --- Configurações de Rede WiFi ---
-const char* ssid = "homeoffice";           // Nome da rede WiFi - CONFIGURAR
-const char* password = "19071981";   // Senha da rede WiFi - CONFIGURAR
+const char* ssid = "";           // Nome da rede WiFi - CONFIGURAR
+const char* password = "";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações MQTT ---
 char mqtt_server[64] = "";  // Endereço do broker MQTT (dinâmico, aprendido via descoberta)
 int mqtt_port = 1883;      // Porta do broker MQTT (dinâmico)
-const char* device_id = "temp_sensor_esp_001";  // ID único do dispositivo
+const char* device_id = "temp_sensor_esp_002";  // ID único do dispositivo
 const char* mqtt_user = "smartcity";            // Usuário MQTT
 const char* mqtt_password = "smartcity123";     // Senha MQTT
 

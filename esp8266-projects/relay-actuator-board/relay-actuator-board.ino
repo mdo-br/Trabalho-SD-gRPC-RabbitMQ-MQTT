@@ -37,8 +37,8 @@
 String lampStatus = "OFF";           // Status atual do relé
 
 // --- Configurações de Rede WiFi ---
-const char* SSID = "homeoffice";           // Nome da rede WiFi - CONFIGURAR
-const char* PASSWORD = "19071981";   // Senha da rede WiFi - CONFIGURAR
+const char* SSID = "";           // Nome da rede WiFi - CONFIGURAR
+const char* PASSWORD = "#";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
@@ -46,8 +46,8 @@ const int multicastPort = 5007;         // Porta multicast
 const int localTCPPort = 8891;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
-const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
-const String deviceID = "relay_board_" + ID_PCB;  // ID completo do dispositivo
+const String ID_PCB = "002";      // ID único da placa - MODIFICAR SE NECESSÁRIO
+const String deviceID = "relay_actua_esp_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
 WiFiUDP multicastUdp;                  // Socket UDP multicast para descoberta

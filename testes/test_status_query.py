@@ -100,21 +100,21 @@ def test_status_query():
             
             if response.HasField('device_status'):
                 device_status = response.device_status
-                print(f"📊 Status do dispositivo:")
+                print(f"Status do dispositivo:")
                 print(f"  - Device ID: {device_status.device_id}")
                 print(f"  - Type: {smart_city_pb2.DeviceType.Name(device_status.type)}")
                 print(f"  - Current Status: {smart_city_pb2.DeviceStatus.Name(device_status.current_status)}")
-                print("🎉 Consulta de status bem-sucedida!")
+                print("Consulta de status bem-sucedida!")
             else:
-                print("❌ Resposta não contém status do dispositivo")
+                print("Resposta não contém status do dispositivo")
         else:
-            print("❌ Resposta inválida do gateway")
+            print("Resposta inválida do gateway")
         
         client_socket.close()
-        print("\n✅ Teste concluído!")
+        print("\nTeste concluído!")
         
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        print(f"Erro: {e}")
         import traceback
         traceback.print_exc()
 

@@ -33,11 +33,11 @@ MULTICAST_PORT = 5007
 GATEWAY_TCP_PORT = 12345       # Porta TCP para registro de dispositivos
 GATEWAY_UDP_PORT = 12346       # Porta UDP para dados de sensores (legado)
 API_TCP_PORT = 12347           # Porta TCP para API externa
-GRPC_SERVER_HOST = "localhost"
+GRPC_SERVER_HOST = "192.168.3.121"
 GRPC_SERVER_PORT = 50051
 
 # Configurações MQTT
-MQTT_BROKER_HOST = "192.168.1.102"  # <--- Substitua pelo IP real do seu broker MQTT
+MQTT_BROKER_HOST = "192.168.3.121"  # <--- Substitua pelo IP real do seu broker MQTT
 MQTT_BROKER_PORT = 1883
 MQTT_COMMAND_TOPIC_PREFIX = "smart_city/commands/sensors/"
 MQTT_RESPONSE_TOPIC_PREFIX = "smart_city/commands/sensors/"
@@ -629,7 +629,7 @@ def main():
             with device_lock:
                 offline_devices = [
                     dev_id for dev_id, dev_data in connected_devices.items()
-                    if current_time - dev_data['last_seen'] > 60  # 60 segundos
+                    if current_time - dev_data['last_seen'] > 15  # 15 segundos
                 ]
                 
                 for dev_id in offline_devices:
@@ -640,7 +640,7 @@ def main():
             with mqtt_response_lock:
                 old_responses = [
                     req_id for req_id, resp_data in mqtt_responses.items()
-                    if current_time - resp_data.get('timestamp', 0) / 1000 > 30  # 30 segundos
+                    if current_time - resp_data.get('timestamp', 0) / 1000 > 15  # 15 segundos
                 ]
                 
                 for req_id in old_responses:

@@ -3,11 +3,74 @@
 
 Este documento descreve as mudanças necessárias para adaptar o projeto do Trabalho 1 (baseado em sockets TCP/UDP e Protocol Buffers) aos requisitos do Trabalho 2, que envolve o uso de gRPC para comandos e RabbitMQ (via MQTT) para envio de dados sensoriados. A nova arquitetura preserva os dispositivos reais (ESP8266), os simuladores em Java, a API REST com FastAPI e o cliente CLI, reorganizando-os de acordo com os novos paradigmas exigidos.
 
+## Diagrama da Nova Arquitetura
+
+```mermaid
+flowchart TB
+    subgraph Clientes
+        FE["Frontend Web"]
+        CLI["Cliente CLI"]
+    end
+
+    subgraph API
+        REST["API REST (FastAPI)"]
+    end
+
+    subgraph Gateway
+        GW["Gateway (gRPC Client + MQTT Client)"]
+    end
+
+    subgraph Infraestrutura
+        MQ["RabbitMQ (MQTT Broker)"]
+        GRPC["Servidor gRPC"]
+    end
+
+    subgraph Dispositivos
+        subgraph Sensores
+            SJ["Sensor Java"]
+            SESP["Sensor ESP8266"]
+        end
+        subgraph Atuadores
+            AJ["Atuador Java"]
+            AESP["Atuador ESP8266"]
+        end
+    end
+
+    %% Conexões dos clientes
+    FE -->|HTTP REST| REST
+    CLI -->|HTTP REST| REST
+    REST -->|TCP Protobuf| GW
+
+    %% Conexões do Gateway
+    GW -->|gRPC| GRPC
+    GW -->|MQTT PUB/SUB| MQ
+
+    %% Conexões dos sensores (MQTT)
+    SJ -->|MQTT PUB/SUB| MQ
+    SESP -->|MQTT PUB/SUB| MQ
+
+    %% Conexões dos atuadores (gRPC → TCP)
+    GRPC -->|TCP Protobuf| AESP
+    GRPC -->|TCP Protobuf| AJ
+
+    %% Descoberta multicast (todos os dispositivos)
+    GW -.->|Multicast UDP| SJ
+    GW -.->|Multicast UDP| SESP
+    GW -.->|Multicast UDP| AJ
+    GW -.->|Multicast UDP| AESP
+    
+    %% Registro TCP (todos os dispositivos)
+    SJ -.->|Registro TCP| GW
+    SESP -.->|Registro TCP| GW
+    AJ -.->|Registro TCP| GW
+    AESP -.->|Registro TCP| GW
+```
+
 ## 1. Gateway Inteligente
 
-O gateway, antes responsável por gerenciar a comunicação com os dispositivos via TCP e UDP, passa a operar como cliente gRPC, invocando métodos remotos para controlar os atuadores. A comunicação direta com os atuadores ESP8266 por TCP é substituída por chamadas gRPC feitas a um servidor intermediário executado em uma Raspberry Pi 3. Além disso, o gateway também se conecta ao RabbitMQ como consumidor MQTT, recebendo dados dos sensores de forma assíncrona.
+O gateway, antes responsável por gerenciar a comunicação com os dispositivos via TCP e UDP, passa a operar como cliente gRPC, invocando métodos remotos para controlar os atuadores. A comunicação direta com os atuadores ESP8266 por TCP é substituída por chamadas gRPC feitas a um servidor intermediário executado em uma Raspberry Pi 3. Além disso, o gateway também se conecta ao RabbitMQ/MQTT, recebendo dados dos sensores de forma assíncronamas também enviando comandos de configuração (ex: SETFREQ 4000).
 
-A API REST já existente (implementada com FastAPI) continua sendo utilizada, servindo como a interface de entrada para o cliente CLI e o front-end web. Ela se comunica exclusivamente com o gateway, encaminhando as requisições REST para que o próprio gateway realize as chamadas gRPC aos atuadores ou processe os dados recebidos dos sensores via broker. Dessa forma, o gateway mantém sua função de orquestrador central do sistema distribuído, sendo o único ponto de contato com o servidor gRPC e com o RabbitMQ.
+A API REST já existente (implementada com FastAPI) continua sendo utilizada, servindo como a interface de entrada para o cliente CLI e o front-end web. Ela se comunica exclusivamente com o gateway via TCP/Protobuff, encaminhando as requisições REST para que o próprio gateway realize as chamadas gRPC aos atuadores ou processe os dados recebidos dos sensores via broker. Dessa forma, o gateway mantém sua função de orquestrador central do sistema distribuído, sendo o único ponto de contato com o servidor gRPC e com o RabbitMQ.
 
 ## 2. Dispositivos Reais (ESP8266)
 
@@ -60,60 +123,3 @@ message StatusResponse {
 
 Com essa reorganização, o sistema distribuído se alinha aos requisitos de comunicação e integração exigidos no Trabalho 2. A comunicação com sensores passa a ser assíncrona e desacoplada por meio do RabbitMQ, enquanto os comandos para atuadores utilizam gRPC como mecanismo de invocação remota. As adaptações preservam o esforço já investido no Trabalho 1, reaproveitando componentes essenciais como o firmware dos ESPs, a API REST e os simuladores em Java.
 
-## Diagrama da Nova Arquitetura
-
-```mermaid
-flowchart TB
-    subgraph Clientes
-        FE["Front-end Web"]
-        CLI["Cliente CLI"]
-    end
-
-    subgraph "Camada REST"
-        API_NODE["API REST (FastAPI)"]
-    end
-
-    subgraph Gateway
-        GW["Gateway (smart_city_gateway.py)\ngRPC Client + MQTT Subscriber"]
-    end
-
-    subgraph Infra
-        MQ["RabbitMQ (MQTT plugin)"]
-        GRPC["Servidor gRPC (Raspberry Pi 3)"]
-    end
-
-    subgraph Dispositivos
-        subgraph Sensores
-            SJ["Sensor Java"]
-            SESP["Sensor ESP8266"]
-        end
-        subgraph Atuadores
-            AJ["Atuador Java"]
-            AESP["Atuador ESP8266"]
-        end
-    end
-
-    FE -->|HTTP REST| API_NODE
-    CLI -->|HTTP REST| API_NODE
-    API_NODE -->|TCP Protobuf| GW
-
-    GW -->|gRPC| GRPC
-    GW -->|MQTT SUB| MQ
-
-    SJ -->|MQTT PUB| MQ
-    SESP -->|MQTT PUB| MQ
-
-    GRPC -->|TCP nanopb| AESP
-    AESP -->|DeviceUpdate| GRPC
-
-    GRPC -->|Java TCP/API| AJ
-
-    GW -->|Multicast Descoberta| SESP
-    GW -->|Multicast Descoberta| AESP
-    GW -->|Multicast Descoberta| SJ
-    GW -->|Multicast Descoberta| AJ
-    SESP -->|Registro TCP| GW
-    AESP -->|Registro TCP| GW
-    SJ -->|Registro TCP| GW
-    AJ -->|Registro TCP| GW
-```

@@ -73,10 +73,10 @@ def test_actuator_command():
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect(('localhost', 12345))
         
-        print("✅ Conectado ao gateway na porta 12345")
+        print("Conectado ao gateway na porta 12345")
         
         # Enviar comando TURN_ON
-        print("\n🔄 Enviando comando TURN_ON para relay_final_test...")
+        print("\nEnviando comando TURN_ON para relay_final_test...")
         
         command = smart_city_pb2.DeviceCommand(
             command_type="TURN_ON",
@@ -97,23 +97,23 @@ def test_actuator_command():
         send_delimited_message(client_socket, command_envelope)
         
         # Ler resposta do comando
-        print("📥 Aguardando resposta do comando...")
+        print("Aguardando resposta do comando...")
         command_response_envelope = receive_delimited_message(client_socket, smart_city_pb2.SmartCityMessage)
         
         if command_response_envelope and command_response_envelope.HasField('gateway_response'):
             cmd_response = command_response_envelope.gateway_response
-            print(f"✅ Resposta recebida: {cmd_response.message}")
-            print(f"✅ Status do comando: {cmd_response.command_status}")
+            print(f"Resposta recebida: {cmd_response.message}")
+            print(f"Status do comando: {cmd_response.command_status}")
             
             if cmd_response.command_status == "SUCCESS":
-                print("🎉 Comando executado com sucesso!")
+                print("Comando executado com sucesso!")
                 
                 # Aguardar um pouco
-                print("\n⏱️ Aguardando 2 segundos...")
+                print("\nAguardando 2 segundos...")
                 time.sleep(2)
                 
                 # Enviar comando TURN_OFF
-                print("\n🔄 Enviando comando TURN_OFF para relay_final_test...")
+                print("\nEnviando comando TURN_OFF para relay_final_test...")
                 
                 off_command = smart_city_pb2.DeviceCommand(
                     command_type="TURN_OFF",
@@ -134,26 +134,26 @@ def test_actuator_command():
                 send_delimited_message(client_socket, off_command_envelope)
                 
                 # Ler resposta do comando OFF
-                print("📥 Aguardando resposta do comando OFF...")
+                print("Aguardando resposta do comando OFF...")
                 off_response_envelope = receive_delimited_message(client_socket, smart_city_pb2.SmartCityMessage)
                 
                 if off_response_envelope and off_response_envelope.HasField('gateway_response'):
                     off_response = off_response_envelope.gateway_response
-                    print(f"✅ Resposta OFF recebida: {off_response.message}")
-                    print(f"✅ Status do comando OFF: {off_response.command_status}")
+                    print(f"Resposta OFF recebida: {off_response.message}")
+                    print(f"Status do comando OFF: {off_response.command_status}")
                     
                     if off_response.command_status == "SUCCESS":
-                        print("🎉 Comando OFF executado com sucesso!")
+                        print("Comando OFF executado com sucesso!")
             else:
-                print(f"❌ Comando falhou: {cmd_response.message}")
+                print(f"Comando falhou: {cmd_response.message}")
         else:
-            print("❌ Resposta inválida do gateway")
+            print("Resposta inválida do gateway")
         
         client_socket.close()
-        print("\n✅ Teste concluído!")
+        print("\nTeste concluído!")
         
     except Exception as e:
-        print(f"❌ Erro: {e}")
+        print(f"Erro: {e}")
         import traceback
         traceback.print_exc()
 

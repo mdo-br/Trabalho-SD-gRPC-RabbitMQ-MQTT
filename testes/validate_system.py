@@ -174,7 +174,7 @@ def validate_protocol_buffers():
 
 def validate_infrastructure():
     """Valida infraestrutura"""
-    print("\n🏗️ Validando infraestrutura...")
+    print("\nValidando infraestrutura...")
     
     success = True
     

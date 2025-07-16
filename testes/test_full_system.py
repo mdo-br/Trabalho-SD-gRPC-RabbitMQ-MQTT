@@ -16,7 +16,7 @@ GATEWAY_PORT = 12345
 
 def test_mqtt_connection():
     """Testa conectividade MQTT"""
-    print("🔄 Testando conexão MQTT...")
+    print("Testando conexão MQTT...")
     
     client = mqtt.Client()
     try:
@@ -105,7 +105,7 @@ def main():
     
     # Resumo
     print("=" * 50)
-    print("📊 RESUMO DOS TESTES:")
+    print("RESUMO DOS TESTES:")
     print(f"MQTT: {'OK' if results[0] else 'FALHA'}")
     print(f"Gateway TCP: {'OK' if results[1] else 'FALHA'}")
     print(f"Servidor gRPC: {'OK' if results[2] else 'FALHA'}")
