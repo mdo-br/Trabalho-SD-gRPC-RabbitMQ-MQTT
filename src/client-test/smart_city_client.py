@@ -45,7 +45,7 @@ except ImportError as e:
     sys.exit(1)
 
 # --- Configurações de Conexão com o Gateway ---
-GATEWAY_IP = 'localhost'  # IP do gateway - altere conforme necessário
+GATEWAY_IP = '192.168.3.129'  # IP do gateway - altere conforme necessário
 GATEWAY_TCP_PORT = 12345     # Porta TCP do gateway
 
 def _read_varint(sock):

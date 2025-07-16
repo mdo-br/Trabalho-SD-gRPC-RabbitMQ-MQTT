@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import axios from 'axios';
 
-const IP = '192.168.3.83'; 
+const IP = '127.0.0.1'; 
 
 export default function DeviceStatus({ device, onStatusChange, onIntervalChange }) {
   const [loading, setLoading] = React.useState(false);
