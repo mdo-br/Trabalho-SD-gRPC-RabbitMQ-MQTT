@@ -625,6 +625,152 @@ smart_city/commands/sensors/{device_id}/response
 - `SET_FREQ`: Altera frequência de coleta (valor em ms)
 - `GET_STATUS`: Consulta status atual
 
+## Detalhamento dos Tópicos MQTT
+
+### 📡 **Tópicos de Dados (Publicação pelos Sensores)**
+
+#### Padrão: `smart_city/sensors/{device_id}`
+
+**Exemplos de Tópicos:**
+```
+smart_city/sensors/temp_sensor_001
+smart_city/sensors/temp_sensor_esp_001
+smart_city/sensors/humidity_sensor_002
+```
+
+**Formato da Mensagem:**
+```json
+{
+  "device_id": "temp_sensor_esp_001",
+  "temperature": 25.3,
+  "humidity": 60.2,
+  "status": "ACTIVE",
+  "timestamp": 1640995200000,
+  "version": "mqtt"
+}
+```
+
+### 🎛️ **Tópicos de Comandos (Publicação pelo Gateway)**
+
+#### Padrão: `smart_city/commands/sensors/{device_id}`
+
+**Exemplos de Tópicos:**
+```
+smart_city/commands/sensors/temp_sensor_001
+smart_city/commands/sensors/temp_sensor_esp_001
+smart_city/commands/sensors/humidity_sensor_002
+```
+
+**Formato da Mensagem:**
+```json
+{
+  "command_type": "SET_FREQ",
+  "command_value": "3000",
+  "request_id": "cmd_1640995200_001",
+  "timestamp": 1640995200000
+}
+```
+
+### 📬 **Tópicos de Resposta (Publicação pelos Sensores)**
+
+#### Padrão: `smart_city/commands/sensors/{device_id}/response`
+
+**Exemplos de Tópicos:**
+```
+smart_city/commands/sensors/temp_sensor_001/response
+smart_city/commands/sensors/temp_sensor_esp_001/response
+smart_city/commands/sensors/humidity_sensor_002/response
+```
+
+**Formato da Mensagem:**
+```json
+{
+  "device_id": "temp_sensor_esp_001",
+  "request_id": "cmd_1640995200_001",
+  "success": true,
+  "message": "Frequência alterada para 3000ms",
+  "status": "ACTIVE",
+  "frequency_ms": 3000,
+  "timestamp": 1640995200001
+}
+```
+
+### 🛠️ **Comandos para Monitoramento**
+
+#### Monitorar Todos os Sensores:
+```bash
+# Dados de todos os sensores
+mosquitto_sub -h localhost -t "smart_city/sensors/+" -v
+
+# Comandos para todos os sensores
+mosquitto_sub -h localhost -t "smart_city/commands/sensors/+" -v
+
+# Respostas de todos os sensores
+mosquitto_sub -h localhost -t "smart_city/commands/sensors/+/response" -v
+```
+
+#### Monitorar Sensor Específico:
+```bash
+# Dados do sensor ESP8266
+mosquitto_sub -h localhost -t "smart_city/sensors/temp_sensor_esp_001" -v
+
+# Comandos para sensor ESP8266
+mosquitto_sub -h localhost -t "smart_city/commands/sensors/temp_sensor_esp_001" -v
+
+# Respostas do sensor ESP8266
+mosquitto_sub -h localhost -t "smart_city/commands/sensors/temp_sensor_esp_001/response" -v
+```
+
+#### Enviar Comandos Manualmente:
+```bash
+# Ativar sensor
+mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_esp_001" \
+  -m '{"command_type":"TURN_ON","request_id":"manual_001","timestamp":1640995200000}'
+
+# Alterar frequência para 2 segundos
+mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_esp_001" \
+  -m '{"command_type":"SET_FREQ","command_value":"2000","request_id":"manual_002","timestamp":1640995200000}'
+
+# Consultar status
+mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_esp_001" \
+  -m '{"command_type":"GET_STATUS","request_id":"manual_003","timestamp":1640995200000}'
+```
+
+### 🔧 **Configuração de QoS**
+
+- **Dados de Sensores**: QoS 0 (fire-and-forget, dados periódicos)
+- **Comandos**: QoS 1 (at-least-once, garantir entrega)
+- **Respostas**: QoS 1 (at-least-once, confirmar processamento)
+
+### 📊 **Estrutura de Payload por Tipo de Comando**
+
+#### Comando `SET_FREQ` - Resposta contém apenas frequência:
+```json
+{
+  "device_id": "temp_sensor_esp_001",
+  "request_id": "cmd_freq_001",
+  "success": true,
+  "message": "Frequência alterada para 3000ms",
+  "status": "ACTIVE",
+  "frequency_ms": 3000,
+  "timestamp": 1640995200001
+}
+```
+
+#### Outros Comandos - Resposta contém dados do sensor:
+```json
+{
+  "device_id": "temp_sensor_esp_001",
+  "request_id": "cmd_status_001",
+  "success": true,
+  "message": "Status atual: ACTIVE",
+  "status": "ACTIVE",
+  "temperature": 25.3,
+  "humidity": 60.2,
+  "timestamp": 1640995200001
+}
+```
+
 ### Implementação no Gateway
 
 O Gateway detecta automaticamente se um sensor suporta comandos MQTT através do campo `capabilities`:
@@ -719,7 +865,7 @@ mosquitto_pub -h 192.168.3.129 -t "smart_city/commands/sensors/temp_sensor_esp_0
 mosquitto_sub -h 192.168.3.129 -t "smart_city/commands/sensors/+/response"
 ```
 
-### Implementação ESP8266
+#### Implementação ESP8266
 
 #### Código Completo Disponível:
 ```
@@ -1030,6 +1176,10 @@ mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_001" \
 # Alterar frequência
 mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_001" \
   -m '{"command_type":"SET_FREQ","command_value":"3000","request_id":"124","timestamp":1640995200000}'
+
+# Consultar status
+mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_001" \
+  -m '{"command_type":"GET_STATUS","request_id":"125","timestamp":1640995200000}'
 ```
 
 #### Comando de Atuador via gRPC
