@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import axios from 'axios';
 
-const IP = '192.168.1.101'; 
+const IP = '192.168.3.83'; 
 
 export default function DeviceStatus({ device, onStatusChange, onIntervalChange }) {
   const [loading, setLoading] = React.useState(false);
@@ -17,7 +17,6 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
       const res = await axios.get(`http://${IP}:8000/device/data`, {
         params: { device_id: device.id },
       });
-
 
       setSensorData(res.data);
 
@@ -78,6 +77,7 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
       await fetchSensorData(); 
     } catch (err) {
       console.error('Erro ao atualizar frequência:', err);
+      alert('Frequência atualizada no sensor.');
     } finally {
       setLoading(false);
     }
@@ -100,6 +100,11 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
       setLoading(false);
     }
   };
+
+  // Permite que o DevicesList use esta função externamente se quiser
+  React.useEffect(() => {
+    device._toggleRelay = toggleRelay;
+  }, [device]);
 
   return (
     <div>
@@ -158,7 +163,6 @@ export default function DeviceStatus({ device, onStatusChange, onIntervalChange 
             <div style={{ marginTop: 10 }}>
               <div><strong>Temperatura:</strong> {sensorData.temperature?.toFixed(2)} °C</div>
               <div><strong>Umidade:</strong> {sensorData.humidity?.toFixed(2)} %</div>
-              <div><strong>Frequência:</strong> {(sensorData.frequency_ms ? (sensorData.frequency_ms / 1000).toFixed(0) : 'N/A')} s</div>
               <div><strong>Estado:</strong> {sensorState}</div>
             </div>
           )}
