@@ -627,7 +627,7 @@ smart_city/commands/sensors/{device_id}/response
 
 ## Detalhamento dos Tópicos MQTT
 
-### 📡 **Tópicos de Dados (Publicação pelos Sensores)**
+### **Tópicos de Dados (Publicação pelos Sensores)**
 
 #### Padrão: `smart_city/sensors/{device_id}`
 
@@ -650,7 +650,7 @@ smart_city/sensors/humidity_sensor_002
 }
 ```
 
-### 🎛️ **Tópicos de Comandos (Publicação pelo Gateway)**
+### **Tópicos de Comandos (Publicação pelo Gateway)**
 
 #### Padrão: `smart_city/commands/sensors/{device_id}`
 
@@ -671,7 +671,7 @@ smart_city/commands/sensors/humidity_sensor_002
 }
 ```
 
-### 📬 **Tópicos de Resposta (Publicação pelos Sensores)**
+### **Tópicos de Resposta (Publicação pelos Sensores)**
 
 #### Padrão: `smart_city/commands/sensors/{device_id}/response`
 
@@ -695,7 +695,7 @@ smart_city/commands/sensors/humidity_sensor_002/response
 }
 ```
 
-### 🛠️ **Comandos para Monitoramento**
+### **Comandos para Monitoramento**
 
 #### Monitorar Todos os Sensores:
 ```bash
@@ -736,13 +736,13 @@ mosquitto_pub -h localhost -t "smart_city/commands/sensors/temp_sensor_esp_001" 
   -m '{"command_type":"GET_STATUS","request_id":"manual_003","timestamp":1640995200000}'
 ```
 
-### 🔧 **Configuração de QoS**
+### **Configuração de QoS**
 
 - **Dados de Sensores**: QoS 0 (fire-and-forget, dados periódicos)
 - **Comandos**: QoS 1 (at-least-once, garantir entrega)
 - **Respostas**: QoS 1 (at-least-once, confirmar processamento)
 
-### 📊 **Estrutura de Payload por Tipo de Comando**
+### **Estrutura de Payload por Tipo de Comando**
 
 #### Comando `SET_FREQ` - Resposta contém apenas frequência:
 ```json
