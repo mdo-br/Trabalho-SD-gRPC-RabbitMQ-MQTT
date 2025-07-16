@@ -61,7 +61,7 @@ public class TemperatureHumiditySensor {
 
     public TemperatureHumiditySensor(String deviceId) {
         this.deviceId = deviceId;
-        this.currentStatus = SmartCity.DeviceStatus.IDLE;
+        this.currentStatus = SmartCity.DeviceStatus.ACTIVE;
         this.mqttDataTopic = MQTT_TOPIC_PREFIX + deviceId;
         this.mqttCommandTopic = MQTT_COMMAND_TOPIC_PREFIX + deviceId;
         this.mqttResponseTopic = MQTT_COMMAND_TOPIC_PREFIX + deviceId + "/response";

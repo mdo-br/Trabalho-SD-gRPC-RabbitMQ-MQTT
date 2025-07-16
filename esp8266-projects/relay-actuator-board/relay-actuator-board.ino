@@ -9,13 +9,13 @@
  * - Descoberta automática do gateway via multicast UDP
  * - Registro no gateway via TCP
  * - Recebimento de comandos via TCP (TURN_ON/TURN_OFF)
- * - Envio de status via UDP
+ * - Resposta a consultas de status via TCP
  * - Controle de relé para acionar cargas (lâmpadas, motores, etc.)
  * 
  * Protocolos:
  * - Protocol Buffers para serialização de mensagens
- * - TCP para registro e comandos
- * - UDP para status e descoberta multicast
+ * - TCP para registro, comandos e consultas de status
+ * - UDP apenas para descoberta multicast
  * 
  * Hardware:
  * - ESP8266 (NodeMCU, Wemos D1 Mini, etc.)
@@ -34,19 +34,15 @@
 
 // --- Configurações de Hardware ---
 #define pinRELE 3                    // Pino digital conectado ao módulo relé
-unsigned long prevTime = millis();   // Controle de tempo para envio periódico
-long msgInterval = 5000;            // Intervalo para envio de status (30 segundos)
 String lampStatus = "OFF";           // Status atual do relé
 
 // --- Configurações de Rede WiFi ---
-const char* SSID = "";           // Nome da rede WiFi - CONFIGURAR
-const char* PASSWORD = "";   // Senha da rede WiFi - CONFIGURAR
+const char* SSID = "homeoffice";           // Nome da rede WiFi - CONFIGURAR
+const char* PASSWORD = "19071981";   // Senha da rede WiFi - CONFIGURAR
 
 // --- Configurações de Rede do Sistema ---
 const char* multicastIP = "224.1.1.1";  // Endereço multicast para descoberta
 const int multicastPort = 5007;         // Porta multicast
-const int gatewayUDPPort = 12346;       // Porta UDP do gateway
-const int localUDPPort = 8891;          // Porta UDP local (diferente de outros dispositivos)
 const int localTCPPort = 8891;          // Porta TCP local para comandos
 
 // --- Configurações do Dispositivo ---
@@ -54,7 +50,6 @@ const String ID_PCB = "001001002";      // ID único da placa - MODIFICAR SE NEC
 const String deviceID = "relay_board_" + ID_PCB;  // ID completo do dispositivo
 
 // --- Objetos de Rede ---
-WiFiUDP udp;                           // Socket UDP para comunicação
 WiFiUDP multicastUdp;                  // Socket UDP multicast para descoberta
 WiFiServer tcpServer(localTCPPort);    // Servidor TCP para comandos
 
@@ -129,7 +124,6 @@ void setup() {
   conectaWiFi();
   
   // Inicializa sockets de rede
-  udp.begin(localUDPPort);
   multicastUdp.beginMulticast(WiFi.localIP(), IPAddress(224,1,1,1), multicastPort);
   tcpServer.begin();
   
@@ -140,12 +134,6 @@ void setup() {
 void loop() {
   unsigned long currentTime = millis();
   
-  // Envia atualização de status periodicamente
-  if (currentTime - prevTime >= msgInterval) {
-    sendStatusUpdate();
-    prevTime = currentTime;
-  }
-
   // Registro TCP periódico
   if (gatewayDiscovered && (currentTime - lastRegisterAttempt >= registerInterval)) {
     sendDiscoveryResponse();
@@ -333,31 +321,7 @@ void processCommand(String msg) {
   }
 }
 
-// --- Envio de Atualização de Status (UDP) ---
-void sendStatusUpdate() {
-  // Cria mensagem DeviceUpdate com status atual
-  smartcity_devices_DeviceUpdate msg = smartcity_devices_DeviceUpdate_init_zero;
-  msg.device_id.funcs.encode = &encode_device_id;
-  msg.device_id.arg = (void*)deviceID.c_str();
-  msg.type = smartcity_devices_DeviceType_RELAY;
-  msg.current_status = (lampStatus == "ON") ? smartcity_devices_DeviceStatus_ON : smartcity_devices_DeviceStatus_OFF;
 
-  // Cria envelope SmartCityMessage
-  smartcity_devices_SmartCityMessage envelope = smartcity_devices_SmartCityMessage_init_zero;
-  envelope.message_type = smartcity_devices_MessageType_DEVICE_UPDATE;
-  envelope.which_payload = smartcity_devices_SmartCityMessage_device_update_tag;
-  envelope.payload.device_update = msg;
-
-  // Serializa e envia via UDP
-  uint8_t buffer[128];
-  pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-  if (pb_encode(&stream, smartcity_devices_SmartCityMessage_fields, &envelope) && gatewayDiscovered) {
-    udp.beginPacket(gatewayIP.c_str(), gatewayUDPPort);
-    udp.write(buffer, stream.bytes_written);
-    udp.endPacket();
-    Serial.printf("Status (envelope) enviado via UDP para %s:%d (%d bytes)\n", gatewayIP.c_str(), gatewayUDPPort, (int)stream.bytes_written);
-  }
-}
 
 
 // --- Resposta ao Gateway com DeviceInfo (TCP) ---
@@ -373,8 +337,8 @@ void sendDiscoveryResponse() {
     msg.type = smartcity_devices_DeviceType_RELAY;
     msg.ip_address.funcs.encode = &encode_ip_address;
     msg.ip_address.arg = (void*)deviceIP.c_str();
-    msg.port = localUDPPort;
-    msg.initial_state = smartcity_devices_DeviceStatus_OFF;
+    msg.port = localTCPPort;  // Porta TCP do dispositivo (8891)
+    msg.initial_state = (lampStatus == "ON") ? smartcity_devices_DeviceStatus_ON : smartcity_devices_DeviceStatus_OFF;  // Estado atual do relé
     msg.is_actuator = true;   // Este dispositivo é um atuador
     msg.is_sensor = false;    // Este dispositivo não é um sensor
 

@@ -102,7 +102,7 @@ public class RelayActuator {
                     .setType(SmartCity.DeviceType.RELAY)
                     .setIpAddress(getLocalIpAddress())
                     .setPort(tcpPort) // Corrigido: usa a porta configurada do relé
-                    .setInitialState(currentStatus)
+                    .setInitialState(currentStatus)  // Estado atual do relé (não fixo)
                     .setIsActuator(true)
                     .setIsSensor(false)
                     .build();
@@ -112,7 +112,7 @@ public class RelayActuator {
                     .build();
             envelope.writeDelimitedTo(output);
             output.flush();
-            LOGGER.info("Relé Atuador " + deviceId + " enviou DeviceInfo (envelope) para o Gateway em " + gatewayHost + ":" + gatewayPort);
+            LOGGER.info("Relé Atuador " + deviceId + " enviou DeviceInfo (envelope) para o Gateway em " + gatewayHost + ":" + gatewayPort + " com status: " + currentStatus);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Erro ao enviar DeviceInfo: " + e.getMessage(), e);
         }
@@ -185,23 +185,9 @@ public class RelayActuator {
             LOGGER.fine("Relé Atuador " + deviceId + ": Gateway ainda não descoberto, não enviando status.");
             return;
         }
-        SmartCity.DeviceUpdate statusUpdate = SmartCity.DeviceUpdate.newBuilder()
-                .setDeviceId(deviceId)
-                .setType(SmartCity.DeviceType.RELAY)
-                .setCurrentStatus(currentStatus)
-                .build();
-        SmartCity.SmartCityMessage envelope = SmartCity.SmartCityMessage.newBuilder()
-                .setMessageType(SmartCity.MessageType.DEVICE_UPDATE)
-                .setDeviceUpdate(statusUpdate)
-                .build();
-        try (DatagramSocket udpSocket = new DatagramSocket()) {
-            byte[] data = envelope.toByteArray();
-            DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName(gatewayIp), gatewayUdpPort);
-            udpSocket.send(packet);
-            LOGGER.info("Relé Atuador " + deviceId + " enviou DeviceUpdate UDP (envelope) para o Gateway.");
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Erro ao enviar DeviceUpdate via UDP: " + e.getMessage(), e);
-        }
+        
+        // Envia DeviceInfo via TCP com estado atualizado (mesmo padrão do ESP8266)
+        sendDeviceInfo(gatewayIp, gatewayTcpPort);
     }
 
     private void startStatusScheduler() {

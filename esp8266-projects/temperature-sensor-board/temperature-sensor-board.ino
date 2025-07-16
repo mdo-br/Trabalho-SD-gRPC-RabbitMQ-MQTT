@@ -185,7 +185,7 @@ void setup() {
   Serial.println("Aguardando descoberta do gateway via multicast...");
   
   // Configurar status inicial
-  currentStatus = smartcity_devices_DeviceStatus_IDLE;
+  currentStatus = smartcity_devices_DeviceStatus_ACTIVE;
   
   Serial.println("Sensor ESP8266 inicializado com sucesso!");
 }

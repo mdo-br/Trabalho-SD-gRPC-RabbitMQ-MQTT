@@ -76,16 +76,28 @@ def decode_varint(data, offset=0):
 
 def read_delimited_message_bytes(sock_file):
     """Lê uma mensagem protobuf com delimitador de tamanho"""
-    size_bytes = sock_file.read(1)
-    if not size_bytes:
-        return None
+    # Ler varint byte por byte
+    size = 0
+    shift = 0
+    bytes_read = 0
     
-    size = size_bytes[0]
-    if size & 0x80:
-        # Varint de múltiplos bytes
-        size_data = size_bytes + sock_file.read(4)  # Lê até 4 bytes adicionais
-        size, _ = decode_varint(size_data)
+    while True:
+        byte_data = sock_file.read(1)
+        if not byte_data:
+            return None
+        
+        byte = byte_data[0]
+        size |= (byte & 0x7F) << shift
+        bytes_read += 1
+        
+        if (byte & 0x80) == 0:
+            break
+        
+        shift += 7
+        if bytes_read > 5:  # Proteção contra loop infinito
+            raise ValueError("Varint too long")
     
+    # Ler dados da mensagem
     message_data = sock_file.read(size)
     if len(message_data) != size:
         raise ValueError(f"Expected {size} bytes, got {len(message_data)}")
@@ -319,7 +331,7 @@ def register_device(device_info):
             device_data['mqtt_response_topic'] = f"{MQTT_COMMAND_TOPIC_PREFIX}{device_id}/response"
             logger.info(f"Sensor MQTT registrado: {device_id}")
         connected_devices[device_id] = device_data
-        logger.info(f"Dispositivo {device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado.")
+        logger.info(f"Dispositivo {device_id} ({smart_city_pb2.DeviceType.Name(device_info.type)}) registrado/atualizado. Status: {smart_city_pb2.DeviceStatus.Name(device_info.initial_state)}")
 
 # === COMANDO PARA DISPOSITIVOS ===
 def send_command_to_device(dev_id, command_type, command_value=""):
