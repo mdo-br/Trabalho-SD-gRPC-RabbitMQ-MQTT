@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-GATEWAY_HOST = "192.168.3.129"
+GATEWAY_HOST = "127.0.0.1"
 GATEWAY_API_PORT = 12345
 
 # Utilitários de serialização varint (delimited Protobuf)

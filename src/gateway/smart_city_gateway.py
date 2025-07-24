@@ -33,11 +33,11 @@ MULTICAST_PORT = 5007
 GATEWAY_TCP_PORT = 12345       # Porta TCP para registro de dispositivos
 GATEWAY_UDP_PORT = 12346       # Porta UDP para dados de sensores (legado)
 API_TCP_PORT = 12347           # Porta TCP para API externa
-GRPC_SERVER_HOST = "192.168.3.121"
+GRPC_SERVER_HOST = "127.0.0.1"  # <--- Substitua pelo IP real do seu servidor gRPC
 GRPC_SERVER_PORT = 50051
 
 # Configurações MQTT
-MQTT_BROKER_HOST = "192.168.3.121"  # <--- Substitua pelo IP real do seu broker MQTT
+MQTT_BROKER_HOST = "127.0.0.1"  # <--- Substitua pelo IP real do seu broker MQTT
 MQTT_BROKER_PORT = 1883
 MQTT_COMMAND_TOPIC_PREFIX = "smart_city/commands/sensors/"
 MQTT_RESPONSE_TOPIC_PREFIX = "smart_city/commands/sensors/"
