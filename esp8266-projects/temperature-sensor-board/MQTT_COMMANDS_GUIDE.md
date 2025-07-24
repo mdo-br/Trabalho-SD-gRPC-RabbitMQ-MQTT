@@ -4,7 +4,7 @@ mqttClient.loop();  // Process MQTT messages
 # Guia de Implementação MQTT para Sensor ESP8266
 
 ## Visão Geral
-Este guia apresenta a arquitetura e o código atual para comunicação MQTT do sensor de temperatura ESP8266, utilizado no sistema Smart City. Toda a comunicação de dados e comandos é feita via MQTT, garantindo integração total e confiável.
+Este guia apresenta a arquitetura e o código real do sensor de temperatura ESP8266 para o sistema Smart City. Toda a comunicação de dados, comandos e respostas é feita via MQTT, conforme o firmware atual.
 
 ## Arquitetura
 - **Dados:** Sensor ESP8266 → MQTT → Gateway
@@ -32,14 +32,70 @@ String responseTopic = "smart_city/commands/sensors/temp_sensor_esp_002/response
 ### Comando (JSON)
 ```json
 {
+  "command_type": "TURN_ACTIVE", // ou TURN_ACTIVE, TURN_OFF, TURN_IDLE, SET_FREQ, GET_STATUS
+  "command_value": "",        // valor do comando, ex: frequência em ms para SET_FREQ
+  "request_id": "req123",
+  "timestamp": 1640995200000
+}
+```
+
+### Exemplos de Comandos e Respostas
+
+#### Comando TURN_IDLE
+```json
+{
+  "command_type": "TURN_IDLE",
+  "command_value": "",
+  "request_id": "req456",
+  "timestamp": 1640995201000
+}
+```
+#### Resposta TURN_IDLE
+```json
+{
+  "device_id": "temp_sensor_esp_002",
+  "request_id": "req456",
+  "success": true,
+  "message": "Sensor em modo idle",
+  "status": "IDLE",
+  "temperature": 25.3,
+  "humidity": 60.2,
+  "timestamp": 1640995201000
+}
+```
+
+#### Comando SET_FREQ
+```json
+{
+  "command_type": "SET_FREQ",
+  "command_value": "10000",
+  "request_id": "req789",
+  "timestamp": 1640995202000
+}
+```
+#### Resposta SET_FREQ
+```json
+{
+  "device_id": "temp_sensor_esp_002",
+  "request_id": "req789",
+  "success": true,
+  "message": "Frequência alterada para 10000ms",
+  "status": "ACTIVE",
+  "frequency_ms": 10000,
+  "timestamp": 1640995202000
+}
+```
+
+#### Comando TURN_ON
+```json
+{
   "command_type": "TURN_ON",
   "command_value": "",
   "request_id": "req123",
   "timestamp": 1640995200000
 }
 ```
-
-### Resposta (JSON)
+#### Resposta TURN_ON
 ```json
 {
   "device_id": "temp_sensor_esp_002",
@@ -47,12 +103,47 @@ String responseTopic = "smart_city/commands/sensors/temp_sensor_esp_002/response
   "success": true,
   "message": "Sensor ativado",
   "status": "ACTIVE",
-  "frequency_ms": 5000,
   "temperature": 25.3,
   "humidity": 60.2,
   "timestamp": 1640995200000
 }
 ```
+```json
+{
+  "device_id": "temp_sensor_esp_002",
+  "request_id": "req456",
+  "success": true,
+  "message": "Sensor em modo idle",
+  "status": "IDLE",
+  "temperature": 25.3,
+  "humidity": 60.2,
+  "timestamp": 1640995201000
+}
+```
+
+### Exemplo 2: Comando SET_FREQ
+```json
+{
+  "command_type": "SET_FREQ",
+  "command_value": "10000",
+  "request_id": "req789",
+  "timestamp": 1640995202000
+}
+```
+
+### Resposta para SET_FREQ
+```json
+{
+  "device_id": "temp_sensor_esp_002",
+  "request_id": "req789",
+  "success": true,
+  "message": "Frequência alterada para 10000ms",
+  "status": "ACTIVE",
+  "frequency_ms": 10000,
+  "timestamp": 1640995202000
+}
+```
+// ...outros exemplos acima...
 
 ## Exemplo de Código Principal
 ```cpp
@@ -114,13 +205,15 @@ void processCommand(String jsonMessage) {
   // ...processa comandos e envia resposta...
 }
 
-void sendSensorDataMQTT(float temperature, float humidity) {
+void sendSensorDataMQTT() {
   StaticJsonDocument<300> doc;
   doc["device_id"] = device_id;
-  doc["temperature"] = temperature;
-  doc["humidity"] = humidity;
-  doc["status"] = "ACTIVE";
+  doc["temperature"] = lastTemperature;
+  doc["humidity"] = lastHumidity;
+  doc["status"] = getStatusString();
   doc["timestamp"] = millis();
+  doc["version"] = isUsingSimulatedData ? "mqtt_test" : "mqtt_real";
+  doc["data_source"] = isUsingSimulatedData ? "simulated" : "dht11";
   String jsonString;
   serializeJson(doc, jsonString);
   mqttClient.publish(dataTopic.c_str(), jsonString.c_str());
@@ -136,6 +229,8 @@ void sendSensorDataMQTT(float temperature, float humidity) {
 - Reconexão automática ao MQTT
 - Formato JSON fácil de integrar
 - Suporte a múltiplos sensores
+- Tópicos e comandos padronizados
+- Respostas detalhadas para cada comando
 
 ## Requisitos de Hardware
 - ESP8266 (NodeMCU, Wemos D1 Mini, etc.)
@@ -147,4 +242,4 @@ void sendSensorDataMQTT(float temperature, float humidity) {
 - DHT sensor library
 
 ## Conclusão
-Este README apresenta a arquitetura e o código atual para sensores ESP8266 com comunicação MQTT no sistema Smart City. Toda a lógica de comandos, respostas e envio de dados é feita via MQTT, facilitando integração, escalabilidade e confiabilidade.
+Este README apresenta a arquitetura e o código real do sensor ESP8266 com comunicação MQTT no sistema Smart City. Os tópicos, comandos e formatos de mensagem refletem exatamente o funcionamento do firmware atual, garantindo integração, escalabilidade e confiabilidade.
