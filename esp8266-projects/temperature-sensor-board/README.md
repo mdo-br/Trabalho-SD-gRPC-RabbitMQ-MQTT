@@ -1,78 +1,67 @@
 # Temperature Sensor Board - ESP8266
 
-Este diretório contém o firmware para o sensor de temperatura da **placa desenvolvida**, baseado no código original com DHT11 e adaptado para a arquitetura do sistema de cidade inteligente.
+Este diretório contém o firmware para o sensor de temperatura ESP8266 com DHT11, totalmente integrado ao sistema Smart City via MQTT, conforme o código real.
 
 ## Características Específicas da Placa
 
-- **Sensor Real:** DHT11 conectado ao pino digital 3
-- **ID Único:** Configurável via variável `ID_PCB`
-- **Leitura Inteligente:** Envia dados apenas quando há mudança nos valores
-- **Protocolo:** Protocol Buffers (nanopb) em vez de MQTT
-- **Comunicação:** TCP (registro) + UDP (dados sensoriados) + Multicast (descoberta)
+- **Sensor Real:** DHT11 conectado ao pino D3
+- **ID Único:** Configurável via variável `device_id`
+- **Leitura Inteligente:** Envia dados periodicamente e quando há mudança
+- **Protocolo:** MQTT para dados, comandos e respostas
+- **Comunicação:** MQTT (dados, comandos, respostas), Multicast UDP (descoberta), TCP (registro inicial)
 
 ## Diferenças do Sensor Anterior
 
-| Característica | Sensor Anterior | Placa Desenvolvida |
-|----------------|-----------------|-------------------|
-| **Sensor** | Simulado | DHT11 Real |
-| **ID** | `esp8266_temp_01` | `temp_board_001001001` |
-| **Porta UDP** | 8889 | 8890 |
-| **Intervalo** | 5s fixo | 5s com mudança |
-| **Protocolo** | Protocol Buffers | Protocol Buffers |
-| **Lógica** | Sempre envia | Envia apenas se mudou |
+| Característica | Sensor Anterior | Sensor Atual |
+|----------------|-----------------|--------------|
+| **Sensor** | DHT11 Real | DHT11 Real |
+| **ID** | `esp8266_temp_01` | `temp_sensor_esp_002` |
+| **Tópico MQTT** | Não usava | `smart_city/sensors/temp_sensor_esp_002` |
+| **Intervalo** | 5s fixo | 5s padrão, configurável via comando |
+| **Protocolo** | UDP/TCP | MQTT |
+| **Lógica** | Sempre envia | Envia periodicamente e sob comando |
 
 ## Configuração
 
-### 1. Configurar ID da Placa
-
-Edite a variável `ID_PCB` no código:
-
+### 1. Configurar ID do Dispositivo
+Edite a variável `device_id` no código:
 ```cpp
-const String ID_PCB = "001001001";  // MODIFICAR AQUI
+const char* device_id = "temp_sensor_esp_002";  // MODIFICAR SE NECESSÁRIO
 ```
 
 ### 2. Configurar WiFi
-
 Edite as credenciais WiFi:
-
 ```cpp
 const char* ssid = "SUA_REDE_WIFI";
 const char* password = "SUA_SENHA_WIFI";
 ```
 
 ### 3. Verificar Pino do Sensor
-
-O DHT11 está configurado para o pino 3:
-
+O DHT11 está configurado para o pino D3:
 ```cpp
-#define DHTPIN 3  // PINO DIGITAL UTILIZADO PELO SENSOR
+#define DHTPIN D3  // PINO DIGITAL UTILIZADO PELO SENSOR
 ```
 
 ## Instalação e Upload
 
 ### Pré-requisitos
-
-- [PlatformIO](https://platformio.org/) instalado
-- Placa ESP8266 desenvolvida com DHT11
-- Sensor DHT11 conectado ao pino 3
+- [PlatformIO](https://platformio.org/) ou Arduino IDE instalado
+- Placa ESP8266 (NodeMCU, Wemos D1 Mini, etc.)
+- Sensor DHT11 conectado ao pino D3
 
 ### Passos
-
 1. **Acesse o diretório:**
    ```sh
    cd esp8266-projects/temperature-sensor-board
    ```
-
 2. **Compile o firmware:**
    ```sh
    pio run
    ```
-
 3. **Faça upload para o ESP8266:**
    ```sh
    pio run --target upload
    ```
-
 4. **Abra o monitor serial:**
    ```sh
    pio device monitor
@@ -82,44 +71,50 @@ O DHT11 está configurado para o pino 3:
 
 ### Inicialização
 ```
-=== Temperature Sensor Board ESP8266 ===
-Placa desenvolvida - Sensor de Temperatura DHT11
-ID da Placa: 001001001
-Conectando-se SUA_REDE_WIFI
-Conectado na rede: SUA_REDE_WIFI  IP obtido: 192.168.x.x
+=== Temperature Sensor Board ESP8266 (MQTT) ===
+Device ID: temp_sensor_esp_002
+Data Topic: smart_city/sensors/temp_sensor_esp_002
+Command Topic: smart_city/commands/sensors/temp_sensor_esp_002
+Response Topic: smart_city/commands/sensors/temp_sensor_esp_002/response
+WiFi conectado!
+Endereço IP: 192.168.x.x
 Aguardando descoberta do gateway via multicast...
 ```
 
 ### Descoberta e Registro
 ```
-Mensagem multicast recebida: 21 bytes
-Gateway descoberto via multicast: 192.168.x.x
-DeviceInfo enviado via TCP para 192.168.x.x:12345 (30 bytes)
+Pacote multicast recebido de 192.168.x.x:5007
+Gateway encontrado: 192.168.x.x:12346
+Broker MQTT encontrado: 192.168.x.x:1883
+Registro enviado com sucesso!
 ```
 
-### Leitura do Sensor
+### Leitura e Envio de Dados
 ```
-Temperatura = 23.50 °C      |       Umidade = 65.20
-DeviceUpdate enviado via UDP para 192.168.x.x:12346 (41 bytes)
+[DEBUG] Leitura DHT11: Temperatura = 23.5 °C | Umidade = 65.2 %
+✓ Dados MQTT enviados (SENSOR REAL): {"device_id":"temp_sensor_esp_002","temperature":23.5,"humidity":65.2,"status":"ACTIVE","timestamp":123456,"version":"mqtt_real","data_source":"dht11"}
+```
+
+### Comando Recebido
+```
+Mensagem MQTT recebida no tópico: smart_city/commands/sensors/temp_sensor_esp_002
+Mensagem: {"command_type":"TURN_IDLE","command_value":"","request_id":"req456"}
+Comando recebido: TURN_IDLE
+[DEBUG] Processado - Success: true, Message: Sensor em modo idle
+Resposta enviada: {"device_id":"temp_sensor_esp_002","request_id":"req456","success":true,"message":"Sensor em modo idle","status":"IDLE","temperature":23.5,"humidity":65.2,"timestamp":123456}
 ```
 
 ## Verificação no Sistema
 
-### Listar Dispositivos
+### Listar Dispositivos (Gateway/Cliente)
 ```bash
-# No cliente CLI
-Escolha uma opção: 1
-
 --- Dispositivos Conectados ---
-  ID: temp_board_001001001, Tipo: TEMPERATURE_SENSOR, IP: 192.168.x.x:8890, Status: ACTIVE
+  ID: temp_sensor_esp_002, Tipo: TEMPERATURE_SENSOR, IP: 192.168.x.x, Status: ACTIVE
 ```
 
 ### Consultar Status
 ```bash
-Escolha uma opção: 4
-ID do Dispositivo: temp_board_001001001
-
---- Status de 'temp_board_001001001' ---
+--- Status de 'temp_sensor_esp_002' ---
   Tipo: TEMPERATURE_SENSOR
   Status Atual: ACTIVE
   Temperatura: 23.5°C
@@ -129,60 +124,38 @@ ID do Dispositivo: temp_board_001001001
 ## Características Técnicas
 
 ### Lógica de Envio de Dados
-
-O sensor implementa a mesma lógica do código original:
-
+O sensor implementa a seguinte lógica:
 1. **Leitura:** Lê temperatura e umidade do DHT11
-2. **Comparação:** Compara com valores anteriores
-3. **Envio:** Envia apenas se houve mudança
-4. **Formato:** Protocol Buffers em vez de MQTT
+2. **Envio:** Envia dados via MQTT periodicamente (intervalo configurável)
+3. **Comando:** Recebe comandos via MQTT para alterar frequência, ativar/desativar, consultar status
+4. **Formato:** Mensagens JSON via MQTT
 
 ### Estrutura de Mensagens
 
-- **DeviceInfo:** Registro inicial via TCP
-- **DeviceUpdate:** Dados sensoriados via UDP
-- **Protocol:** Compatível com o sistema principal
+- **Registro:** DeviceInfo via TCP (descoberta/registro)
+- **Dados:** JSON via MQTT no tópico `smart_city/sensors/temp_sensor_esp_002`
+- **Comandos:** JSON via MQTT no tópico `smart_city/commands/sensors/temp_sensor_esp_002`
+- **Respostas:** JSON via MQTT no tópico `smart_city/commands/sensors/temp_sensor_esp_002/response`
 
 ### Pinagem
 
-- **DHT11:** Pino 3 (configurável)
+- **DHT11:** Pino D3
 - **WiFi:** Interno do ESP8266
 - **Serial:** 115200 baud
 
 ## Troubleshooting
 
 ### Problemas Comuns
-
-- **DHT11 não lê:** Verificar conexões e pino
+- **DHT11 não lê:** Verificar conexões e pino D3
 - **WiFi não conecta:** Verificar credenciais
-- **Gateway não descoberto:** Verificar se Gateway está rodando
-- **Dados não aparecem:** Verificar se há mudança nos valores
-
-### Logs de Debug
-
-```bash
-# Verificar multicast
-sudo tcpdump -i any udp port 5007
-
-# Verificar dados UDP
-sudo tcpdump -i any udp port 12346
-
-# Verificar registro TCP
-sudo tcpdump -i any tcp port 12345
-```
+- **Gateway não descoberto:** Verificar se Gateway está rodando e multicast habilitado
+- **MQTT não conecta:** Verificar broker, IP e porta
+- **Comandos não funcionam:** Verificar tópicos e formato JSON
 
 ## Expansão
 
 Para adicionar mais sensores à placa:
-
 1. **Novos Pinos:** Adicionar definições de pinos
 2. **Novas Leituras:** Implementar funções de leitura
-3. **Novos Dados:** Adicionar campos no Protocol Buffer
-4. **Lógica:** Adaptar a lógica de envio
-
-## Compatibilidade
-
-- ✅ **Gateway Python:** Compatível
-- ✅ **Cliente CLI:** Compatível
-- ✅ **Protocol Buffers:** Compatível
-- ✅ **Sistema Principal:** Totalmente integrado 
+3. **Novos Dados:** Adicionar campos nas mensagens JSON/MQTT
+4. **Lógica:** Adaptar a lógica de envio e comandos
