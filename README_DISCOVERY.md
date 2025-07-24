@@ -1,14 +1,16 @@
 # Lógica de Descoberta – Smart City IoT
 
-Este documento explica como funciona o protocolo de descoberta automática entre o **gateway**, **sensores** e **atuadores** no sistema Smart City, detalhando o fluxo de mensagens, exemplos e o protocolo utilizado.
+Este documento explica como funciona o protocolo de descoberta automática entre o **gateway**, **sensores** e **atuadores** no sistema Smart City, detalhando o fluxo de mensagens, exemplos e o protocolo utilizado, conforme o código real dos dispositivos e gateway.
 
 ---
 
 ## 1. Visão Geral
 
 A descoberta automática permite que sensores e atuadores encontrem o gateway na rede sem configuração manual de IPs. O processo envolve:
-- **Gateway** anunciando sua presença via multicast UDP.
-- **Dispositivos** (sensores/atuadores) escutando esse anúncio, registrando-se e, depois, enviando status periodicamente.
+- **Gateway** anunciando sua presença via multicast UDP (mensagem DiscoveryRequest, incluindo IP, portas e dados do broker MQTT).
+- **Dispositivos** (sensores/atuadores) escutando esse anúncio, aprendendo IP/portas do gateway e do broker MQTT.
+- **Sensores**: registram-se via TCP, comunicam dados e comandos via MQTT.
+- **Atuadores**: registram-se via TCP, comunicam comandos e status via TCP.
 
 ---
 
@@ -17,20 +19,31 @@ A descoberta automática permite que sensores e atuadores encontrem o gateway na
 ```mermaid
 sequenceDiagram
     participant Gateway
-    participant Dispositivo
+    participant gRPCServer as gRPC Server (Raspberry Pi)
+    participant Sensor
+    participant Atuador
 
-    Gateway->>Rede: DiscoveryRequest (UDP multicast)
-    Dispositivo-->>Gateway: DeviceInfo (TCP)
-    loop Periodicamente
-        Dispositivo-->>Gateway: DeviceUpdate (UDP)
+    loop A cada 10 segundos
+        Gateway->>Rede: DiscoveryRequest (UDP multicast)
     end
-    Gateway-->>Dispositivo: (opcional) Comando (TCP)
-    Dispositivo-->>Gateway: DeviceUpdate (TCP, resposta ao comando)
+    Sensor-->>Gateway: DeviceInfo (TCP)
+    Atuador-->>Gateway: DeviceInfo (TCP)
+    loop Periodicamente
+        Sensor-->>Gateway: Dados via MQTT (dataTopic)
+        Atuador-->>Gateway: DeviceUpdate (TCP)
+    end
+    Gateway->>gRPCServer: Comando gRPC para atuador
+    gRPCServer->>Atuador: Comando TCP/Protocol Buffers
+    Atuador->>gRPCServer: DeviceUpdate (TCP, resposta ao comando)
+    gRPCServer->>Gateway: Resposta gRPC
+    Gateway-->>Sensor: Comando via MQTT (commandTopic)
+    Sensor-->>Gateway: Resposta via MQTT (responseTopic)
 ```
 
 ---
 
-## 3. Mensagens Utilizadas (baseado no .proto)
+## 3. Mensagens Utilizadas (smart_city.proto)
+
 
 ### DiscoveryRequest (descoberta)
 Enviada pelo gateway via UDP multicast para todos na rede.
@@ -40,12 +53,15 @@ message DiscoveryRequest {
   string gateway_ip = 1;
   int32 gateway_tcp_port = 2;
   int32 gateway_udp_port = 3;
+  string mqtt_broker_ip = 4;
+  int32 mqtt_broker_port = 5;
 }
 ```
 
 - **Protocolo:** UDP multicast
 - **Endereço:** 224.1.1.1:5007
-- **Envelope:** Enviada "pura" (não encapsulada em SmartCityMessage)
+- **Envelope:** Encapsulada em SmartCityMessage
+
 
 ### DeviceInfo (registro)
 Enviada pelo dispositivo para o gateway via TCP após receber o DiscoveryRequest.
@@ -65,77 +81,99 @@ message DeviceInfo {
 - **Protocolo:** TCP
 - **Envelope:** Encapsulada em SmartCityMessage
 
+
 ### DeviceUpdate (status)
-Enviada periodicamente pelo dispositivo para o gateway, informando status ou dados sensoriados.
+Enviada periodicamente pelo atuador relay via TCP, informando apenas status ON/OFF.
 
 ```protobuf
 message DeviceUpdate {
   string device_id = 1;
   DeviceType type = 2;
-  DeviceStatus current_status = 3;
-  TemperatureHumidityData temperature_humidity = 4; // para sensores de temperatura
-  // ... outros campos para outros tipos de sensores
+  DeviceStatus current_status = 3; // ON ou OFF
 }
 ```
 
-- **Protocolo:** UDP (status periódico) ou TCP (resposta a comando)
+- **Protocolo:** TCP (atuadores)
 - **Envelope:** Encapsulada em SmartCityMessage
 
+### Dados do Sensor (MQTT)
+Enviados periodicamente pelo sensor via MQTT:
+```json
+{
+  "device_id": "temp_sensor_esp_002",
+  "temperature": 23.5,
+  "humidity": 60.0,
+  "status": "ACTIVE",
+  "timestamp": 123456789,
+  "version": "mqtt_real",
+  "data_source": "dht11"
+}
+```
+
 ---
+
 
 ## 4. Passo a Passo da Descoberta
 
 ### 1. Gateway anuncia sua presença
-- Envia `DiscoveryRequest` via UDP multicast para 224.1.1.1:5007.
-- Mensagem contém IP e portas do gateway.
+- Envia periodicamente `DiscoveryRequest` via UDP multicast para 224.1.1.1:5007, encapsulada em SmartCityMessage.
+- Mensagem contém IP, portas do gateway e dados do broker MQTT.
 
 ### 2. Dispositivo escuta e descobre o gateway
 - Escuta a porta multicast.
-- Ao receber `DiscoveryRequest`, armazena IP/portas do gateway.
+- Ao receber `DiscoveryRequest`, aprende IP/portas do gateway e do broker MQTT.
 
 ### 3. Dispositivo registra-se no gateway
 - Envia `DeviceInfo` via TCP para o gateway.
 - Gateway adiciona o dispositivo à lista de conectados.
 
-### 4. Dispositivo envia status periodicamente
-- Envia `DeviceUpdate` via UDP para o gateway (porta 12346).
-- Sensores enviam dados sensoriados; atuadores enviam status ON/OFF.
+### 4. Sensor envia dados via MQTT
+- Envia dados sensoriados periodicamente via MQTT (`dataTopic`).
+- Recebe comandos via MQTT (`commandTopic`).
+- Envia respostas via MQTT (`responseTopic`).
 
-### 5. Gateway pode enviar comandos (atuadores)
-- Comandos são enviados via TCP, encapsulados em SmartCityMessage.
-- Atuador responde com DeviceUpdate via TCP.
+### 5. Atuador envia status via TCP
+- Envia `DeviceUpdate` via TCP para o gateway.
+- Recebe comandos via TCP.
 
 ---
+
 
 ## 5. Comandos para Atuadores
-- Atuadores recebem comandos do gateway via TCP (ex: ligar/desligar relé).
-- Comandos são encapsulados em SmartCityMessage.
-- Atuador responde com DeviceUpdate via TCP.
+
+Os atuadores ESP8266 não executam um servidor gRPC diretamente. Em vez disso, o fluxo de comandos é:
+- O gateway envia comandos gRPC para o servidor intermediário `actuator_bridge_server.py` (executando na Raspberry Pi).
+- O `actuator_bridge_server.py` recebe o comando gRPC, traduz para mensagem Protocol Buffers e encaminha via TCP para o atuador ESP.
+- O atuador executa o comando recebido via TCP/Protocol Buffers e responde com DeviceUpdate via TCP.
 
 ---
+
 
 ## 6. Comandos para Sensores
 
-Além de enviar dados periodicamente, **sensores também podem receber comandos do gateway** via TCP, encapsulados em `SmartCityMessage`. Os principais comandos são:
+Além de enviar dados periodicamente via MQTT, **sensores também podem receber comandos do gateway** via MQTT (`commandTopic`). Os principais comandos são:
 
 - **Alterar frequência de atualização:**
-  - O gateway pode enviar um comando para o sensor mudar o intervalo de envio dos dados sensoriados (por exemplo, de 5s para 60s).
+  - O gateway pode enviar um comando MQTT para o sensor mudar o intervalo de envio dos dados sensoriados (por exemplo, de 5s para 60s).
   - O sensor ajusta seu temporizador interno conforme o valor recebido.
 
 - **Alterar estado (ex: IDLE/ACTIVE):**
-  - O gateway pode colocar o sensor em modo `IDLE`.
-  - **Quando em IDLE, o sensor pausa o envio de dados sensoriados** (não envia mais DeviceUpdate via UDP até voltar para ACTIVE).
+  - O gateway pode colocar o sensor em modo `IDLE` via comando MQTT.
+  - **Quando em IDLE, o sensor pausa o envio de dados sensoriados** (não publica mais no tópico de dados até voltar para ACTIVE).
 
 Esses comandos são importantes para economia de energia, controle dinâmico da rede e gerenciamento remoto dos dispositivos.
 
 ---
 
+
 ## 7. Observações
-- O uso do envelope `SmartCityMessage` é padrão para todas as mensagens, **exceto DiscoveryRequest**, que é enviada "pura" para simplificar o parsing nos dispositivos embarcados.
-- O gateway só considera dispositivos "ativos" se eles enviarem status periodicamente (campo `last_seen` atualizado).
+- O uso do envelope `SmartCityMessage` é padrão para todas as mensagens TCP/UDP, inclusive DiscoveryRequest.
+- Sensores comunicam dados e comandos exclusivamente via MQTT após registro.
+- O gateway só considera dispositivos "ativos" se eles enviarem status/dados periodicamente.
 - O filtro de tempo para considerar um dispositivo "ligado" pode ser ajustado no gateway.
 
 ---
+
 
 ## 8. Exemplo de Mensagens
 
@@ -144,33 +182,44 @@ Esses comandos são importantes para economia de energia, controle dinâmico da 
 {
   "gateway_ip": "192.168.0.10",
   "gateway_tcp_port": 12345,
-  "gateway_udp_port": 12346
+  "gateway_udp_port": 12346,
+  "mqtt_broker_ip": "192.168.0.10",
+  "mqtt_broker_port": 1883
 }
 ```
 
 ### DeviceInfo (enviada pelo sensor/atuador)
 ```json
 {
-  "device_id": "esp8266_temp_01",
+  "device_id": "temp_sensor_esp_002",
   "type": "TEMPERATURE_SENSOR",
   "ip_address": "192.168.0.20",
-  "port": 8889,
+  "port": 6001,
   "initial_state": "ACTIVE",
   "is_actuator": false,
   "is_sensor": true
 }
 ```
 
-### DeviceUpdate (enviada periodicamente)
+### Dados do Sensor via MQTT
 ```json
 {
-  "device_id": "esp8266_temp_01",
-  "type": "TEMPERATURE_SENSOR",
-  "current_status": "ACTIVE",
-  "temperature_humidity": {
-    "temperature": 23.5,
-    "humidity": 60.0
-  }
+  "device_id": "temp_sensor_esp_002",
+  "temperature": 23.5,
+  "humidity": 60.0,
+  "status": "ACTIVE",
+  "timestamp": 123456789,
+  "version": "mqtt_real",
+  "data_source": "dht11"
+}
+```
+
+### DeviceUpdate (atuador via TCP)
+```json
+{
+  "device_id": "relay_actua_esp_002",
+  "type": "RELAY",
+  "current_status": "ON"
 }
 ```
 
@@ -182,44 +231,37 @@ Esses comandos são importantes para economia de energia, controle dinâmico da 
 
 ---
 
+
 ## Frequências de Comunicação
 
 - **Gateway → Dispositivos (DiscoveryRequest):**
   - O gateway envia pacotes de descoberta (`DiscoveryRequest`) via UDP multicast a cada **10 segundos**.
 
-- **Sensores → Gateway (DeviceUpdate):**
-  - Sensores enviam status/dados sensoriados (`DeviceUpdate`) via UDP para o gateway a cada **5 segundos** (valor padrão, pode ser alterado por comando).
+- **Sensores → Gateway (MQTT):**
+  - Sensores enviam dados via MQTT a cada **5 segundos** (valor padrão, pode ser alterado por comando).
 
-- **Atuadores → Gateway (DeviceUpdate):**
-  - Atuadores enviam status (`DeviceUpdate`) via UDP para o gateway a cada **30 segundos** (valor padrão).
+- **Atuadores → Gateway (TCP):**
+  - Atuadores enviam status via TCP a cada **30 segundos** (valor padrão).
 
 Essas frequências podem ser ajustadas conforme a necessidade do sistema e comandos enviados pelo gateway. 
 
 ---
 
-## 10. Envio de Comandos (DeviceCommand) via SmartCityMessage
 
-Comandos enviados do gateway para sensores ou atuadores são sempre encapsulados em um envelope `SmartCityMessage`, dentro do campo `client_request`, que por sua vez contém o campo `command` do tipo `DeviceCommand`.
+## 10. Envio de Comandos para Dispositivos
 
-### Exemplo de envio de comando para alterar a frequência de um sensor
-
-```json
-{
-  "message_type": "CLIENT_REQUEST",
-  "client_request": {
-    "type": "SEND_DEVICE_COMMAND",
-    "target_device_id": "esp8266_temp_01",
-    "command": {
+- **Sensores:**
+  - Comandos enviados via MQTT (`commandTopic`), formato JSON:
+    ```json
+    {
       "command_type": "SET_FREQ",
-      "custom_config": "60000"  // nova frequência em ms (ex: 60 segundos)
+      "command_value": "60000",  // nova frequência em ms
+      "request_id": "req123",
+      "timestamp": 123456789
     }
-  }
-}
-```
+    ```
+  - Sensor executa o comando e responde via MQTT (`responseTopic`).
 
-- O campo `message_type` indica que é um comando de cliente.
-- O campo `target_device_id` define o dispositivo de destino.
-- O campo `command_type` define o tipo de comando (ex: `SET_FREQ`, `IDLE`, `TURN_ON`, etc).
-- O campo `custom_config` pode conter parâmetros adicionais, como a nova frequência.
-
-O dispositivo faz o parsing do envelope, extrai o comando e executa a ação correspondente. 
+- **Atuadores:**
+  - Comandos enviados via TCP, encapsulados em SmartCityMessage.
+  - Atuador executa o comando e responde com DeviceUpdate via TCP.
