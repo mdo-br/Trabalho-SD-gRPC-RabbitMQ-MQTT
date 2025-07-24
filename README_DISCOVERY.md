@@ -18,31 +18,80 @@ A descoberta automática permite que sensores e atuadores encontrem o gateway na
 
 ```mermaid
 sequenceDiagram
-    participant Gateway
-    participant gRPCServer as gRPC Server (Raspberry Pi)
-    participant Sensor
-    participant Atuador
-
+    participant G as Gateway
+    participant S as Sensor
+    participant A as Atuador
+    participant MQTT as Broker MQTT
+    participant gRPC as Servidor gRPC
+    
+    Note over G: Inicia processo de descoberta
+    
     loop A cada 10 segundos
-        Gateway->>Rede: DiscoveryRequest (UDP multicast)
+        G->>+S: DiscoveryRequest (UDP Multicast 224.1.1.1:5007)
+        G->>+A: DiscoveryRequest (UDP Multicast 224.1.1.1:5007)
+        
+        Note over S,A: Dispositivos recebem configuração:<br/>- IP/porta do gateway<br/>- IP/porta do broker MQTT
+        
+        S->>G: DeviceInfo (TCP - Registro do Sensor)
+        A->>G: DeviceInfo (TCP - Registro do Atuador)
+        
+        Note over G: Atualiza lista de dispositivos
     end
-    Sensor-->>Gateway: DeviceInfo (TCP)
-    Atuador-->>Gateway: DeviceInfo (TCP)
-    loop Periodicamente
-        Sensor-->>Gateway: Dados via MQTT (dataTopic)
-        Atuador-->>Gateway: DeviceUpdate (TCP)
+    
+    rect rgb(200, 255, 200)
+        Note over S,MQTT: Comunicação Sensor ↔ MQTT
+        S->>MQTT: Conecta usando IP descoberto
+        S->>MQTT: Publica dados (smart_city/sensors/+)
+        MQTT->>G: Repassa dados para Gateway
+        G->>MQTT: Envia comandos (smart_city/commands/sensors/+)
+        MQTT->>S: Repassa comandos para Sensor
     end
-    Gateway->>gRPCServer: Comando gRPC para atuador
-    gRPCServer->>Atuador: Comando TCP/Protocol Buffers
-    Atuador->>gRPCServer: DeviceUpdate (TCP, resposta ao comando)
-    gRPCServer->>Gateway: Resposta gRPC
-    Gateway-->>Sensor: Comando via MQTT (commandTopic)
-    Sensor-->>Gateway: Resposta via MQTT (responseTopic)
+    
+    rect rgba(200, 251, 255, 1)
+        Note over G,gRPC: Comunicação Atuador ↔ gRPC
+        G->>gRPC: Comando gRPC (LigarDispositivo)
+        gRPC->>A: Envia comando TCP (Protocol Buffers)
+        A->>gRPC: Resposta TCP (DeviceUpdate)
+        gRPC->>G: Resposta gRPC (StatusResponse)
+    end
+    
+    loop A cada 30 segundos
+        Note over S,A: Renovação de registro
+        S->>G: DeviceInfo (TCP - Manter registro)
+        A->>G: DeviceInfo (TCP - Manter registro)
+    end
 ```
 
 ---
 
-## 3. Mensagens Utilizadas (smart_city.proto)
+
+## 3. Passo a Passo da Descoberta
+
+### 1. Gateway anuncia sua presença
+- Envia periodicamente `DiscoveryRequest` via UDP multicast para 224.1.1.1:5007, encapsulada em SmartCityMessage.
+- Mensagem contém IP, portas do gateway e dados do broker MQTT.
+
+### 2. Dispositivo escuta e descobre o gateway
+- Escuta a porta multicast.
+- Ao receber `DiscoveryRequest`, aprende IP/portas do gateway e do broker MQTT.
+
+### 3. Dispositivo registra-se no gateway
+- Envia `DeviceInfo` via TCP para o gateway.
+- Gateway adiciona o dispositivo à lista de conectados.
+
+### 4. Sensor envia dados via MQTT
+- Envia dados sensoriados periodicamente via MQTT (`dataTopic`).
+- Recebe comandos via MQTT (`commandTopic`).
+- Envia respostas via MQTT (`responseTopic`).
+
+### 5. Atuador envia status via TCP
+- Envia `DeviceUpdate` via TCP para o gateway.
+- Recebe comandos via TCP.
+
+---
+
+
+## 4. Mensagens Utilizadas (smart_city.proto)
 
 
 ### DiscoveryRequest (descoberta)
@@ -112,31 +161,6 @@ Enviados periodicamente pelo sensor via MQTT:
 
 ---
 
-
-## 4. Passo a Passo da Descoberta
-
-### 1. Gateway anuncia sua presença
-- Envia periodicamente `DiscoveryRequest` via UDP multicast para 224.1.1.1:5007, encapsulada em SmartCityMessage.
-- Mensagem contém IP, portas do gateway e dados do broker MQTT.
-
-### 2. Dispositivo escuta e descobre o gateway
-- Escuta a porta multicast.
-- Ao receber `DiscoveryRequest`, aprende IP/portas do gateway e do broker MQTT.
-
-### 3. Dispositivo registra-se no gateway
-- Envia `DeviceInfo` via TCP para o gateway.
-- Gateway adiciona o dispositivo à lista de conectados.
-
-### 4. Sensor envia dados via MQTT
-- Envia dados sensoriados periodicamente via MQTT (`dataTopic`).
-- Recebe comandos via MQTT (`commandTopic`).
-- Envia respostas via MQTT (`responseTopic`).
-
-### 5. Atuador envia status via TCP
-- Envia `DeviceUpdate` via TCP para o gateway.
-- Recebe comandos via TCP.
-
----
 
 
 ## 5. Comandos para Atuadores

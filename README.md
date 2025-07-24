@@ -33,7 +33,7 @@ flowchart TB
         GW["Gateway (gRPC Client + MQTT Client)"]
     end
 
-    subgraph Infraestrutura
+    subgraph Borda/Infraestrutura
         MQ["RabbitMQ (MQTT Broker)"]
         GRPC["Servidor gRPC"]
     end
@@ -173,7 +173,7 @@ sequenceDiagram
         MQTT->>S: Repassa comandos para Sensor
     end
     
-    rect rgb(200, 200, 255)
+    rect rgba(200, 251, 255, 1)
         Note over G,gRPC: Comunicação Atuador ↔ gRPC
         G->>gRPC: Comando gRPC (LigarDispositivo)
         gRPC->>A: Envia comando TCP (Protocol Buffers)
