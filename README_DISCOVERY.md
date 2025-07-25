@@ -314,7 +314,7 @@ Essas frequências podem ser ajustadas conforme a necessidade do sistema e coman
 ```
 
 **Método chamado:**  
-`LigarDispositivo(DeviceId)`
+`LigarDispositivo(Request)`
 
 ---
 
