@@ -7,7 +7,7 @@ Este documento descreve as estratégias de tolerância e tratamento de falhas im
 O sistema foi projetado para operar de forma robusta em ambientes distribuídos e sujeitos a falhas de rede, dispositivos ou software. As principais estratégias incluem:
 
 - **Redescobrimento automático:** Dispositivos IoT (sensores e atuadores) "escutam" descoberta periódica do gateway via multicast UDP. Caso percam a conexão ou mudem de rede, podem redescobrir os parâmetros necessários sem intervenção manual.
-- **Registro periódico:** Dispositivos respodem mensagens de descoberta ao gateway a cada 30 segundos. Isso permite ao gateway detectar dispositivos offline e manter uma lista atualizada dos ativos.
+- **Registro periódico:** Dispositivos respondem mensagens de descoberta ao gateway a cada 30 segundos. Isso permite ao gateway detectar dispositivos offline e manter uma lista atualizada dos ativos.
 - **Timeouts e reconexão:** Todas as conexões TCP e gRPC utilizam timeouts configuráveis. Em caso de falha ou ausência de resposta, o sistema tenta reconectar ou reporta o erro de forma clara.
 - **Detecção de falhas:** O gateway monitora o status dos dispositivos registrados. Se um dispositivo não renovar seu registro dentro do intervalo esperado, é considerado offline e removido da lista de ativos.
 - **Mensagens de erro detalhadas:** APIs e serviços gRPC retornam mensagens de erro informativas, facilitando o diagnóstico por operadores e desenvolvedores.
@@ -23,7 +23,8 @@ O sistema foi projetado para operar de forma robusta em ambientes distribuídos 
 **Exemplo de código (Python):**
 ```python
 # src/grpc_server/actuator_bridge_server.py
-def send_tcp_command_to_device(device_ip: str, device_port: int, command: smart_city_pb2.DeviceCommand) -> smart_city_pb2.DeviceUpdate:
+def send_tcp_command_to_device(device_ip: str, device_port: int, command: 
+  smart_city_pb2.DeviceCommand) -> smart_city_pb2.DeviceUpdate:
     try:
         with socket.create_connection((device_ip, device_port), timeout=TIMEOUT_TCP) as sock:
             # ...envio do comando...
@@ -44,7 +45,8 @@ class ActuatorServiceServicer(actuator_service_pb2_grpc.ActuatorServiceServicer)
             device_update = send_tcp_command_to_device(request.ip, request.port, command)
             return actuator_service_pb2.StatusResponse(
                 status="ON",
-                message=f"Dispositivo {request.device_id} ligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
+                message=f"Dispositivo {request.device_id} ligado com sucesso. Status: 
+                {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
             )
         except Exception as e:
             logger.error(f"Erro ao ligar dispositivo {request.device_id}: {e}")
@@ -163,15 +165,7 @@ def remove_inactive_devices():
                 logger.info(f"Dispositivo {dev_id} removido por inatividade.")
                 del connected_devices[dev_id]
 ```
-
-## Boas Práticas Adotadas
-- Uso de logs detalhados para todas as operações críticas.
-- Retorno de status e mensagens claras em todas as APIs.
-- Separação de responsabilidades entre componentes para facilitar isolamento e recuperação de falhas.
-- Testes automatizados para cenários de falha e recuperação.
-
-## Conclusão
-
+---
 
 ## Exemplos de Mensagens de Falha (smart_city.proto)
 
@@ -215,4 +209,7 @@ Esses exemplos seguem os tipos e campos definidos no arquivo smart_city.proto, f
 
 ---
 
-O sistema Smart City foi projetado para ser resiliente, tolerante a falhas e fácil de manter. As estratégias de tratamento de falhas garantem alta disponibilidade e confiabilidade, mesmo em ambientes de rede instáveis ou com dispositivos sujeitos a desconexões frequentes.
+## Boas Práticas Adotadas
+- Uso de logs detalhados para todas as operações críticas.
+- Retorno de status e mensagens claras em todas as APIs.
+- Separação de responsabilidades entre componentes para facilitar isolamento e recuperação de falhas.
