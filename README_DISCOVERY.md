@@ -279,7 +279,7 @@ Essas frequências podem ser ajustadas conforme a necessidade do sistema e coman
     ```json
     {
       "command_type": "SET_FREQ",
-      "command_value": "60000",  // nova frequência em ms
+      "command_value": "60000",  
       "request_id": "req123",
       "timestamp": 123456789
     }
