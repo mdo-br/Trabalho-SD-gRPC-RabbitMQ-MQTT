@@ -580,18 +580,20 @@ Usado para comunicação gRPC:
 
 ```protobuf
 service AtuadorService {
-  rpc LigarDispositivo(DeviceRequest) returns (StatusResponse);
-  rpc DesligarDispositivo(DeviceRequest) returns (StatusResponse);
-  rpc ConsultarEstado(DeviceRequest) returns (StatusResponse);
+  rpc LigarDispositivo(Request) returns (Response);
+  rpc DesligarDispositivo(Request) returns (Response);
+  rpc ConsultarEstado(Request) returns (Response);
 }
 
-message DeviceRequest {
+// Identifica o Dispositivo
+message Request {
   string device_id = 1;
   string ip = 2;
   int32 port = 3;
 }
 
-message StatusResponse {
+// Resposta de Estado/Sucesso/Erro
+message Response {
   string status = 1;
   string message = 2;
 }
