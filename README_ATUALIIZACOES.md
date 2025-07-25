@@ -88,7 +88,7 @@ Os dispositivos simulados em Java continuam sendo utilizados e agora devem segui
 
 ## 5. Cliente de Controle (CLI)
 
-O cliente de linha de comando `smart_city_client.py` continua funcionando como ferramenta de testes, mas agora se comunica exclusivamente com a API REST do gateway. Ao invés de abrir sockets TCP, ele envia requisições HTTP para listar dispositivos, consultar status e enviar comandos. A lógica de menu e interação permanece praticamente inalterada.
+O cliente de linha de comando `smart_city_client.py` continua funcionando como ferramenta de testes, mas agora se comunica exclusivamente com a API REST. Ao invés de abrir sockets TCP diretamente para o gateway, ele envia requisições HTTP para listar dispositivos, consultar status e enviar comandos. A lógica de menu e interação permanece praticamente inalterada.
 
 ## 6. Organização dos Arquivos .proto
 
