@@ -410,7 +410,7 @@ def send_grpc_command(dev_id, command_type, command_value=""):
                 dev = connected_devices.get(dev_id)
                 ip = dev['ip'] if dev else ''
                 port = dev['port'] if dev else 0
-            request = actuator_service_pb2.DeviceId(device_id=dev_id, ip=ip, port=port)
+            request = actuator_service_pb2.Request(device_id=dev_id, ip=ip, port=port)
 
             # Mapeamento do comando para o método correto
             if command_type.upper() in ["LIGAR", "TURN_ON", "ON"]:

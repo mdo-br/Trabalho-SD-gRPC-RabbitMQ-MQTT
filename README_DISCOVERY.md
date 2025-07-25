@@ -289,3 +289,148 @@ Essas frequências podem ser ajustadas conforme a necessidade do sistema e coman
 - **Atuadores:**
   - Comandos enviados via TCP, encapsulados em SmartCityMessage.
   - Atuador executa o comando e responde com DeviceUpdate via TCP.
+
+## 11. Exemplos de Comandos e Respostas para Atuadores (gRPC e TCP/Protobuf)
+
+### Fluxo de Comando
+
+1. **Gateway** envia comando gRPC para o `actuator_bridge_server.py` (servidor gRPC).
+2. O servidor gRPC traduz o comando para uma mensagem Protocol Buffers e envia via TCP ao atuador.
+3. O atuador executa o comando, responde via TCP/Protobuf.
+4. O servidor gRPC traduz a resposta e retorna ao gateway via gRPC.
+
+---
+
+### Exemplo de Comando gRPC (Ligar Atuador)
+
+**Requisição gRPC enviada pelo Gateway:**
+
+```json
+{
+  "device_id": "relay_actua_esp_002",
+  "ip": "192.168.0.22",
+  "port": 8891
+}
+```
+
+**Método chamado:**  
+`LigarDispositivo(DeviceId)`
+
+---
+
+### Exemplo de Comando TCP/Protobuf enviado ao Atuador
+
+**Envelope SmartCityMessage (CLIENT_REQUEST):**
+
+```json
+{
+  "message_type": "CLIENT_REQUEST",
+  "payload": {
+    "client_request": {
+      "type": "SEND_DEVICE_COMMAND",
+      "target_device_id": "relay_actua_esp_002",
+      "command": {
+        "device_id": "relay_actua_esp_002",
+        "type": "RELAY",
+        "command_type": "TURN_ON",
+        "command_value": ""
+      }
+    }
+  }
+}
+```
+*(Obs: No código real, essa mensagem é serializada em Protocol Buffers e enviada via TCP ao atuador.)*
+
+---
+
+### Exemplo de Resposta TCP/Protobuf do Atuador
+
+**Envelope SmartCityMessage (DEVICE_UPDATE):**
+
+```json
+{
+  "message_type": "DEVICE_UPDATE",
+  "payload": {
+    "device_update": {
+      "device_id": "relay_actua_esp_002",
+      "type": "RELAY",
+      "current_status": "ON"
+    }
+  }
+}
+```
+*(Obs: No código real, essa mensagem é serializada em Protocol Buffers e enviada via TCP ao servidor gRPC.)*
+
+---
+
+### Exemplo de Resposta gRPC ao Gateway
+
+**Resposta do método LigarDispositivo:**
+
+```json
+{
+  "status": "ON",
+  "message": "Dispositivo relay_actua_esp_002 ligado com sucesso. Status: ON"
+}
+```
+
+---
+
+### Exemplo de Comando gRPC para Desligar Atuador
+
+**Requisição gRPC:**
+
+```json
+{
+  "device_id": "relay_actua_esp_002",
+  "ip": "192.168.0.22",
+  "port": 8891
+}
+```
+**Método chamado:**  
+`DesligarDispositivo(DeviceId)`
+
+**Resposta gRPC:**
+
+```json
+{
+  "status": "OFF",
+  "message": "Dispositivo relay_actua_esp_002 desligado com sucesso. Status: OFF"
+}
+```
+
+---
+
+### Exemplo de Consulta de Status via gRPC
+
+**Requisição gRPC:**
+
+```json
+{
+  "device_id": "relay_actua_esp_002",
+  "ip": "192.168.0.22",
+  "port": 8891
+}
+```
+**Método chamado:**  
+`ConsultarEstado(DeviceId)`
+
+**Resposta gRPC:**
+
+```json
+{
+  "status": "ON",
+  "message": "Status do dispositivo relay_actua_esp_002: ON"
+}
+```
+
+---
+
+### Resumo do Fluxo
+
+- **Gateway → gRPC:** Envia comando (ex: LigarDispositivo)
+- **gRPC → Atuador (TCP/Protobuf):** Traduz comando e envia via TCP
+- **Atuador → gRPC (TCP/Protobuf):** Responde status via TCP/Protobuf
+- **gRPC → Gateway:** Retorna resposta gRPC com status e mensagem
+
+Todos os exemplos acima refletem o fluxo real implementado nos arquivos `smart_city_gateway.py`, `actuator_bridge_server.py` e no firmware do atuador

@@ -6,21 +6,21 @@ option java_package = "actuator";
 option java_outer_classname = "ActuatorServiceProto";
 
 // Mensagem para identificar o dispositivo
-message DeviceId {
+message Request {
   string device_id = 1;
   string ip = 2;      // IP do dispositivo
   int32 port = 3;     // Porta do dispositivo
 }
 
 // Resposta padrão
-message StatusResponse {
+message Response {
   string status = 1;   // Ex: "ON", "OFF", "OK", "ERROR"
   string message = 2;  // Mensagem detalhada
 }
 
 // Serviço gRPC para controle de atuadores
 service ActuatorService {
-  rpc LigarDispositivo(DeviceId) returns (StatusResponse);
-  rpc DesligarDispositivo(DeviceId) returns (StatusResponse);
-  rpc ConsultarEstado(DeviceId) returns (StatusResponse);
+  rpc LigarDispositivo(Request) returns (Response);
+  rpc DesligarDispositivo(Request) returns (Response);
+  rpc ConsultarEstado(Request) returns (Response);
 }

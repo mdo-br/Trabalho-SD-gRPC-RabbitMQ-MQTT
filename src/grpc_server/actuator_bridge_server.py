@@ -165,13 +165,13 @@ class ActuatorServiceServicer(actuator_service_pb2_grpc.ActuatorServiceServicer)
             command.command_type = "TURN_ON"
             command.command_value = ""
             device_update = send_tcp_command_to_device(ip, port, command)
-            return actuator_service_pb2.StatusResponse(
+            return actuator_service_pb2.Response(
                 status="ON",
                 message=f"Dispositivo {device_id} ligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
             )
         except Exception as e:
             logger.error(f"Erro ao ligar dispositivo {device_id}: {e}")
-            return actuator_service_pb2.StatusResponse(
+            return actuator_service_pb2.Response(
                 status="ERROR",
                 message=f"Erro ao ligar dispositivo: {str(e)}"
             )
@@ -187,13 +187,13 @@ class ActuatorServiceServicer(actuator_service_pb2_grpc.ActuatorServiceServicer)
             command.command_type = "TURN_OFF"
             command.command_value = ""
             device_update = send_tcp_command_to_device(ip, port, command)
-            return actuator_service_pb2.StatusResponse(
+            return actuator_service_pb2.Response(
                 status="OFF",
                 message=f"Dispositivo {device_id} desligado com sucesso. Status: {smart_city_pb2.DeviceStatus.Name(device_update.current_status)}"
             )
         except Exception as e:
             logger.error(f"Erro ao desligar dispositivo {device_id}: {e}")
-            return actuator_service_pb2.StatusResponse(
+            return actuator_service_pb2.Response(
                 status="ERROR",
                 message=f"Erro ao desligar dispositivo: {str(e)}"
             )
@@ -211,13 +211,13 @@ class ActuatorServiceServicer(actuator_service_pb2_grpc.ActuatorServiceServicer)
             device_update = send_tcp_command_to_device(ip, port, command)
             # Para GET_STATUS, retornar o status real do dispositivo no campo status
             device_status_name = smart_city_pb2.DeviceStatus.Name(device_update.current_status)
-            return actuator_service_pb2.StatusResponse(
+            return actuator_service_pb2.Response(
                 status=device_status_name,  # Usar o status real do dispositivo
                 message=f"Status do dispositivo {device_id}: {device_status_name}"
             )
         except Exception as e:
             logger.error(f"Erro ao consultar estado do dispositivo {device_id}: {e}")
-            return actuator_service_pb2.StatusResponse(
+            return actuator_service_pb2.Response(
                 status="ERROR",
                 message=f"Erro ao consultar estado: {str(e)}"
             )
